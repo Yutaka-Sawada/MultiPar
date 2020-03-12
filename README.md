@@ -1,33 +1,34 @@
 # MultiPar
 
-v1.3.0.6 is public
+v1.3.0.7 is public
 
- This is a minor update version. 
-I fixed a small bug, which might leave some temporary files (such like, something_par.tmp) at failed reapir. 
-When repair was successful, there is no problem.
+ I updated some documents and Help files in this version. 
+There is no difference in EXE files' process. 
+I erased a URL of MultiPar forum, because the hosting Live Business Chat disappered. 
+Thanks Mr. Badon to maintain the web-forum for long time. 
+I will public sample version and source code on my OneDrive and GitHub page.
 
- I updated Italian language UI DLL. Thanks Botta for translation help. 
-If someone sees a miskate of translation in your language, please notice me. 
-I will correct at later version.
+ I set this version as the final release of v1.3.0 tree. 
+As I upgraded my PC (it becomes very fast with Core i5 !), 
+I may change my developing environment to Visual Studio 2010 in future. 
+So, this would be the last version which supports Windows XP. 
+If many users still use old PCs with Windows XP and want MultiPar to support the obsolete OS, 
+I keep Visual Studio 2008 for them.
 
 
-[ Changes from 1.3.0.5 to 1.3.0.6 ]
+[ Changes from 1.3.0.6 to 1.3.0.7 ]
 
 * GUI update
 Change  
- Italian UI was updated.  
-
-* PAR2 client update
-Bug fix  
- Temporary files should be erased at failed reapir.  
+ URL of web-forum was erased on some help documents.  
 
 
 [ Hash value ]
 
-MultiPar1306.zip  
-MD5 : 88656BEF4728F334A336AFBB19D109D3  
-SHA-1 : C138C85207DC2DF34EA8F81F00323A19C673375E  
+MultiPar130.zip  
+MD5 : 5D2A7A310C4876FBC8B9CF383BA9E51C  
+SHA-1 : 9655948EDC0654F3400C39B4CA885DCB2654C58A  
 
-MultiPar1306_setup.exe  
-MD5: 74B5FF04BB3B325C91A701A04FDBB21F  
-SHA1: 01A984AE2DB402BBB23E6975B4596D16370698B0  
+MultiPar130_setup.exe  
+MD5: 5814C5F9CC72A98F71B75F88205FCD65  
+SHA1: 71E50898AF8A7B9279214B86A912ABBDEA51E3C9  
