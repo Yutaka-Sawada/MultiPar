@@ -13,8 +13,8 @@ I may finish it in future.
  There is an option "Memory usage upto around". 
 By default (Auto) is between 75% and 87% against available memory. 
 It's not a rate against total memory. 
-The auto setting 's detail is like below;
-32-bit max allocation size = 7/8 of available memory - 1/16 of total memory
+The auto setting 's detail is like below;  
+32-bit max allocation size = 7/8 of available memory - 1/16 of total memory  
 64-bit max allocation size = 7/8 of available memory - 1/32 of total memory
 
  For those who use MultiPar in background, I changed an option "Run clients with lower priority". 
@@ -50,7 +50,7 @@ SHA1: 43E7EAEB21DA2CD957091976F6C802E4C900ED00
 
 
 
-[ Hash value of other source code packages ]
+[ Hash value of other source code packages ]  
  Old versions and source code packages are available at [OneDrive](https://1drv.ms/u/s!AtGhNMUyvbWOaSo1n_R8awJ_hg0?e=4V0gXu) now.  
 
 MultiPar_par2j_1311.7z  
