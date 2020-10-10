@@ -1,6 +1,3 @@
-Release note of version 1.3.1.2
-
-
 # MultiPar
 
 v1.3.1.2 is public
