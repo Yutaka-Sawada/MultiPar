@@ -1,46 +1,59 @@
 # MultiPar
 
-v1.3.1.2 is public
+v1.3.1.3 is public
 
- I release this version as an emergency update to fix a bug. 
-While I tried to implement a multi-reading & hashing files for SSD drive ago, 
-I happend to remain a bug in a function by imcompatible variable usage. 
-Though I stopped to implement the method in previous version, the bug kept alive. 
-I didn't aware it on my PC, until a user reported it on GitHub. 
-Thanks Voczi for bug report. 
+ This version is a minor update to test a new behavior. 
+It's an option "Don't search subfolders", in "Creation options" section, 
+on "Client behavior" tab, of MultiPar Options window. 
+While it's under "Creation options" section still, 
+it affects verification and repair for experimental usage now. 
+In command-line, an option "/fo" is available for verification (and/or reapir). 
 
- Thus, I fixed the file hashing problem in this version. 
-There is no other change except the bug fix. 
-If you use v1.3.1.1, you should update to this version. 
-If you use older versions, you don't need to update. 
-I'm sorry for inconvenience. 
+ This change affects searching misnamed (or moved) files at verification. 
+Without "/fo" option, par2j will search misnamed files under all sub-folders recursively. 
+This behavior might be bad for some users, 
+when there are many sub-folders or a child folder includes many files. 
+Because searching misnamed (or moved) files from many possible files requires long time, 
+it would give error (such like exclusive file access) or system heavy (HDD becomes too busy). 
+When you have such problem in using MultiPar, you may try setting the option. 
+
+ If you feel no problem in using MultiPar daily, you don't need to update to this version. 
+When you don't check "Don't search subfolders" check-box, there is no difference. 
+Only when you check it now, you will see the difference. 
+If there's something wrong with this change, please notice me. 
+I may change current style, if there is a problem. 
+If new behavior has no problem, 
+I will move "Don't search subfolders" option into "Common options" section at MultiPar option in future. 
 
 
-[ Changes from 1.3.1.1 to 1.3.1.2 ]
+[ Changes from 1.3.1.2 to 1.3.1.3 ]
+
+* GUI update  
+Change  
+ An option "Don't search subfolders" is enabled for verification and reapir.  
 
 * PAR2 client update  
-Bug fix  
- In some cases, it stopped to calculate hash of files in creating PAR2 files.  
+Change  
+ An option "/fo" is available for verification and reapir.  
 
 
 [ Hash value ]
 
-MultiPar1312.zip  
-MD5 : 9D2417E315F4137F5709B49A0D3C0320  
-SHA-1 : C4C6B9CF2C79B833B7B1129231CDB42AEFA6E35A  
+MultiPar1313.zip  
+MD5 : 7F09AD4201867C8ACE7039DE417F47C4  
+SHA-1 : 27AA6F7C6F28180012EA956F87868004D4F63C1C  
 
-MultiPar1312_setup.exe  
-MD5: F6217FE774CC1E2C7C8FC0BE681D7096  
-SHA1: A0F489DA0FC2DF539C769A41F58CB54197D26874  
-
+MultiPar1313_setup.exe  
+MD5: 4557DF01B68AA0ACD9D62B9EE6D61C5C  
+SHA1: 7C1652C0CC494E0AEAA346313744FC6F73451C83  
 
 
 [ Hash value of other source code packages ]  
  Old versions and source code packages are available at [OneDrive](https://1drv.ms/u/s!AtGhNMUyvbWOaSo1n_R8awJ_hg0?e=4V0gXu) now.  
 
-MultiPar_par2j_1312.7z  
-MD5: 7D089AFAB174C3F802EB4BAE559F7208  
-SHA1: 95473AEAAF34E93A1FF079DF81B20EE8DA8F9345  
+MultiPar_par2j_1313.7z  
+MD5: 6E1EB1FF7E6E723A83D3F11183A1EE75  
+SHA1: B95D66E4D6ECE310529C384C48BDDD37571EC7D5  
 
 MultiPar_par2j_extra_1294.7z  
 MD5: 6D165CDA2645924ACAFE902F02FAD309  
