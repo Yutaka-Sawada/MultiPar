@@ -11,7 +11,7 @@ When you want a stable version,
 you should not use this new one until other users try. 
 Unless you have a problem, v1.3.0.7 or v1.3.1.3 might be safe. 
 If you see a strange behavior, odd problem, or failure, 
-please report the incidinet to me. 
+please report the incident to me. 
 I will fix as possible as I can. 
 
  I increased max block size from 1 GB (old versions) to 2 GB (new version). 
@@ -35,7 +35,7 @@ Thanks John L. Galt for tests and bug report on SSD.
 
  There was a bug in v1.3.1.4, and created PAR2 files happened to contain broken packets. 
 MD5 hash of some packets were wrong. 
-When a file size was multiple of block size, the problem occured. 
+When a file size was multiple of block size, the problem occurred. 
 Such PAR2 files are shown as damaged on MultiPar verification, 
 and v1.3.1.4 could not verify source files without checksum packets. 
 I fixed the bug in v1.3.1.5, and it can verify source files now. 
