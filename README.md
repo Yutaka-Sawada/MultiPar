@@ -86,7 +86,7 @@ SHA1: 66EB941B3E293EB35A48FAD80DD94BC3980DA3E8
 
 
 [ Hash value of other source code packages ]  
- Old versions and source code packages are available at [OneDrive](https://1drv.ms/u/s!AtGhNMUyvbWOaSo1n_R8awJ_hg0?e=4V0gXu) now.  
+ Old versions and source code packages are available at [GitHub](https://github.com/Yutaka-Sawada/MultiPar/releases) or [OneDrive](https://1drv.ms/u/s!AtGhNMUyvbWOaSo1n_R8awJ_hg0?e=4V0gXu).  
 
 MultiPar_par2j_1315.7z  
 MD5: FB245B4AFDB45F6C89FFC6231ECA3868  
