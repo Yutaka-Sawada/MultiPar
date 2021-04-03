@@ -1,3 +1,17 @@
+# Important notification
+
+Because my PC's HDD gave error, I bought a new PC. 
+Fortunately I could retrive all data. 
+But, I need to install all applications and learn Windows 10. 
+I will return to development as soon as possible. 
+
+By this accident, I must change my developing environment. 
+Though I will try the latest Visual Studio 19, 
+I'm not sure how difficult is the converting old (Visual Studio 2008's) souce code. 
+If it's too hard, I may try others. 
+
+---
+
 # MultiPar
 
 v1.3.1.5 is public
