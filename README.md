@@ -1,110 +1,73 @@
-# Important notification
-
-Because my PC's HDD gave error, I bought a new PC. 
-Fortunately I could retrive all data. 
-But, I need to install all applications and learn Windows 10. 
-I will return to development as soon as possible. 
-
-By this accident, I must change my developing environment. 
-Though I will try the latest Visual Studio 19, 
-I'm not sure how difficult is the converting old (Visual Studio 2008's) souce code. 
-If it's too hard, I may try others. 
-
----
-
 # MultiPar
 
-v1.3.1.5 is public
+v1.3.1.6 is public
 
- This version has some trial functions. 
-I fixed some problems of previous versions. 
-Though I tested the behavior on my PC, 
-there may be a bug in other environments or in a rare case. 
-Be careful to use this version for daily usage. 
-When you want a stable version, 
-you should not use this new one until other users try. 
-Unless you have a problem, v1.3.0.7 or v1.3.1.3 might be safe. 
-If you see a strange behavior, odd problem, or failure, 
-please report the incident to me. 
+ Because my old PC was broken, 
+I upgraded my PC and development environment (to Visual Studio 2019). 
+From this version, my products' supporting OS is Windows Vista or later. 
+As I announced ago, v1.3.0.7 becomes the last stable version, which supports Windows XP. 
+
+ This version has two bug fix. 
+At first, I fixed a crash bug, which I happened to put in previous version. 
+Though I tried to reduce using memory at seaching slices, the method was bad. 
+I returned to old simple way, which allocates "block size * 3 times" size buffer. 
+Sometimes I made an unknown bug to solve another problem. 
+If someone sees odd behavior or strange result, please report with ease. 
+Thanks to an anonymous helper. 
+
+ Another bug was a failure of character encoding, which I found on Windows 10. 
+I never saw such problem on Windows 7, or I was just lucky. 
+It affected only users of multi-bytes characters. 
+While it showed miss-decoded characters in old versions, 
+there was no problem in verification itself. 
+A user might see some odd characters on a file-list. 
+I fixed the bug, and some other slight problems on Windows 10. 
+
+ Because I changed whole development environment largely, 
+there may be a compatibility issue. 
+So, this version would be a test of compatibility. 
+When you see a problem, please let me know. 
 I will fix as possible as I can. 
-
- I increased max block size from 1 GB (old versions) to 2 GB (new version). 
-This change is for rare case. 
-Normally users should not set so large block size in most case. 
-For compatibility, setting less than 100,000,000 bytes = 95 MB is good. 
-Be careful, MultiPar cannot treat too large block size properly. 
-When you have a set of PAR2 files with more than 2 GB block size (such like 4 GB), 
-par2cmdline may support them. 
-I adjusted some GUI components for big numbers. 
-If you see something bad in your language UI, please let me know. 
-
- I implemented a function to calculate MD5 hash of multiple files at verifying source files. 
-It seems to be faster on SSD. (I cannot test the speed by myself.) 
-But, it is slow on HDD. 
-It detects your drive type and switches function automatically. 
-If it fails and happens to be slow on your PC, 
-please report your case. 
-Because I don't know SSD's property so much, I will need help of users. 
-Thanks John L. Galt for tests and bug report on SSD. 
-
- There was a bug in v1.3.1.4, and created PAR2 files happened to contain broken packets. 
-MD5 hash of some packets were wrong. 
-When a file size was multiple of block size, the problem occurred. 
-Such PAR2 files are shown as damaged on MultiPar verification, 
-and v1.3.1.4 could not verify source files without checksum packets. 
-I fixed the bug in v1.3.1.5, and it can verify source files now. 
-Though it's possible to use such broken PAR2 files (created by v1.3.1.4), 
-you would better recreate new PAR2 files with this new version. 
-I'm sorry for the inconvenience. 
-Thanks nutpantz for this bug report. 
-
- When you created many PAR2 files (more than 512), verification had failed in previous versions. 
-I (and many users) didn't see this bug for long time. 
-Normally people don't create so many PAR2 files. 
-Thanks Martin Klefas-Stennett for finding this rare problem. 
+I plan to refine my code at next version. 
 
 
-[ Changes from 1.3.1.4 to 1.3.1.5 ]  
+[ Changes from 1.3.1.5 to 1.3.1.6 ]  
+
+Installer update  
+- Inno Setup was updated from v5.6.1 to v6.1.2.  
 
 GUI update  
 - Change  
-  - Max block size is increased to 2,118,123,520 bytes. (1.97 GB)  
-  - Max split size is increased to 2,147,287,040 bytes. (1.99 GB)  
+  - A list-view control has Windows Explorer like Visual Style.  
+  - On a folder selecting dialog, an initial selected folder is always visible.  
 
 - Bug fix  
-  - Memory allocation failure in verifying over than 512 PAR2 files was fixed.  
+  - A rare failure of showing a multi-bytes character on file-list was fixed.  
 
 PAR2 client update  
-- Change  
-  - Max slice size is increased to 2,147,483,644 bytes. (2 GB)  
-  - Max split size is increased to 4,294,967,292 bytes. (4 GB)  
-  - When source files are on SSD, verification may become faster.  
-
-- Improvement  
-  - Setup of CRC-32 may become slightly faster on recent CPU.  
-
 - Bug fix  
-  - A bug in calculating hash of source files on SSD was fixed.  
-  - A bug in verifying source files without Slice Checksum packet was fixed.  
+  - An access violation error while verifying splited files was fixed.  
 
 
 [ Hash value ]  
 
-MultiPar1315.zip  
-MD5: DB3661C2AD4D5B6404C7FC8C4CF5AE2B  
-SHA1: AECCB95F757163E439B9BB6372050D2AB1538D39  
+MultiPar1316.zip  
+MD5: B4C60214650BE024CE614474FBB62398  
+SHA1: 26EA790C00B23F81E5D40FADEEC06C26391F7774  
 
-MultiPar1315_setup.exe  
-MD5: ECFC7F69FB5AF168478C24F5C06F025E  
-SHA1: 66EB941B3E293EB35A48FAD80DD94BC3980DA3E8  
+MultiPar1316_setup.exe  
+MD5: 4274B4D2D112653E2879E87D343F551E  
+SHA1: 0068CB9EC0AA24842234484755BD8FBEA46E3149  
 
 
 [ Hash value of other source code packages ]  
- Old versions and source code packages are available at [GitHub](https://github.com/Yutaka-Sawada/MultiPar/releases) or [OneDrive](https://1drv.ms/u/s!AtGhNMUyvbWOaSo1n_R8awJ_hg0?e=4V0gXu).  
+ Old versions and source code packages are available at 
+[GitHub](https://github.com/Yutaka-Sawada/MultiPar/releases) or 
+[OneDrive](https://1drv.ms/u/s!AtGhNMUyvbWOaSo1n_R8awJ_hg0?e=4V0gXu).  
 
-MultiPar_par2j_1315.7z  
-MD5: FB245B4AFDB45F6C89FFC6231ECA3868  
-SHA1: FC32C6F0A88C2750C9A8408525359AED6DBE2B2C  
+MultiPar_par2j_1316.7z  
+MD5: AA071C65BC7AEE7F866496F00D9D34DA  
+SHA1: 76B3C63547AE1447D2981D07C00DC3BECADEDDBE  
 
 MultiPar_par2j_extra_1294.7z  
 MD5: 6D165CDA2645924ACAFE902F02FAD309  
@@ -126,6 +89,6 @@ MultiPar_ResUI_1315.7z
 MD5: B8B6A9DA4BD9D418CFA90FD01CCC615A  
 SHA1: E5B4B16DBCAECACA2095A64006C117E04D3C9E74  
 
-MultiPar_Help_1314.7z  
-MD5: 5D274F59A5B908B1E31D62CD4F4A0D54  
-SHA1: CF1114B3850CDF52535A2C03ED374D1FA5E6B30E  
+MultiPar_Help_1316.7z  
+MD5: E2C0E073200754590D9EDAE332CD0462  
+SHA1: A5D8CE73454073B553A7C9F703E5A6CDEDFF7CBD  
