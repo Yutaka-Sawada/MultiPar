@@ -1,46 +1,55 @@
 # MultiPar
 
-v1.3.1.7 is public
+v1.3.1.8 is public
 
- This is minor update version. 
-I changed some for new environments, Windows 10 and Visual Studio 2019. 
+ This is minor bug fix version. 
+Though I updated many files, most users don't see the difference. 
+Because there may be a problem still, I didn't set this version as stable yet. 
+When I cannot re-produce a problem nor test a behavior myself, it's difficult to solve. 
 If there is no serious problem, next version will be the last of v1.3.1 tree. 
 When you see a bug, odd incident, or strange behavior, please let me know. 
-I will fix before releasing a stable version. 
+I will fix as possible as I can.
 
- Because Visual Studio 2019 supports new CPUs, I removed some obsolate code. 
-It doesn't require par2j_extra.dll or par2j64_extra.dll to use AVX2 feature. 
-It may not require extra memory barrier (_mm_sfence) for multi-threading. 
-But, I'm not sure about the memory barrier. 
-Visual Studio 2008 required them to support new age multi-core CPUs. 
-I think that Visual Studio 2019 should treat those recent CPUs well. 
-Though I tested with Intel i5 CPU on my PC, I don't know other CPUs. 
-If you see "chacksum mismatch" error, please report the incident. 
+ I changed the order of files in Windows 10 style. 
+It treats digits as numbers in filenames. 
+Though the method was introduced from Windows 7, I didn't change for compatibility. 
+
+ Windows 10 supports multiple monitors with different DPI. 
+The method is called as PerMonitorV2 in application manifest. 
+I implemented the way, and MultiPar would be less blurry on a secondary monitor now. 
+Because I cannot test the behavior myself, I'm not sure it works on each user's case. 
+If someone sees a problem on his PC, please report the incident with a screen-shot. 
+Thanks John L. Galt for many tests on multiple monitors. 
 
 
-[ Changes from 1.3.1.6 to 1.3.1.7 ]  
+[ Changes from 1.3.1.7 to 1.3.1.8 ]  
 
 GUI update  
-- Change  
-  - Help documents are not compiled, but consist of plain html files.  
-  - More large icons are added for High DPI.  
-  - The installer will send MultiPar.ini to the recycle bin at uninstallation.  
+- New  
+  - An option for file access mode was added.  
 
-PAR2 client update  
 - Change  
-  - AVX2 feature is implemented internally.  
-  - Additional memory barrier is removed.  
+  - It uses digits as numbers in sorting filenames.  
+  - .EXE file's path may contain Unicode characters.  
+
+- Improvement  
+  - On Windows 10, it supports multiple monitors with different DPI.  
+
+All clients update  
+- Change  
+  - It uses digits as numbers in sorting filenames.  
+  - .EXE file's path may contain Unicode characters.  
 
 
 [ Hash value ]  
 
-MultiPar1317.zip  
-MD5: DFC81D79AA0EBF27DA8945C1EECB2019  
-SHA1: AAED4AEF23A8C9643032A3E8D5B652C52AF081C4  
+MultiPar1318.zip  
+MD5: 2CBF1253F4302A7645D00ADC8D834CCD  
+SHA1: 569A3E103C9630839A55F1DDB16701FE3B2C6876  
 
-MultiPar1317_setup.exe  
-MD5: 16BC2DF7DF0033EDADF39D6D9F3BD2FE  
-SHA1: FFAA6C11912164F2A8C0305DE6231B7DFD409E56  
+MultiPar1318_setup.exe  
+MD5: DCF7957E8ACF0E488D8D8F30B7D3A94C  
+SHA1: 552EB43C0BE34C46A6C496EEC7370521B07B719C  
 
 
 [ Hash value of other source code packages ]  
@@ -48,26 +57,26 @@ SHA1: FFAA6C11912164F2A8C0305DE6231B7DFD409E56
 [GitHub](https://github.com/Yutaka-Sawada/MultiPar/releases) or 
 [OneDrive](https://1drv.ms/u/s!AtGhNMUyvbWOaSo1n_R8awJ_hg0?e=4V0gXu).  
 
-MultiPar_par2j_1317.7z  
-MD5: B46EDD4E3789E65712D50E6B59E355FB  
-SHA1: D951E582EC2B7B6BA6947AA95F4176D816A18044  
+MultiPar_par2j_1318.7z  
+MD5: 625B19602201DB50AF87B4E36C30CDF2  
+SHA1: E596C2B127940D993DF0384686D08943DC555C6F  
 
-MultiPar_par1j_1314.7z  
-MD5: E082D8A598A262E64CBAE2C42283488A  
-SHA1: F706A3C1FCCAFCE225677BA0785CDB39870206A1  
+MultiPar_par1j_1318.7z  
+MD5: F66285403BA0AD856BA6A8CCD922EBF5  
+SHA1: 4CF5D819B16E60F1BBD82415D5F68CB46D3F53C3  
 
-MultiPar_sfv_md5_1314.7z  
-MD5: 355B0CC6B9613B422126EF9EDAC15F87  
-SHA1: EFD2CF25C47851B86EB12FD5B709BFEEC73AC36D  
+MultiPar_sfv_md5_1318.7z  
+MD5: 4E6433808625C088E2773C961BBEBBD2  
+SHA1: 68B54D178BA58637F63CC3E0CC656C96D4472A33  
 
-MultiPar_ShlExt_1298.7z  
-MD5: BE0F04DF1A6B936F23F6F01930562248  
-SHA1: 52818266B45ECE135EECFF12D8DA2640A6AD5075  
+MultiPar_ShlExt_1318.7z  
+MD5: 57E79698A53458681CD19842391A202F  
+SHA1: 646145F1B429C1CF592F907614889C98FBE7E756  
 
-MultiPar_ResUI_1315.7z  
-MD5: B8B6A9DA4BD9D418CFA90FD01CCC615A  
-SHA1: E5B4B16DBCAECACA2095A64006C117E04D3C9E74  
+MultiPar_ResUI_1318.7z  
+MD5: A9B649FD0D3EBBDAA2E4F1983489F9FE  
+SHA1: 55965B11B0B03854EC98DB8D94CE8860BF15B6F0  
 
-MultiPar_Help_1317.7z  
-MD5: 0021DB7D2CA3B75912267E6D5DA70A3D  
-SHA1: AC436E130A112A58C60EA49ED8DCF9E2E19AACC3  
+MultiPar_Help_1318.7z  
+MD5: 2C96D79314DBEB995FF28E79947257F5  
+SHA1: CDAECF763D8D5FACE512DDCF475D06BECD2993EC  
