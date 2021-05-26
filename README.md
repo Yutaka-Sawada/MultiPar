@@ -2,7 +2,7 @@
 
 v1.3.1.8 is public
 
- This is minor bug fix version. 
+&nbsp; This is minor bug fix version. 
 Though I updated many files, most users don't see the difference. 
 Because there may be a problem still, I didn't set this version as stable yet. 
 When I cannot re-produce a problem nor test a behavior myself, it's difficult to solve. 
@@ -10,11 +10,11 @@ If there is no serious problem, next version will be the last of v1.3.1 tree.
 When you see a bug, odd incident, or strange behavior, please let me know. 
 I will fix as possible as I can.
 
- I changed the order of files in Windows 10 style. 
+&nbsp;  I changed the order of files in Windows 10 style. 
 It treats digits as numbers in filenames. 
 Though the method was introduced from Windows 7, I didn't change for compatibility. 
 
- Windows 10 supports multiple monitors with different DPI. 
+&nbsp;  Windows 10 supports multiple monitors with different DPI. 
 The method is called as PerMonitorV2 in application manifest. 
 I implemented the way, and MultiPar would be less blurry on a secondary monitor now. 
 Because I cannot test the behavior myself, I'm not sure it works on each user's case. 
@@ -50,10 +50,12 @@ SHA1: 569A3E103C9630839A55F1DDB16701FE3B2C6876
 MultiPar1318_setup.exe  
 MD5: DCF7957E8ACF0E488D8D8F30B7D3A94C  
 SHA1: 552EB43C0BE34C46A6C496EEC7370521B07B719C  
+&nbsp; To install under "Program Files" or "Program Files (x86)" directory, 
+you must start the installer with administrative privileges by selecting "Run as administrator" on right-click menu.  
 
 
 [ Hash value of other source code packages ]  
- Old versions and source code packages are available at 
+&nbsp; Old versions and source code packages are available at 
 [GitHub](https://github.com/Yutaka-Sawada/MultiPar/releases) or 
 [OneDrive](https://1drv.ms/u/s!AtGhNMUyvbWOaSo1n_R8awJ_hg0?e=4V0gXu).  
 
