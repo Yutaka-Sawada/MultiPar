@@ -51,7 +51,8 @@ MultiPar1318_setup.exe
 MD5: DCF7957E8ACF0E488D8D8F30B7D3A94C  
 SHA1: 552EB43C0BE34C46A6C496EEC7370521B07B719C  
 &nbsp; To install under "Program Files" or "Program Files (x86)" directory, 
-you must start the installer with administrative privileges by selecting "Run as administrator" on right-click menu.  
+you must start the installer with administrative privileges by selecting 
+"Run as administrator" on right-click menu.  
 
 
 [ Hash value of other source code packages ]  
