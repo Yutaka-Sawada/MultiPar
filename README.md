@@ -1,73 +1,72 @@
 # MultiPar
 
-v1.3.1.9 is public
+v1.3.2.0 is public
 
-&nbsp; This is the final release of v1.3.1 tree. 
-There would be no serious problem. 
-While I fixed some rare bugs and improved a bit, it's hard to test all possible cases. 
-When you see a bug, odd incident, or strange behavior, please let me know. 
-I will fix as possible as I can.
+&nbsp; This is a beta version to test new encoder & decoder. 
+I implemented a way of Cache Blocking for CPU's L3 cache optimization. 
+It will calculate multiple blocks at once on multi-Core CPU. 
+Old method calculated each block independently, 
+and could not avail the advantage of shared memory. 
+New method may use shared L3 cache more often, and will be fast on recent PCs.
 
-&nbsp; I tested verification of multiple source files on my new PC. 
-From the result, I set max number of threads for NVMe SSD to 4 threads, 
-when CPU has 6 or more logical cores. 
-This will improve speed at verifying complete source files. 
-(It doesn't affect for PAR files nor damaged files.)  
-SATA SSD : It will verify max 2 files at once.  
-NVMe SSD : It will verify max 3 or 4 files at once.
+&nbsp; Thanks [prdp19 and Slava46](https://github.com/Yutaka-Sawada/MultiPar/issues/47) for many tests. 
+Thanks [Anime Tosho](https://github.com/Yutaka-Sawada/MultiPar/issues/21) for some idea and advice. 
+Also, other users aided my development. 
+Without their help, I could not perform this speed improvement.
 
-&nbsp; When many input file slices are same, their checksums become same, too. 
-There was a bug in my sorting function. 
-Nobody found the error for over than 10 years, and I solved this problem at last. 
-Thanks [NilEinne](https://github.com/Yutaka-Sawada/MultiPar/issues/36) for reporting the very rare incident.
+&nbsp; While new version seems to be faster on most cases, 
+it may happen to be slow for a few blocks. 
+Though I don't know the speed on old PCs, it may not become slow. 
+If you see a failure or strange result, please report the incident with ease. 
+I will try to solve as possible as I can.
 
-&nbsp; When a file includes duplicated data, it's difficult to find slices in proper position. 
-In old versions, it might ignore overlap of slices for speed. 
-Then, it happend to fail finding some slices. 
-I implemented more complex method, and it will work well in most cases. 
-Thanks [swarup459](https://github.com/Yutaka-Sawada/MultiPar/issues/42) for bug report, offering samples, and many tests.
+&nbsp; I adjusted CPU usage slider for CPUs with many Cores. 
+Now, each position will set different number of threads always.  
+Left most      : 1/4 of CPU cores  
+One from left  : 2/4 of CPU cores  
+Middle         : 3/4 of CPU cores  
+One from right : 4/4 of CPU cores, or use one less threads on CPU with 6 or more Cores.  
+Right most     : May use one more threads on CPU with 5 or less Cores.  
 
-&nbsp; It's possible to add PAR2 recovery record to a ZIP file. 
-When I wrote the instructions ago, 4 GB over ZIP file was not common so much. 
-Because recent Windows OS supports ZIP64 format, I updated the text for compatibility. 
-You may read the "Add recovery record" page of MultiPar's Help documents. 
-Or, you may read [the article on my web-site](http://hp.vector.co.jp/authors/VA021385/record.htm). 
-Now, MultiPar supports large ZIP file with ZIP64 format. 
-Thanks [Dwaine Gonyier](https://github.com/Yutaka-Sawada/MultiPar/issues/44) for noticing the potential problem.
+&nbsp; I improved calculating hash of multiple source files. 
+From my testing result, I changed default number of threads for NVMe SSD. 
+When you use a raid-system or external drive, it cannot detect the drive type. 
+If it fails to detect, it uses HDD mode by default. 
+At MultiPar options, it's possible to change the setting manually. 
+You may select one of them; HDD, SSD, or Fast SSD. 
+Caution, you should not select SSD, if your using drive is HDD.
 
 
-[ Changes from 1.3.1.8 to 1.3.1.9 ]  
-
-Installer update  
-- Inno Setup was updated from v6.1.2 to v6.2.0.  
+[ Changes from 1.3.1.9 to 1.3.2.0 ]  
 
 GUI update  
 - Change  
-  - Clickable link to access author's page becomes SSL.  
-  - Appending recovery record supports 2 GB over file size.  
+  - Fast SSD is selectable as file access mode.  
+  - Max number of log files was increased from 100 to 1000.  
+  - CPU usage slider was adjusted on CPU with 6 or more Cores.  
+  - Shadow of text over progress-bar becomes more smooth.  
 
-PAR2 clients update  
+PAR2 client update  
 - Change  
-  - When source files are on NVMe SSD, verification may become faster.  
-  - Appending recovery record supports ZIP64 format.  
+  - Standard buffer size becomes double to decrease iteration.  
+  - Single byte error in a single slice file may be corrected.  
+  - Number of using threads was changed on CPU with 6 or more Cores.  
+  - Enabling GPU won't use additional threads on multi-core CPU.  
+  - Progress percent may move while writing blocks.  
 
 - Improvement  
-  - Simple verification will find a short slice in a tiny file.  
-
-- Bug fix  
-  - A stack overflow problem in quick sort function was removed.  
-  - A bug of searching slices in a file with repeated content was fixed.  
+  - L3 cache optimization was implemented for multi-core CPU.  
 
 
 [ Hash value ]  
 
-MultiPar131.zip  
-MD5: EF3486BB39724EF6A4109F5B02D4E027  
-SHA1: D935BFAFF5156C9460FB45639271339D1068F522  
+MultiPar1320.zip  
+MD5: 56524875BC77FD7A4E51A9E2C3F834CB  
+SHA1: 245F3432DBCCAD335AEB2A70371EE57EFEF52CE7  
 
-MultiPar131_setup.exe  
-MD5: E2F6EF68AEB9BE0CCDD4D5ABF2A3F318  
-SHA1: C2615960B9B28223BC174FC1175CAAECCC8A713A  
+MultiPar1320_setup.exe  
+MD5: 5D0A51F48CDE8FCB0B87CC949BE84DD1  
+SHA1: B727D5193697E8C0A2335DB8233874CBDAFDEE40  
 &nbsp; To install under "Program Files" or "Program Files (x86)" directory, 
 you must start the installer with administrative privileges by selecting 
 "Run as administrator" on right-click menu.  
@@ -78,9 +77,9 @@ you must start the installer with administrative privileges by selecting
 [GitHub](https://github.com/Yutaka-Sawada/MultiPar/releases) or 
 [OneDrive](https://1drv.ms/u/s!AtGhNMUyvbWOaSo1n_R8awJ_hg0?e=4V0gXu).  
 
-MultiPar_par2j_1319.7z  
-MD5: 9AC4C38762E2DBF64D6D3A738CD7CCD6  
-SHA1: FFC0DA1A0BBCAD08489C5499154DAA0216E10F51  
+MultiPar_par2j_1320.7z  
+MD5: 5DBF880047D05BC2E8FE349DC6EC610C  
+SHA1: 1D50EFE97A7812B6AF0090B83AAEE61BCBABD1ED  
 
 MultiPar_par1j_1318.7z  
 MD5: F66285403BA0AD856BA6A8CCD922EBF5  
@@ -90,14 +89,14 @@ MultiPar_sfv_md5_1318.7z
 MD5: 4E6433808625C088E2773C961BBEBBD2  
 SHA1: 68B54D178BA58637F63CC3E0CC656C96D4472A33  
 
-MultiPar_ShlExt_1318.7z  
-MD5: 57E79698A53458681CD19842391A202F  
-SHA1: 646145F1B429C1CF592F907614889C98FBE7E756  
+MultiPar_ShlExt_1320.7z  
+MD5: C413655ABF85BCFF3D4B349BAAADC24B  
+SHA1: 8552E6CCF647B065D91E494D2751567C144ABD36  
 
 MultiPar_ResUI_1319.7z  
 MD5: E03B90A433466C945D726B5A49B4E547  
 SHA1: E30FB11B8F121D44CC1CC368E8D91F06CFC15551  
 
-MultiPar_Help_1319.7z  
-MD5: 37547FA074DC24491D1696F6F0DB7452  
-SHA1: 8069C5745F9C7660236F17E3E087B4F7324382ED  
+MultiPar_Help_1320.7z  
+MD5: 1F8CC009B1A5F11EFBA999C7225E4311  
+SHA1: 6E392602F82A96E3015FEA65A590E08D2B6E39CB   
