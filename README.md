@@ -1,49 +1,30 @@
 # MultiPar
 
-### v1.3.2.2 is public
+### v1.3.2.3 is public
 
-&nbsp; This is an emergency update to fix some serious bugs. 
-When I changed sanitizing function at previous version, I mistook some points. 
-Then, it failed at handling sub directories. 
-I updated par2j and others. (though PAR1 and checksumer don't support directory.) 
-Thanks [Sam Lane for reporting the bug](https://github.com/Yutaka-Sawada/MultiPar/issues/60). 
-Sometimes I might add a new bug, while I was trying to fix another bug. 
-If someone sees a failure or strange behavior, please tell me with ease. 
-I will solve as possible as I can.
-
-&nbsp; I added a feature to purge PAR2 files in my PAR2 client. 
-Though I don't use such risky feature, 
-[it was requested for batch repair](https://github.com/Yutaka-Sawada/MultiPar/issues/59). 
-If a user is interested in this, refer "/p" option in "Command_par2j.txt". 
-Be careful to set the option, because it may happen to remove un-intended PAR2 files.
+&nbsp; This is a minor update version. 
+Because some security vendors recognize MultiPar.exe's batch processing mode as stealth malware behavior, 
+I removed the "/batch command" feature. 
+Thanks [didamsko for reporting the problem and test](https://github.com/Yutaka-Sawada/MultiPar/issues/61). 
+If someone wants batch operation, please use command-line version par2j64.exe instead of GUI version MultiPar.exe.
 
 
-[ Changes from 1.3.2.1 to 1.3.2.2 ]  
-
-Installer update  
- - Inno Setup supports Windows 7 or later.  
+[ Changes from 1.3.2.2 to 1.3.2.3 ]  
 
 GUI update  
- - New  
-   - I added /batch command to MultiPar.exe for batch scripting.  
-
-PAR2 client update  
- - New  
-   - A new option was added to remove recovery files.  
-
- - Bug fix  
-   - A fault of sanitizing function was fixed.  
+ Change  
+  I removed /batch command from MultiPar.exe.  
 
 
 [ Hash value ]  
 
-MultiPar1322.zip  
-MD5: E9154665A4400559345F14DF53072626  
-SHA1: 89AD517E65726F3A112AD7977A9CC9CB57FC2847  
+MultiPar1323.zip  
+MD5: E66DD8773450C7E1A703EB5F2D935615  
+SHA1: 362B4878B08463FAF9BC4CB551D68DAC0CA10575  
 
-MultiPar1322_setup.exe  
-MD5: 0DE12560C4414C0F52189D8BB7190477  
-SHA1: E82B435201E3E403805B0C68AA1A5C47A3426E2A  
+MultiPar1323_setup.exe  
+MD5: A1870227F3D40E7BCB94B9BE340A709A  
+SHA1: 2DCB3D9E367B7DDAED7C950CD71F1538DF247F7D  
 &nbsp; To install under "Program Files" or "Program Files (x86)" directory, 
 you must start the installer with administrative privileges by selecting 
 "Run as administrator" on right-click menu.  
@@ -54,9 +35,9 @@ you must start the installer with administrative privileges by selecting
 [GitHub](https://github.com/Yutaka-Sawada/MultiPar/releases) or 
 [OneDrive](https://1drv.ms/u/s!AtGhNMUyvbWOaSo1n_R8awJ_hg0?e=4V0gXu).  
 
-MultiPar_par2j_1322.7z  
-MD5: 21E90BB1C46E135DD88D76097BB290A1  
-SHA1: 1DD2D2DCB9C5518ACE6DF8452066EC7C3B4B81FF  
+MultiPar_par2j_1323.7z  
+MD5: 587AF25EBB2ABF338FB1A07661E8A790  
+SHA1: 6DD28E7BCF7AAC9B28EB3BA7CFFC14F67CC38D87  
 
 MultiPar_par1j_1322.7z  
 MD5: E80BEB9BBFEAC709B0647E97580CD107  
