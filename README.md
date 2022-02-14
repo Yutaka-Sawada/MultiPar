@@ -12,8 +12,8 @@ If someone wants batch operation, please use command-line version par2j64.exe in
 [ Changes from 1.3.2.2 to 1.3.2.3 ]  
 
 GUI update  
- Change  
-  I removed /batch command from MultiPar.exe.  
+- Change  
+  - I removed /batch command from MultiPar.exe.  
 
 
 [ Hash value ]  
