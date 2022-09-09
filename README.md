@@ -1,42 +1,53 @@
 # MultiPar
 
-### v1.3.2.4 is public
+### v1.3.2.5 is public
 
 &nbsp; This is a minor update version. 
 When you don't see any problem in your using version, you don't need to replace. 
-To decrease false positive at malware detection by some security vendors, 
-I added VERSIONINFO in each application's resource. 
-Now you see version information for console application. 
-It may be useful to check version number on Windows Explorer.
+I updated development environment from Visual Studio 2019 to Visual Studio 2022. 
+The supported OS is same as previous version (Windows Vista or later). 
+If you see a compatibility issue, please report with ease.
 
-&nbsp; While MultiPar supports SFV and MD5 files as same as QuickPar, I didn't test so much. 
-I improved the compatibility to recognize # as starting comment. 
-Thanks [fooziex](https://github.com/Yutaka-Sawada/MultiPar/issues/62) for reporting the problem and samples. 
-Because there are variety of SFV or MD5 file format, I may not know a minor style. 
-If you see a problem, please tell me with ease.
+&nbsp; I test two new features on MultiPar GUI. 
+They are [Fixed redundancy size](https://github.com/Yutaka-Sawada/MultiPar/issues/69) 
+and [Add file status sorting function](https://github.com/Yutaka-Sawada/MultiPar/issues/71) 
+on GitHub issues. 
+I changed the behavior of "RedundancyMax" and "Sort" option on "MultiPar.ini". 
+If many users like it, I may change the default behavior in future.
+
+&nbsp; This year, I started to learn Python. 
+It's useful than Batch script. 
+It's possible to show GUI. 
+I will use it to make simple tools. 
+Python is much easier than C language, however it seems to be slow. 
+I put some Python script files in `tool` folder of MultiPar. 
+Users may edit them for thier usage. 
+I added help documents for Python script, too.
 
 
-[ Changes from 1.3.2.3 to 1.3.2.4 ]  
+[ Changes from 1.3.2.4 to 1.3.2.5 ]  
 
-All client update  
+Compiler update  
+- Development environment is updated to Visual Studio 2022.  
+
+GUI update  
 - Change  
-  - Failed result of Self-Test is shown in detail.  
-  - I added VERSIONINFO in each application's resource.  
+  - ParQueue is removed, because I include tools by Python script.  
 
-SFV/MD5 client update  
-- Change  
-  - MD5 checker recognizes # as comment.  
+PAR2 client update  
+- Bug fix  
+  - I fixed a failure of searching blocks in uniform data.  
 
 
 [ Hash value ]  
 
-MultiPar1324.zip  
-MD5: 752D59DE3A91D41939B4040A07B32B0D  
-SHA1: BA985FEC7FD3931F428B3620F692D0DF597232C2  
+MultiPar1325.zip  
+MD5: 6870A1522E326A9945F3CBFE6006FA73  
+SHA1: E75166BAA011F8E2DEA9A8EDFCFBE1E1F8B5BA6A  
 
-MultiPar1324_setup.exe  
-MD5: 0EB83A033B68B32529D71356117DEEB6  
-SHA1: 128A7D20C8D7871E080FD960A127B529E97C6F32  
+MultiPar1325_setup.exe  
+MD5: 835074F6F5F4EF3FD3ECF22DA3D146DD  
+SHA1: 7BEDF9E7F1F9563595A61D0C37939E55BEEAEBFF  
 &nbsp; To install under "Program Files" or "Program Files (x86)" directory, 
 you must start the installer with administrative privileges by selecting 
 "Run as administrator" on right-click menu.  
@@ -47,9 +58,9 @@ you must start the installer with administrative privileges by selecting
 [GitHub](https://github.com/Yutaka-Sawada/MultiPar/releases) or 
 [OneDrive](https://1drv.ms/u/s!AtGhNMUyvbWOaSo1n_R8awJ_hg0?e=4V0gXu).  
 
-MultiPar_par2j_1324.7z  
-MD5: ABDF853F7416B214F718EF91B87B4F53  
-SHA1: DF94C8B57618DE93E06DF0E7BBA7D95AFD781CE8  
+MultiPar_par2j_1325.7z  
+MD5: E7B911245E8B6051F9B80D54C94D2AE6  
+SHA1: 577F928BE533DCC54334103C0E1D7D2EA290E8FB  
 
 MultiPar_par1j_1324.7z  
 MD5: A76530DFD9C3FC8779582E2A82F1D5F9  
@@ -66,7 +77,3 @@ SHA1: 8552E6CCF647B065D91E494D2751567C144ABD36
 MultiPar_ResUI_1319.7z  
 MD5: E03B90A433466C945D726B5A49B4E547  
 SHA1: E30FB11B8F121D44CC1CC368E8D91F06CFC15551  
-
-MultiPar_Help_1320.7z  
-MD5: 1F8CC009B1A5F11EFBA999C7225E4311  
-SHA1: 6E392602F82A96E3015FEA65A590E08D2B6E39CB   
