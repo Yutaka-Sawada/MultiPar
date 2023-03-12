@@ -1,0 +1,90 @@
+[ MultiParShlExt.dll - version 1.2.9.8 or later ]
+
+* How to install manually
+
+ Open "Command Prompt" and change directory to MultiPar's folder,
+then type following either command.
+
+[ Enable shell extension on 32-bit OS ]
+regsvr32.exe MultiParShlExt.dll
+
+[ Enable shell extension on 64-bit OS ]
+regsvr32.exe MultiParShlExt64.dll
+
+[ Disable shell extension on 32-bit OS ]
+regsvr32.exe /u MultiParShlExt.dll
+
+[ Disable shell extension on 64-bit OS ]
+regsvr32.exe /u MultiParShlExt64.dll
+
+
+* How to change setting in MultiPar.ini
+
+ You can put a key for Shell Extension DLL,
+which key name is "ShellExtension" under [Option] section.
+The default value is 0, when the key does not exist.
+
+ The value consists in multiple bit.
+Currently each bit means following;
+ 1: put separator above the menu
+ 2: put separator below the menu
+ 4: put separator between sub-menus
+ 8: remove sub-menu for Verify
+16: remove icon of the menu
+32: disable menu for archiver
+
+ You add each setting value, and write the total value.
+When you set both 1 and 2, the menu title is put independently.
+
+ When you select a single file, sub-menus for "Create" and "Verify" are shown.
+You may remove the "Verify" sub-menu, if you want simple action like QuickPar.
+
+ When 7-Zip is installed, sub-menu for "Archive" is shown.
+Selected files are archived by 7-Zip, and MultiPar protects the archive file.
+
+ If you want QuickPar style independent menu with single sub-menu,
+set 1, 2, and 8, then the resulting value becomes 11.
+The example key is like below;
+
+[Option]
+ShellExtension=11
+
+
+* Format of language specific text in MultiParShlExt.ini
+
+ Set Language ID (0x????) to section name.
+When there is no section for the specified language in MultiPar.ini,
+section of near language or English (0x0409) is used.
+If you want to disable a section temporary,
+append something to the section name like "[0x0409ignore]".
+
+ "MenuTitle" and "Create" are essential to show menu and sub-menu.
+If you erase these strings or lines, default strings are used.
+
+ "CreateHelp" and "VerifyHelp" in old version were removed,
+because they are ignored on recent Windows OS like (Vista, 7, 8).
+
+ Strings may contain one "&" for keyboard short-cut.
+Each strings should be reasonably short (under 40 characters).
+Total length of four strings is max 252 characters.
+
+ "Comment" is not used by DLL, but is a notice for editors.
+
+ New setting will be enabled after next loading of Windows Explorer.
+
+ The default text is like below;
+
+[0x0409]
+MenuTitle=&MultiPar
+Create=Create Recovery Files
+Verify=Verify Recovery File
+Archive=Archive and Create Recovery Files
+
+ If you want QuickPar style text, modify like below;
+
+[0x0409]
+MenuTitle=&Multi Par
+Create=Create Recovery Volumes
+Verify=
+Archive=
+
