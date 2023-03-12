@@ -1,0 +1,26 @@
+1 RT_STRING ".\\source.cl"
+
+1 VERSIONINFO
+FILEVERSION 1,3,2,8
+PRODUCTVERSION 1,3,2,0
+FILEOS 0x40004
+FILETYPE 0x1
+{
+BLOCK "StringFileInfo"
+{
+	BLOCK "040904B0"
+	{
+		VALUE "FileDescription", "PAR2 client"
+		VALUE "LegalCopyright", "Copyright (C) 2023 Yutaka Sawada"
+		VALUE "ProductName", "par2j"
+		VALUE "FileVersion", "1.3.2.8"
+		VALUE "ProductVersion", "1.3.2.0"
+	}
+}
+
+BLOCK "VarFileInfo"
+{
+	VALUE "Translation", 0x0409 0x04B0
+}
+}
+
