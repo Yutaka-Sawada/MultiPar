@@ -1,2 +1,6 @@
  By clicking "Releases" item on the right panel, you will see every version.
 You may download your favorite MultiPar package at "Assets" item.
+
+ Beta version may have some bug or problem.
+If you use stable MultiPar already, no need to update immediately.
+Only when you have a complaint in old version, try new version.
