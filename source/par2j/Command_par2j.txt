@@ -1,4 +1,4 @@
-[ par2j.exe - version 1.3.2.7 or later ]
+[ par2j.exe - version 1.3.2.8 or later ]
 
 Type "par2j.exe" to see version, test integrity, and show usage below.
 
@@ -105,7 +105,8 @@ A short filename in a path will be converted to long filename.
 If it is "*", all files in the specified directory are searched.
 If these are "*.txt" and "*.doc", files with extensions ".txt" and ".doc"
 in the specified directory are searched.
-Hidden files are ignored by search. (you can add each by exact filename.)
+When you don't see hidden files on Windows Explorer, they are ignored by search.
+If you want to search hidden files, change Windows Explorer setting to see them.
 
  [input files] can be folder, too.
 If it is "folder_name", files in the folder are searched also.

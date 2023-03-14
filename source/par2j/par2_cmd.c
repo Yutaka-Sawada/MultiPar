@@ -1,5 +1,5 @@
 ﻿// par2_cmd.c
-// Copyright : 2022-10-15 Yutaka Sawada
+// Copyright : 2023-03-14 Yutaka Sawada
 // License : GPL
 
 #ifndef _UNICODE
@@ -260,13 +260,21 @@ fclose(fp);
 static int search_files(
 	wchar_t *search_path,	// 検索するファイルのフル・パス、* ? も可
 	int dir_len,			// ディレクトリ部分の長さ
-	int file_only,			// 0以外 = ファイルのみにする
+	unsigned int filter,	//  2, FILE_ATTRIBUTE_HIDDEN    = 隠しファイルを無視する
+							//  4, FILE_ATTRIBUTE_SYSTEM    = システムファイルを無視する
+							// 16, FILE_ATTRIBUTE_DIRECTORY = ディレクトリを無視する
 	int single_file)		// -1 = *や?で検索指定、0～ = 単独指定
 {
 	int len, dir_len2, old_num;
+	unsigned int attrib_filter;
 	__int64 file_size;
 	HANDLE hFind;
 	WIN32_FIND_DATA FindData;
+
+	// 隠しファイルを見つけるかどうか
+	attrib_filter = filter & (FILE_ATTRIBUTE_HIDDEN | FILE_ATTRIBUTE_SYSTEM);
+	if (attrib_filter == 0)
+		attrib_filter = INVALID_FILE_ATTRIBUTES;
 
 	if (list_buf == NULL){
 		list_len = 0;
@@ -303,7 +311,7 @@ static int search_files(
 	do {
 		if ((wcscmp(FindData.cFileName, L".") == 0) || (wcscmp(FindData.cFileName, L"..") == 0))
 			continue;	// 自分や親のパスは無視する
-		if ((single_file < 0) && (FindData.dwFileAttributes & FILE_ATTRIBUTE_HIDDEN))
+		if ((single_file < 0) && ((FindData.dwFileAttributes & attrib_filter) == attrib_filter))
 			continue;	// 検索中は隠し属性が付いてるファイルを無視する
 
 		len = (int)wcslen(FindData.cFileName);	// 見つけたファイル名の文字数
@@ -317,7 +325,7 @@ static int search_files(
 
 		// フォルダなら
 		if (FindData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY){
-			if (file_only == 0){
+			if ((filter & FILE_ATTRIBUTE_DIRECTORY) == 0){
 /*
 				if (list2_buf){	// 途中のフォルダ名も比較して除外するなら
 					int off = 0;
@@ -347,7 +355,7 @@ static int search_files(
 					dir_len2 = (int)wcslen(search_path);
 					search_path[dir_len2    ] = '*';	// 末尾に「*」を追加する
 					search_path[dir_len2 + 1] = 0;
-					if (search_files(search_path, dir_len2, file_only, single_file)){
+					if (search_files(search_path, dir_len2, filter, single_file)){
 						FindClose(hFind);
 						printf("cannot search inner folder\n");
 						return 1;
@@ -1761,7 +1769,7 @@ return 0;
 			while (search_path[dir_len] != '\\')
 				dir_len--;
 			dir_len++;
-			if (search_files(search_path, dir_len, 1, 0)){	// ファイルだけを探す
+			if (search_files(search_path, dir_len, FILE_ATTRIBUTE_DIRECTORY, 0)){	// ファイルだけを探す
 				free(list_buf);
 				return 1;
 			}
@@ -1779,6 +1787,11 @@ return 0;
 		} else {	// 入力ファイルの指定
 			wchar_t search_path[MAX_LEN];
 			int dir_len;
+			unsigned int filter;
+			// 隠しファイルやフォルダーを無視するかどうか
+			filter = get_show_hidden();
+			if (switch_v & 8)
+				filter |= FILE_ATTRIBUTE_DIRECTORY;
 
 /*
 			if (list2_buf){
@@ -1818,7 +1831,7 @@ return 0;
 				while (search_path[dir_len] != '\\')
 					dir_len--;
 				dir_len++;
-				if (search_files(search_path, dir_len, switch_v & 8, j)){
+				if (search_files(search_path, dir_len, filter, j)){
 					free(list_buf);
 					return 1;
 				}

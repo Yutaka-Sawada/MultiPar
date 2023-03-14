@@ -393,6 +393,9 @@ void print_win32_err(void);
 // ファイルをゴミ箱に移す
 int delete_file_recycle(wchar_t *file_path);
 
+// エクスプローラーで隠しファイルを表示する設定になってるか調べる
+unsigned int get_show_hidden(void);
+
 
 #ifdef __cplusplus
 }
