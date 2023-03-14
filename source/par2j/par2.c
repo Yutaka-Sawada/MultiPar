@@ -1,5 +1,5 @@
 ﻿// par2.c
-// Copyright : 2023-03-10 Yutaka Sawada
+// Copyright : 2023-03-15 Yutaka Sawada
 // License : GPL
 
 #ifndef _UNICODE
@@ -344,7 +344,6 @@ int par2_trial(
 {
 	int packet_num, common_size, footer_size;
 	__int64 total_data_size;
-	double rate1, rate2;
 
 	// ソース・ファイルの情報から共通パケットのサイズを計算する
 	common_size = measure_common_packet(&packet_num, (switch_p & 2) >> 1);
@@ -364,15 +363,21 @@ int par2_trial(
 
 	// 効率を計算する
 	if ((source_num == 0) || (total_file_size == 0)){
-		rate1 = 0;
-		rate2 = 0;
+		packet_num = 0;
+		footer_size = 0;
+		common_size = 0;
 	} else {
+		double rate1, rate2;
 		rate1 = (double)total_data_size / ((double)block_size * (double)source_num);
 		rate2 = (double)block_size * (double)parity_num / (double)total_file_size;
+		// 整数型に変換して、小数点以下第2位を切り捨てる (doubleのままだと四捨五入される)
+		packet_num = (int)(rate1 * 1000);
+		footer_size = (int)(rate2 * 1000);
+		common_size = (int)(rate1 * rate2 * 1000);
 	}
-	printf("File data in Blocks\t: %.1lf%%\n", rate1 * 100);
-	printf("Blocks in PAR files\t: %.1lf%%\n", rate2 * 100);
-	printf("Efficiency rate\t\t: %.1lf%%\n", rate1 * rate2 * 100);
+	printf("File data in Blocks\t: %d.%d%%\n", packet_num / 10, packet_num % 10);
+	printf("Blocks in PAR files\t: %d.%d%%\n", footer_size / 10, footer_size % 10);
+	printf("Efficiency rate\t\t: %d.%d%%\n", common_size / 10, common_size % 10);
 
 	printf("\nTrial end\n");
 	return 0;
