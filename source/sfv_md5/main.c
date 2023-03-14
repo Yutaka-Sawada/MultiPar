@@ -1,5 +1,5 @@
 ﻿// main.c
-// Copyright : 2022-02-25 Yutaka Sawada
+// Copyright : 2023-03-14 Yutaka Sawada
 // License : The MIT license
 
 #ifndef _UNICODE
@@ -99,7 +99,12 @@ static wchar_t * search_files(
 	wchar_t *list_buf,		// ファイル・リスト
 	wchar_t *search_path,	// 検索するファイルのフル・パス
 	long dir_len,			// ディレクトリ部分の長さ
-	long file_only,			// ファイルのみにするかどうか
+	//long file_only,			// ファイルのみにするかどうか
+	
+	unsigned int filter,	//  2, FILE_ATTRIBUTE_HIDDEN    = 隠しファイルを無視する
+							//  4, FILE_ATTRIBUTE_SYSTEM    = システムファイルを無視する
+							// 16, FILE_ATTRIBUTE_DIRECTORY = ディレクトリを無視する
+
 	long single_file,		// -1 = *や?で検索指定、0～ = 単独指定
 	long *list_max,			// ファイル・リストの確保サイズ
 	long *list_len,			// ファイル・リストの文字数
@@ -107,8 +112,14 @@ static wchar_t * search_files(
 {
 	wchar_t *tmp_p;
 	long len, l_max, l_off, dir_len2;
+	unsigned int attrib_filter;
 	HANDLE hFind;
 	WIN32_FIND_DATA FindData;
+
+	// 隠しファイルを見つけるかどうか
+	attrib_filter = filter & (FILE_ATTRIBUTE_HIDDEN | FILE_ATTRIBUTE_SYSTEM);
+	if (attrib_filter == 0)
+		attrib_filter = INVALID_FILE_ATTRIBUTES;
 
 	if (list_buf == NULL){
 		l_off = 0;
@@ -128,7 +139,7 @@ static wchar_t * search_files(
 	if (hFind == INVALID_HANDLE_VALUE)
 		return list_buf; // 見つからなかったらそのまま
 	do {
-		if ((single_file < 0) && (FindData.dwFileAttributes & FILE_ATTRIBUTE_HIDDEN))
+		if ((single_file < 0) && ((FindData.dwFileAttributes & attrib_filter) == attrib_filter))
 			continue;	// 検索中は隠し属性が付いてるファイルを無視する
 
 		len = wcslen(FindData.cFileName);
@@ -144,14 +155,14 @@ static wchar_t * search_files(
 
 		// フォルダなら
 		if (FindData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY){
-			if ((file_only == 0) && wcscmp(FindData.cFileName, L".") && wcscmp(FindData.cFileName, L"..")){
+			if (((filter & FILE_ATTRIBUTE_DIRECTORY) == 0) && wcscmp(FindData.cFileName, L".") && wcscmp(FindData.cFileName, L"..")){
 				// フォルダの末尾は「\」にする
 				wcscat(search_path, L"\\");
 				// そのフォルダの中身を更に検索する
 				dir_len2 = wcslen(search_path);
 				search_path[dir_len2    ] = '*';	// 末尾に「*」を追加する
 				search_path[dir_len2 + 1] = 0;
-				list_buf = search_files(list_buf, search_path, dir_len2, file_only, single_file, &l_max, &l_off, total_size);
+				list_buf = search_files(list_buf, search_path, dir_len2, filter, single_file, &l_max, &l_off, total_size);
 				if (list_buf == NULL){
 					FindClose(hFind);
 					printf("cannot search inner folder\n");
@@ -761,6 +772,11 @@ fo= switch_set & 0x00000020
 		wchar_t *list_buf;
 		long dir_len, list_len, list_max;
 		__int64 total_size = 0;	// 合計ファイル・サイズ
+		unsigned int filter;
+		// 隠しファイルやフォルダーを無視するかどうか
+		filter = get_show_hidden();
+		if (switch_set & 0x20)
+			filter |= FILE_ATTRIBUTE_DIRECTORY;
 		// チェックサム・ファイル作成ならソース・ファイルのリストがいる
 		i++;
 		if (i >= argc){
@@ -797,7 +813,7 @@ fo= switch_set & 0x00000020
 			while (file_path[dir_len] != '\\')
 				dir_len--;
 			dir_len++;
-			list_buf = search_files(list_buf, file_path, dir_len, switch_set & 0x20, j, &list_max, &list_len, &total_size);
+			list_buf = search_files(list_buf, file_path, dir_len, filter, j, &list_max, &list_len, &total_size);
 			if (list_buf == NULL)
 				return 1;
 			if ((j != -1) && (j == file_num)){	// ファイルが見つかったか確かめる

@@ -137,3 +137,6 @@ void print_progress_done(void);
 // Win32 API のエラー・メッセージを表示する
 void print_win32_err(void);
 
+// エクスプローラーで隠しファイルを表示する設定になってるか調べる
+unsigned int get_show_hidden(void);
+

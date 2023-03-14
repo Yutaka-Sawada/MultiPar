@@ -1,5 +1,5 @@
 ﻿// common.c
-// Copyright : 2022-01-20 Yutaka Sawada
+// Copyright : 2023-03-14 Yutaka Sawada
 // License : The MIT license
 
 #ifndef _UNICODE
@@ -16,6 +16,7 @@
 #include <stdio.h>
 
 #include <windows.h>
+#include <shlobj.h>
 
 #include "common.h"
 
@@ -1011,5 +1012,28 @@ void print_win32_err(void)
 	}
 	if (lpMsgBuf != NULL)
 		LocalFree(lpMsgBuf);
+}
+
+// エクスプローラーで隠しファイルを表示する設定になってるか調べる
+unsigned int get_show_hidden(void)
+{
+	unsigned int rv;
+	SHELLSTATE ssf;
+
+	// Explorer の設定を調べる
+	SHGetSetSettings(&ssf, SSF_SHOWALLOBJECTS | SSF_SHOWSUPERHIDDEN, FALSE);
+	// 隠しファイルを表示するかどうか
+	if (ssf.fShowAllObjects){	// 表示する設定なら
+		// 保護されたオペレーティングシステムファイルを表示するかどうか
+		if (ssf.fShowSuperHidden){	// 表示する設定なら
+			rv = 0;
+		} else {	// 隠し属性とシステム属性の両方で判定する
+			rv = FILE_ATTRIBUTE_HIDDEN | FILE_ATTRIBUTE_SYSTEM;
+		}
+	} else {	// 隠しファイルを表示しない場合は、隠し属性だけで判定する
+		rv = FILE_ATTRIBUTE_HIDDEN;
+	}
+
+	return rv;
 }
 
