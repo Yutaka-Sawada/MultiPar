@@ -1,5 +1,5 @@
 ﻿// par1_cmd.c
-// Copyright : 2022-02-16 Yutaka Sawada
+// Copyright : 2023-03-14 Yutaka Sawada
 // License : GPL
 
 #ifndef _UNICODE
@@ -223,7 +223,8 @@ static wchar_t * search_files(
 	int *list_max,			// ファイル・リストの確保サイズ
 	int *list_len,			// ファイル・リストの文字数
 	int *block_num,			// ソース・ブロックの数
-	__int64 *block_size)	// ブロック・サイズ (最大ファイル・サイズ)
+	__int64 *block_size,	// ブロック・サイズ (最大ファイル・サイズ)
+	unsigned int filter)	// 隠しファイルを見つけるかどうか
 {
 	wchar_t *tmp_p;
 	int len, l_max, l_off;
@@ -252,7 +253,7 @@ static wchar_t * search_files(
 		if (FindData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)
 			continue;	// フォルダは無視する
 
-		if ((single_file < 0) && (FindData.dwFileAttributes & FILE_ATTRIBUTE_HIDDEN))
+		if ((single_file < 0) && ((FindData.dwFileAttributes & filter) == filter))
 			continue;	// 検索中は隠し属性が付いてるファイルを無視する
 
 		// フォルダは無視する、ファイル名が重複しないようにする
@@ -631,6 +632,7 @@ wmain(int argc, wchar_t *argv[])
 				return 1;
 		} else {	// 入力ファイルの指定
 			int base_len, list_max;
+			unsigned int filter = get_show_hidden();
 			base_len = wcslen(base_dir);
 			list_max = 0;
 			list_buf = NULL;
@@ -659,7 +661,7 @@ wmain(int argc, wchar_t *argv[])
 				if (wcspbrk(file_path + base_len, L"*?") == NULL)
 					j = file_num;
 				// ファイルを検索する
-				list_buf = search_files(list_buf, file_path, base_len, j, &file_num, &list_max, &list_len, &source_num, &block_size);
+				list_buf = search_files(list_buf, file_path, base_len, j, &file_num, &list_max, &list_len, &source_num, &block_size, filter);
 				if (list_buf == NULL)
 					return 1;
 				if ((j != -1) && (j == file_num)){	// ファイルが見つかったか確かめる

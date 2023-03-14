@@ -1,5 +1,5 @@
 ﻿// common.c
-// Copyright : 2022-02-05 Yutaka Sawada
+// Copyright : 2023-03-13 Yutaka Sawada
 // License : GPL
 
 #ifndef _UNICODE
@@ -16,6 +16,7 @@
 #include <stdio.h>
 
 #include <windows.h>
+#include <shlobj.h>
 #include <shlwapi.h>
 
 #include "common1.h"
@@ -1043,6 +1044,27 @@ int delete_file_recycle(wchar_t *file_path)
 	rv = SHFileOperation(&FileOp);
 	if (FileOp.fAnyOperationsAborted == TRUE)
 		rv = 1;	// 削除がキャンセルされた
+	return rv;
+}
+
+// エクスプローラーで隠しファイルを表示する設定になってるか調べる
+unsigned int get_show_hidden(void)
+{
+	unsigned int rv;
+	SHELLSTATE ssf;
+
+	rv = FILE_ATTRIBUTE_HIDDEN;
+	// Explorer の設定を調べる
+	SHGetSetSettings(&ssf, SSF_SHOWALLOBJECTS | SSF_SHOWSUPERHIDDEN, FALSE);
+	// 隠しファイルを表示するかどうか
+	if (ssf.fShowAllObjects){	// 表示する設定なら
+		rv = FILE_ATTRIBUTE_HIDDEN | FILE_ATTRIBUTE_SYSTEM;
+
+		// 保護されたオペレーティングシステムファイルを表示するかどうか
+		if (ssf.fShowSuperHidden)	// 表示する設定なら
+			rv = INVALID_FILE_ATTRIBUTES;
+	}
+
 	return rv;
 }
 
