@@ -1,0 +1,754 @@
+Release note of v1.3.2 tree
+
+ I tried to decrease probability of false positive at Malware detection.
+
+[ Changes from 1.3.2.7 to 1.3.2.8 ] (2023/03/14)
+
+GUI update
+ Change
+  It won't erase Zone.Identifier flag of MultiPar.exe automatically.
+  It will show error, when calling PAR client doesn't exist.
+
+PAR2 client update
+ Bug fix
+  It will show correct efficiency for over than TB size files.
+
+All clients update
+ Change
+  It will search hidden files, when Windows Explorer shows them.
+
+/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+
+[ Changes from 1.3.2.6 to 1.3.2.7 ] (2023/02/23)
+
+Installer update
+ Inno Setup was updated from v6.2.1 to v6.2.2.
+
+GUI update
+ New
+  It's possible to start Python script as batch processing.
+
+PAR2 client update
+ New
+  It's possible to save verification result on JSON file.
+
+/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+
+[ Changes from 1.3.2.5 to 1.3.2.6 ] (2022/10/10)
+
+Installer update
+ Inno Setup was updated from v6.2.0 to v6.2.1.
+
+GUI update
+ Change
+  It won't limit size of Recovery Files by default.
+  Aligned verification is available for test.
+
+All clients update
+ Change
+  Original filename item was removed from version information.
+
+/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+
+[ Changes from 1.3.2.4 to 1.3.2.5 ] (2022/09/09)
+
+Compiler update
+ Development environment is updated to Visual Studio 2022.
+
+GUI update
+ Change
+   ParQueue is removed, because I include tools by Python script.
+
+PAR2 client update
+ Bug fix
+   I fixed a failure of searching blocks in uniform data.
+
+/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+
+[ Changes from 1.3.2.3 to 1.3.2.4 ] (2022/03/13)
+
+All client update
+ Change
+  Failed result of Self-Test is shown in detail.
+  I added VERSIONINFO in each application's resource.
+
+SFV/MD5 client update
+ Change
+  MD5 checker recognizes # as comment.
+
+/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+
+[ Changes from 1.3.2.2 to 1.3.2.3 ] (2022/02/14)
+
+GUI update
+ Change
+  I removed /batch command from MultiPar.exe.
+
+/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+
+[ Changes from 1.3.2.1 to 1.3.2.2 ] (2022/02/06)
+
+Installer update
+ Inno Setup supports Windows 7 or later.
+
+GUI update
+ New
+  I added /batch command to MultiPar.exe for batch scripting.
+
+PAR2 client update
+ New
+  A new option was added to remove recovery files.
+
+ Bug fix
+  A fault of sanitizing function was fixed.
+
+/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+
+[ Changes from 1.3.2.0 to 1.3.2.1 ] (2022/01/22)
+
+GUI update
+ New
+  For a folder with PAR2 files, MultiPar may invoke ParQueue.
+
+ Change
+  In command-line, it uses "/" for each option instead of "-".
+
+All clients update
+ Change
+  It will warn incompatible filenames on Windows OS.
+
+PAR1 client update
+ Bug fix
+  Failure in setting a file pointer was fixed.
+
+PAR2 client update
+ Bug fix
+  Possible stack overflow at searching missing files was fixed.
+
+/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+
+[ Changes from 1.3.1.9 to 1.3.2.0 ] (2021/12/20)
+
+GUI update
+ Change
+  Fast SSD is selectable as file access mode.
+  Max number of log files was increased from 100 to 1000.
+  CPU usage slider was adjusted on CPU with 6 or more Cores.
+  Shadow of text over progress-bar becomes more smooth.
+
+PAR2 client update
+ Change
+  Standard buffer size becomes double to decrease iteration.
+  Single byte error in a single slice file may be corrected.
+  Number of using threads was changed on CPU with 6 or more Cores.
+  Enabling GPU won't use additional threads on multi-core CPU.
+  Progress percent may move while writing blocks.
+
+ Improvement
+  L3 cache optimization was implemented for multi-core CPU.
+
+/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+
+Release note of v1.3.1 tree
+
+ Windows XP was removed from supported OS.
+
+[ Changes from 1.3.1.8 to 1.3.1.9 ] (2021/09/09)
+
+Installer update
+ Inno Setup was updated from v6.1.2 to v6.2.0.
+
+GUI update
+ Change
+  Clickable link to access author's page becomes SSL.
+  Appending recovery record supports 2 GB over file size.
+
+PAR2 clients update
+ Change
+  When source files are on NVMe SSD, verification may become faster.
+  Appending recovery record supports ZIP64 format.
+
+ Improvement
+  Simple verification will find a short slice in a tiny file.
+
+ Bug fix
+  A stack overflow problem in quick sort function was removed.
+  A bug of searching slices in a file with repeated content was fixed.
+
+/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+
+[ Changes from 1.3.1.7 to 1.3.1.8 ] (2021/05/25)
+
+GUI update
+ New
+  An option for file access mode was added.
+
+ Change
+  It uses digits as numbers in sorting filenames.
+  .EXE file's path may contain Unicode characters.
+
+Improvement
+  On Windows 10, it supports multiple monitors with different DPI.
+
+All clients update
+ Change
+  It uses digits as numbers in sorting filenames.
+  .EXE file's path may contain Unicode characters.
+
+/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+
+[ Changes from 1.3.1.6 to 1.3.1.7 ] (2021/04/24)
+
+GUI update
+ Change
+  Help documents are not compiled, but consist of plain html files.
+  More large icons are added for High DPI.
+  The installer will send MultiPar.ini to the recycle bin at uninstallation.
+
+PAR2 client update
+ Change
+  AVX2 feature is implemented internally.
+  Additional memory barrier is removed.
+
+/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+
+[ Changes from 1.3.1.5 to 1.3.1.6 ] (2021/04/09)
+
+Installer update
+ Inno Setup was updated from v5.6.1 to v6.1.2.
+
+GUI update
+ Change
+  A list-view control has Windows Explorer like Visual Style.
+  On a folder selecting dialog, an initial selected folder is always visible.
+
+ Bug fix
+  A rare failure of showing a multi-bytes character on file-list was fixed.
+
+PAR2 client update
+ Bug fix
+  An access violation error while verifying splited files was fixed.
+
+/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+
+[ Changes from 1.3.1.4 to 1.3.1.5 ] (2021/03/06)
+
+GUI update
+ Change
+  Max block size is increased to 2,118,123,520 bytes. (1.97 GB)
+  Max split size is increased to 2,147,287,040 bytes. (1.99 GB)
+
+ Bug fix
+  Memory allocation failure in verifying over than 512 PAR2 files was fixed.
+
+PAR2 client update
+ Change
+  Max slice size is increased to 2,147,483,644 bytes. (2 GB)
+  Max split size is increased to 4,294,967,292 bytes. (4 GB)
+  When source files are on SSD, verification may become faster.
+
+ Improvement
+  Setup of CRC-32 may become slightly faster on recent CPU.
+
+ Bug fix
+  A bug in calculating hash of source files on SSD was fixed.
+  A bug in verifying source files without Slice Checksum packet was fixed.
+
+/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+
+[ Changes from 1.3.1.3 to 1.3.1.4 ] (2021/02/09)
+
+* GUI update
+Change
+ An option "Don't search subfolders" is added for verification and reapir.
+
+Bug fix
+ It's possible to adjust opening window position on multiple monitors.
+
+* PAR1 client update
+Improvement
+ MD5 hash calculation becomes slightly faster.
+
+* PAR2 client update
+New
+ It's possible to set file access mode for debug usage.
+
+Change
+ When source files are on SSD, hash calculation may become faster.
+
+Improvement
+ MD5 hash calculation becomes faster on recent CPU.
+
+Bug fix
+ An access violation bug in restoring single source file was fixed.
+
+* SFV/MD5 client update
+Improvement
+ MD5 hash calculation becomes slightly faster.
+
+/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+
+[ Changes from 1.3.1.2 to 1.3.1.3 ] (2020/11/27)
+
+* GUI update
+Change
+ An option "Don't search subfolders" is enabled for verification and reapir.
+
+* PAR2 client update
+Change
+ An option "/fo" is available for verification and reapir.
+
+/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+
+[ Changes from 1.3.1.1 to 1.3.1.2 ] (2020/10/10)
+
+* PAR2 client update
+Bug fix
+ In some cases, it stopped to calculate hash of files in creating PAR2 files.
+
+/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+
+[ Changes from 1.3.1.0 to 1.3.1.1 ] (2020/09/19)
+
+* GUI update
+Change
+ It's possible to type or edit directory on Folder selecting dialog.
+ An option "Run clients with lower priority" decreases priority of GUI, too.
+ Verify button will be disabled, when recovery files are deleted after repair.
+
+* PAR2 client update
+Change
+ 64-bit version may allocate a little more memory than before by default.
+
+/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+
+[ Changes from 1.3.0.7 to 1.3.1.0 ] (2020/06/20)
+
+* GUI update
+Change
+ It supports different output style of new PAR2 client.
+
+* PAR2 client update
+New
+ At creation, 1-pass processing File IO is possible for source files on HDD.
+
+Change
+ GPU encoder will write recovery data on files after finish encoding.
+ On Windows 7 or later, it may recognize SSD for faster processing.
+
+Bug fix
+ It might fail to allocate memory, when free memory was few or fragmented.
+
+/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+
+Release note of v1.3.0 tree
+
+[ Changes from 1.3.0.6 to 1.3.0.7 ] (2020/03/03)
+
+* GUI update
+Change
+ URL of web-forum was erased on some help documents.
+
+/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+
+[ Changes from 1.3.0.5 to 1.3.0.6 ] (2019/09/29)
+
+* GUI update
+Change
+ Italian UI was updated.
+
+* PAR2 client update
+Bug fix
+ Temporary files should be erased at failed reapir.
+
+/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+
+[ Changes from 1.3.0.4 to 1.3.0.5 ] (2019/04/27)
+
+* GUI update
+Change
+ Total filename length of adding external files at verification was increased.
+
+* PAR2 client update
+Improvement
+ OpenCL implementation is refined for a set of old CPU and GPU.
+ It accepts file-list to get many external files.
+
+/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+
+[ Changes from 1.3.0.3 to 1.3.0.4 ] (2019/02/19)
+
+* Installer update
+ Overwrite installation will check version of EXE/DLL files.
+
+* GUI update
+Change
+ Absent extra feature in a very old CPU is grayed out.
+
+Improvement
+ When CHM file was blocked by Windows Explorer, it's unblocked before open.
+
+New
+ Chinese Help documents is included.
+ Full text search is possible on Help documents.
+
+* PAR2 client update
+Change
+ Number of threads is limited to number of physical cores on high-end CPUs.
+
+/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+
+[ Changes from 1.3.0.2 to 1.3.0.3 ] (2018/12/30)
+
+* PAR2 client update
+Change
+ Error number is shown at Win32API error.
+ On 32-bit OS, VRAM usage is limited upto 768MB at GPU acceleration.
+ For less than 512MB data, GPU won't be used.
+
+Bug fix
+ Memory allocation failure on high-end GPU with large VRAM may be fixed.
+
+Improvement
+ It skips reading of a file with system error at creation or verification.
+
+/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+
+[ Changes from 1.3.0.1 to 1.3.0.2 ] (2018/10/30)
+
+* Installer update
+ Inno Setup was updated from v5.5.9 to v5.6.1.
+
+* PAR2 client update
+Bug fix
+ Memory barrier was not enough for recent high-end CPUs.
+
+/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+
+[ Changes from 1.3.0.0 to 1.3.0.1 ] (2018/06/23)
+
+* GUI update
+Change
+ The last year on About window is set by EXE file's date.
+ Un-checking "Split Files" doesn't update size of recovery files.
+ A user may return to Create window, when creation was failed.
+
+Improvement
+ Checking "Split Files" set "Limit Size" for recovery files.
+
+* PAR2 client update
+Change
+ Each sizing scheme may limit size of recovery files.
+
+New
+ It's possible to set number of recovered files at creation.
+
+/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+
+[ Changes from 1.2.9.9 to 1.3.0.0 ] (2018/06/09)
+
+* PAR1 client update
+Bug fix
+ A failure of calculating checksum on big files was fixed.
+
+* PAR2 client update
+Change
+ Work buffer size is limited upto 1280 MB on 32-bit OS.
+ It may wait file access a second, when temporary files are locked.
+
+* SFV/MD5 client update
+Change
+ Setting parent directory is supported in filename.
+
+/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+
+Release note of v1.2.9 tree
+
+[ Changes from 1.2.9.8 to 1.2.9.9 ] (2016/12/12)
+
+* PAR2 client update
+Bug fix
+ A rare failure in finding complete slices was fixed.
+
+/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+
+[ Changes from 1.2.9.7 to 1.2.9.8 ] (2016/11/11)
+
+* GUI update
+Change
+ Shell Extension DLL won't fail in attempting to delete an absent entry.
+ It checks 7-Zip registry entry in both HKEY_CURRENT_USER and HKEY_LOCAL_MACHINE.
+
+* PAR2 client update
+Change
+ Creation erases a previous verification result of same Set ID.
+
+/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+
+[ Changes from 1.2.9.6 to 1.2.9.7 ] (2016/09/16)
+
+* GUI update
+Bug fix
+ Failure of command selection in Shell Extension was fixed.
+ Batch processing will start, only when all source files are complete.
+
+Change
+ Checksum of each UI resource DLL is checked before loading.
+
+New
+ Shell Extension has a new item for archiver.
+ It's possible to extract an archive after verification or repair.
+
+* PAR2 client update
+Change
+ It checks risk of over-writing source files before file spliting.
+ It finds non-compressed tiny files included in ZIP / 7-Zip archive.
+ Progress % would move smoothly at checksum calculation.
+ Typical PAR2 filename are searched at first in verification.
+
+New
+ It's possible to append recovery data to ZIP / 7-Zip archive.
+
+/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+
+[ Changes from 1.2.9.5 to 1.2.9.6 ] (2016/07/29)
+
+* GUI update
+Bug fix
+ A failure at reading many filenames with multi-bytes characters was fixed.
+
+* Client update
+Change
+ If PAR2 client failed to replace a damaged file, it doesn't delete recovered file.
+ PAR1 client doesn't stop by error, when it failed to correct misnamed files.
+
+Bug fix
+ A bug of selecting wrong GPU encoder in rare case was fixed.
+
+/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+
+[ Changes from 1.2.9.4 to 1.2.9.5 ] (2016/06/20)
+
+* GUI update
+New
+ PE checksum is checked before using .EXE or .DLL files.
+
+* Client update
+Change
+ MD5 of padding bytes is calculated by an independent function.
+
+New
+ Both PE checksum and CRC-32 are checked at self-test.
+ GPU is available for JIT(SSE2) encoder.
+
+Bug fix
+ A bug of selecting slow encoder on early Intel i5/i7 CPU was fixed.
+
+/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+
+[ Changes from 1.2.9.3 to 1.2.9.4 ] (2016/05/23)
+
+* GUI update
+Change
+ Options for hardware environment are put in independent section.
+ Some options are put in different sections from previous version.
+
+New
+ It's possible to change background style of text over progress-bar.
+
+* Client update
+New
+ PAR2 encoder supports AVX2 on recent CPU.
+
+/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+
+[ Changes from 1.2.9.2 to 1.2.9.3 ] (2016/05/05)
+
+* Installer update
+ Inno Setup was updated from v5.5.6 to v5.5.9.
+
+* GUI update
+Change
+ Command-line option can set base-directory for verification.
+ Shell Extension won't add sub-menus, when there isn't enough space.
+
+Bug fix
+ A failure of parsing verified block count in very big files was fixed.
+
+* PAR2 client
+Change
+ For creation, /rr option accepts a value with decimal point.
+
+New
+ JIT SSE2 encoder is included for old CPU.
+
+/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+
+[ Changes from 1.2.9.1 to 1.2.9.2 ] (2016/03/15)
+
+* PAR2 client
+Change
+ Environment text of "CPU Core" was changed to "CPU thread".
+
+Bug fix
+ Memory lack problem on old GPU was fixed.
+
+/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+
+[ Changes from 1.2.9.0 to 1.2.9.1 ] (2016/02/12)
+
+* PAR2 client
+Change
+ It sets more efficient limit size for cache blocking.
+ Max number of threads was increased from 6 to 18.
+
+/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+
+[ Changes from 1.2.8.7 to 1.2.9.0 ] (2016/01/06)
+
+* PAR2 client
+Change
+ OpenCL device is written on log, when GPU was used.
+
+Bug fix
+ Failure in recovering with GPU & less CPU Cores was fixed.
+
+/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+
+Release note of v1.2.8 tree
+
+64-bit version and GPU acceleration are available.
+
+[ Changes from 1.2.8.6 to 1.2.8.7 ] (2015/10/27)
+
+* GUI update
+Change
+ Media size was changed for recent disk format.
+ Red shadow over progress bar became slightly dark.
+
+/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+
+[ Changes from 1.2.8.5 to 1.2.8.6 ] (2015/10/17)
+
+* GUI update
+Bug fix
+ GPU acceleration can be active at recovery.
+
+* PAR2 client
+Improvement
+ Encoder & decoder became faster, when SSSE3 is available.
+
+/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+
+[ Changes from 1.2.8.4 to 1.2.8.5 ] (2015/10/04)
+
+* GUI update
+Change
+ Outer shadow of text over progress-bar became slightly dark.
+
+New
+ An option was added to disable recursive search.
+
+/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+
+[ Changes from 1.2.8.3 to 1.2.8.4 ] (2015/09/19)
+
+* Installer update
+ Inno Setup was updated from v5.5.5 to v5.5.6.
+
+* GUI update
+New
+ Damage of recovery files is warned, when source files are complete.
+
+* Client update
+New
+ New Exit Code was added to report damage of recovery files.
+
+/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+
+[ Changes from 1.2.8.2 to 1.2.8.3 ] (2015/08/26)
+
+* GUI update
+Change
+ PC won't enter Sleep (Suspend) mode, while processing task.
+
+Bug fix
+ Failure at treating network path was fixed.
+
+* PAR2 client
+New
+ It is possible to use GPU at recovering big files.
+
+Bug fix
+ Failure in GPU version at a few blocks was fixed.
+
+/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+
+[ Changes from 1.2.8.1 to 1.2.8.2 ] (2015/08/08)
+
+* PAR2 client
+Change
+ Progress percent is updated smoothly when using GPU.
+ Non-fragmented file IO method is added for GPU.
+
+Bug fix
+ Crash at finishing sub-threads were fixed.
+ Integer overflow at multiplication in 64-bit version was fixed.
+
+/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+
+[ Changes from 1.2.8.0 to 1.2.8.1 ] (2015/07/28)
+
+* GUI update
+Change
+ GPU option was simplified.
+ 64-bit version of par2j is called on 64-bit OS.
+
+* PAR2 client
+Improvement
+ GPU version may run a little faster.
+ GPU option won't cause slow down, even when there is no available GPU.
+
+/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+
+[ Changes from 1.2.7.6 to 1.2.8.0 ] (2015/07/10)
+
+* GUI update
+Change
+ Background of text over progress-bar was changed.
+
+New
+ An option for GPU was added.
+
+* PAR2 client
+Bug fix
+ Wrong status of damaged files with sub-directory was fixed.
+
+New
+ It is possible to use GPU at creating big PAR2 files.
+
+/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+
+Release note of v1.2.7 tree
+
+ SSE2 (extra feature of CPU later than Pentium 4) is required.
+
+/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+
+Release note of v1.2.6 tree (2014/10/08)
+
+ Windows 2000 was removed from supported OS.
+
+/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+
+Release note of v1.2.5 tree (2014/05/25)
+
+ MultiPar doesn't support old PAR3 client (par3j_old.exe) anymore.
+
+/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+
+Release note of v1.2.4 tree (2014/03/16)
+
+ My development environment is changed from Visual Studio 6.0 to Visual Studio 2008.
+
+/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
