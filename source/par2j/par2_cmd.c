@@ -1,5 +1,5 @@
 ﻿// par2_cmd.c
-// Copyright : 2023-03-14 Yutaka Sawada
+// Copyright : 2023-03-18 Yutaka Sawada
 // License : GPL
 
 #ifndef _UNICODE
@@ -925,6 +925,8 @@ static int check_block_size(unsigned int adjust_size, int alloc_method, int limi
 */
 	if (pad_size > 0){	// 近辺で効率が良くなる所を探す
 		if (alloc_method == 0){	// ブロック数が指定された
+			// 指定された個数から -12.5% ~ +6.25% の範囲を調べる（1600 個指定なら 1400 ~ 1700）
+			//printf("Search better count from %d to %d\n", target * 7 / 8, target * 17 / 16);
 			// ブロック・サイズを大きくしてみる
 			loop_count = 0;
 			new_size = block_size + base_size;
@@ -979,6 +981,8 @@ static int check_block_size(unsigned int adjust_size, int alloc_method, int limi
 			//printf("- : %d trials\n", loop_count);
 
 		} else if (alloc_method < 0){	// 割合(ブロック・サイズ * ? = ブロック数)が指定された
+			// 指定された割合から -0.09% ~ +0.09% の範囲を調べる（1% 指定なら 0.91% ~ 1.09%）
+			//printf("Search better rate from %d.%02d%% to %d.%02d%%\n", (target-9)/100, (target-9)%100, (target+9)/100, (target+9)%100);
 			// ブロック・サイズを大きくしてみる
 			loop_count = 0;
 			new_size = block_size + base_size;
@@ -1037,6 +1041,8 @@ static int check_block_size(unsigned int adjust_size, int alloc_method, int limi
 			//printf("- : %d trials\n", loop_count);
 
 		} else if (adjust_size > 0){	// ブロック・サイズと変更単位の両方が指定された時だけ、自動調整する
+			// 指定されたサイズから -25% ~ +50% の範囲を調べる（1024 KB 指定なら 768KB ~ 1536KB）
+			//printf("Search better size from %d to %d\n", target_size / 4 * 3, target_size / 2 * 3);
 			// ブロック・サイズを大きくしてみる
 			loop_count = 0;
 			new_size = block_size + base_size;
