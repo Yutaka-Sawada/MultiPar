@@ -1,0 +1,208 @@
+[ par1j.exe - version 1.3.2.8 or later ]
+
+Type "par1j.exe" to see version, test integrity, and show usage below.
+
+
+Usage
+c(reate) [f,fu,r,n,p,m,c,d,in,u] <par file> [input files]
+v(erify) [  vs,vd,d,i,u,b,br] <par file>
+r(epair) [m,vs,vd,d,i,u,b,br] <par file>
+l(ist)   [u,h] <par file>
+
+Option
+ /f    : Use file-list instead of files
+ /fu   : Use file-list which is encoded with UTF-8
+ /r<n> : Rate of redundancy (%)
+ /n<n> : Number of parity volumes
+ /p<n> : First parity volume number
+ /m<n> : Memory usage
+ /vs<n>: Skip verification by recent result\n"
+ /vd"*": Set directory of recent result\n"
+ /c"*" : Set comment
+ /d"*" : Set directory of input files
+ /i    : Recreate index file
+ /in   : Do not create index file
+ /u    : Console output is encoded with UTF-8
+ /b    : Backup existing files at repair
+ /br   : Send existing files into recycle bin at repair
+ /h    : List hash value of input files
+
+
+[ Usage description ]
+
+key input :
+ Push "c" key if you want to cancel process.
+ Push "p" / "r" key if you want to pasue / resume process.
+
+exit code (bit-wise OR) :
+  0 = normal end
+  1 = fatal error
+  2 = cancel by c-key
+  4 = input files are incomplete
+  8 | 4 = need more blocks to repair
+ 16 = repair succeeded
+ 16 | 4 = repair failed
+ 32 | 4 = rename, move, and/or restore is possible
+128 | 4 = repair is possible
+256 = PAR files are incomplete
+
+specifying <par file> :
+ <par file> is either absolute path or relative path from current directory.
+Note, it is not relative path from the PAR client's directory.
+
+create :
+ You create PAR recovery files.
+To specify PAR files, <par file> cannot contain "*" or "?".
+If you create multiple PAR files like "sample.par, sample.p01, sample.p02",
+set base filename. Normaly it is same as filename of index file. (sample.par)
+The default extension (.par) is appended automatically, unless it exists.
+
+ You can write multiple input files in command line.
+The order of files in a recovery set is different from this command order.
+You cannot supply input files of same filename as the creating PAR files.
+
+ All input files must have same base-directory (root).
+This directory can be set by /d option, or directory of <par file> is used.
+Though it is possible to input with absolute path,
+[input files] are set as relative path from the base-directory.
+A short filename in a path will be converted to long filename.
+
+ [input files] can contain "*" or "?" for search.
+"*" is treated as multiple unknown characters.
+"?" is treated as single unknown character.
+If it is "*", all files in the specified directory are searched.
+If these are "*.txt" and "*.doc", files with extensions ".txt" and ".doc"
+in the specified directory are searched.
+When you don't see hidden files on Windows Explorer, they are ignored by search.
+If you want to search hidden files, change Windows Explorer setting to see them.
+
+verify :
+ You check files in a recovery set.
+If some files are damaged or missing, this show how many slices are available.
+
+ If you have multiple PAR files, specifying whichever filename is possible,
+but setting base filename (or filename of the smallest file) is preferable,
+because the selected file is scanned at first.
+For when the specified PAR file does not exist,
+<par file> may contain "*" or "?" with partial filename to search another PAR file.
+
+repair :
+ You check and reapir files in a recovery set.
+If you want to check only, use verify command.
+
+list :
+ You see what files are included in a recovery set.
+This does not check files, so run very fast.
+
+
+[ Option description ]
+
+ Every options must start with prefix "/" or "-".
+If you use either one at first option, you must use it at all following options.
+It means that it is impossible to mix "/" and "-" in options of same command line.
+If PAR file's filename (or relative path) is started by "-",
+you need to use "/" for prefix of options to distinguish PAR file.
+
+ /f, /fu :
+ Set this, if you use file-list for file name or file path.
+The file-list is a text file, which contains filenames in each line.
+If you encode filename in the list by UTF-8, set /fu instead of /f.
+
+ /r :
+ Redundancy can be from 1% to 127%.
+If this is not set, /n is used.
+
+ for example,  /r10 , /r30 , /r100
+
+ /n :
+ Set number of parity volumes directly.
+If this is set, /r is ignored.
+If both /r and /n are not set, parity volume is not made.
+
+ for example,  /n3 , /n10 , /n20
+
+ /p :
+ Set first number of parity volume.
+For example, when 10 parity volumes are on creating,
+the number of created parity volumes are from 10 to 19 for /p10,
+and from 64 to 73 for /p64.
+Default is 1, then from 1 to 10.
+
+ /m :
+ Set this, if you want to set memory usage.
+If too many memory is allocated, system will use swap file.
+Because swap causes serious speed down, limiting memory usage may useful.
+The value is from 1 to 7. (from 1/8 to 7/8)
+It is a rate against the PC's available physical memory. (not total memory)
+If this is not set or the value is 0, the rate depends on free memory.
+/m0 = Auto is default (between 6/8 and 7/8 mostly)
+/m1 = 1/8, 12.5%
+/m4 = 4/8, 50%
+/m7 = 7/8, 87.5%
+
+ /vs :
+ Set this, if you want to save a current verification result
+and/or re-use a previous verification results.
+This feature is disabled by default. (same as /vs0)
+If you want to disable this feature, set 0.
+If you want to re-use a result of recent verification, set value from 1 to 7.
+Old data files are erased, when there is no update for the specified period.
+(1= 1 day, 2= 3 days, 3= 1 week, 4= half month, 5= 1 month, 6= 1 year, 7= unlimited)
+If you want to newly create a result of this time, add 8 to period.
+
+ One recent verification result data is saved as one file, "1_***.bin".
+*** part depends on Recovery Set ID.
+Don't modify these files, or corrupted data will make failure.
+
+ /vd :
+ If you want to save recent verification results in a different directory
+from the PAR client's directory, use this setting to set path.
+
+ /c :
+ Comment may be useful for memo ?
+If you include space in comment, use "" to specify where is end.
+
+ for example, /csomething , /c"something important data."
+
+ /d :
+ If input files exist in a different directory from PAR file,
+use this setting to set the path as base-directory.
+This is either absolute path or relative path from current directory.
+If you include space in path, use "" to specify where is end.
+Note, setting "/dC:" is same as setting current directory of C-drive.
+If you want to set direct root of C-drive, you must set "/dC:/".
+
+ for example, /dC:/data/ , /d"C:/Program Files/" , /d../data/
+
+ When this is not set, the directory of PAR file is used.
+If input files are specified with absolute path in command-line,
+the parent directory of the first input file is used.
+
+ If damaged files exist in read-only media like CR-ROM or DVD-ROM,
+copy all files to HDD at first, then repair those damaged files.
+
+ /i :
+ Set this, if you want to recreate a lost Index File while verification.
+This option is ignored, when there is an Index File already.
+
+ /in :
+ Set this, if do not you want to create an Index File.
+
+ /u :
+ This setting is useful to show filename of non-supported language.
+You may decode the UTF-8 encoded output with Internet Browser.
+
+ /b :
+ If you want to make backup at repair, set this.
+This is important setting, because this application may contain bugs.
+The existing damaged file is renamed by adding number extension like ".1" or ".2".
+
+ /br :
+ This is almost same as /b option.
+The backup file is sent to recycle bin instead of the original directory.
+When path of a damaged file is too long, this works as same as /b above.
+
+ /h :
+ If you want to see hash of files in recovery file, use this.
+You can compare yourself with other hash checking soft.
+

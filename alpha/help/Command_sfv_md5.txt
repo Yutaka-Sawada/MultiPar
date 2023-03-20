@@ -1,0 +1,190 @@
+[ sfv_md5.exe - version 1.3.2.8 or later ]
+
+Type "sfv_md5.exe" to see version and show usage below.
+
+
+Usage
+c(reate) [fo,t, d,u] <checksum file> [input files]
+v(erify) [vs,vd,d,u] <checksum file>
+
+Option
+ /fo   : Search file only for wildcard
+ /t<n> : Save time stamp
+ /vs<n>: Skip verification by recent result
+ /vd"*": Set directory of recent result
+ /d"*" : Set directory of input files
+ /u    : Console output is encoded with UTF-8
+
+
+[ Usage description ]
+
+key input :
+ Push "c" key if you want to cancel process.
+ Push "p" / "r" key if you want to pasue / resume process.
+
+exit code (bit-wise OR) :
+  0 = normal end
+  1 = fatal error
+  2 = cancel by c-key
+  4 = input files are incomplete
+  8 | 4 = input files are missing or incomplete
+256 = checksum file is incomplete
+
+specifying <checksum file> :
+ <checksum file> is either absolute path or relative path from current directory.
+Note, it is not relative path from the SFV client's directory.
+
+ <checksum file> can be a NTFS "alternate data stream".
+It is like a normal file path and ":something stream name".
+If you want to add checksum into "C:\test\sample.mp3" as a stream "digest.md5",
+the path is "C:\test\sample.mp3:digest.md5".
+Caution !! this client cannot delete the stream which contains checksum data.
+Use a tool like "AlternateStreamView" to delete streams from a file.
+
+create :
+ You create a SFV or MD5 checksum file.
+To specify a checksum file, <checksum file> cannot contain "*" or "?".
+You must specify extension ".sfv" or ".md5" to select file format.
+CRC-32 is saved in SFV file.
+MD5 hash is saved in MD5 file (md5sum format).
+
+ You can write multiple input files in command line.
+The order of files in a checksum file is different from this command order.
+You cannot supply input files of same filename as the creating checksum file.
+
+ All input files must have same base-directory (root).
+This directory can be set by /d option, or directory of <checksum file> is used.
+Though it is possible to input with absolute path,
+[input files] are set as relative path from the base-directory.
+A short filename in a path will be converted to long filename.
+
+ [input files] can contain "*" or "?" for search.
+"*" is treated as multiple unknown characters.
+"?" is treated as single unknown character.
+If it is "*", all files in the specified directory are searched.
+If these are "*.txt" and "*.doc", files with extensions ".txt" and ".doc"
+in the specified directory are searched.
+When you don't see hidden files on Windows Explorer, they are ignored by search.
+If you want to search hidden files, change Windows Explorer setting to see them.
+
+ [input files] can be folder, though the folder itself is ignored.
+If it is "folder_name", files in the folder are searched.
+(This is same as "folder_name/*".)
+Because the folder only is un-supported, "folder_name/" is invalid.
+
+verify :
+ You check files in a checksum file.
+If some files are broken or missing, this show how many files are incomplete.
+For when the specified checksum file does not exist,
+<checksum file> may contain "*" or "?" with partial filename to search other files.
+
+ Because checksum is written in any text encoding,
+it is difficult to recognize which to used for decoding.
+If filenames contain non-ASCII characters,
+it is preferable to convert encoding to UTF-8 or UTF-16.
+Because there are many kinds of format for MD5 hash,
+some format may not be supported.
+
+
+[ Option description ]
+
+ Every options must start with prefix "/" or "-".
+If you use either one at first option, you must use it at all following options.
+It means that it is impossible to mix "/" and "-" in options of same command line.
+If checksum file's filename (or relative path) is started by "-",
+you need to use "/" for prefix of options to distinguish checksum file.
+
+ /fo :
+ Set this, if you want to ignore folders at wildcard matching search.
+This setting disable recursive search into folder also.
+Note, sub-directory of file is still possible.
+
+ /t :
+ Set this, if you want to save time stamp of checksum file or input files.
+Because the time zone is local of your PC, it looks different on other time zone.
+/t1 = save update time of checksum file
+/t2 = do above and, save file size and update time of each input files
+This additional data is just a comment, and it's not checked while verification.
+
+ /vs :
+ Set this, if you want to save a current verification result
+and/or re-use a previous verification results.
+This feature is disabled by default. (same as /vs0)
+If you want to disable this feature, set 0.
+If you want to re-use a result of recent verification, set value from 1 to 7.
+Old data files are erased, when there is no update for the specified period.
+(1= 1 day, 2= 3 days, 3= 1 week, 4= half month, 5= 1 month, 6= 1 year, 7= unlimited)
+If you want to newly create a result of this time, add 8 to period.
+
+ One recent verification result data is saved as one file, "0_***.bin".
+*** part depends on MD5 hash of the file body.
+Don't modify these files, or corrupted data will make failure.
+
+ /vd :
+ If you want to save recent verification results in a different directory
+from the PAR client's directory, use this setting to set path.
+
+ /d :
+ If input files exist in a different directory from checksum file,
+use this setting to set the path as base-directory.
+This is either absolute path or relative path from current directory.
+If you include space in path, use "" to specify where is end.
+Note, setting "/dC:" is same as setting current directory of C-drive.
+If you want to set direct root of C-drive, you must set "/dC:/".
+
+ for example, /dC:/data/ , /d"C:/Program Files/" , /d../data/
+
+ When this is not set, the directory of checksum file is used.
+If input files are specified with absolute path in command-line,
+the parent directory of the first input file is used.
+
+ /u :
+ This setting is useful to show filename of non-supported language.
+You may decode the UTF-8 encoded output with Internet Browser.
+
+
+[ Supporting file format ]
+
+Writing & reading SFV file :
+ There are filename and CRC-32 checksum in each line like below;
+
+filename_1 12345678
+filename_2 23456789
+filename_3 3456789A
+
+Reading other style of SFV file :
+ A filename may contain space.
+A filename may be covered by "".
+A filename may be started with ; (normally ; is comment).
+There may be some space between filename and CRC.
+
+"a_filename_1"   12345678
+some_filename_2  23456789
+other filename_3 3456789A
+;filename_4      456789AB
+
+
+Writing & reading MD5 file (MD5Summer style) :
+ There are MD5 hash and filename after * in each line like below;
+
+123456789ABCDEF0123456789ABCDEF0 *something_filename_1
+23456789ABCDEF1023456789ABCDEF01 *something_filename_2
+3456789ABCDEF1203456789ABCDEF012 *something_filename_3
+
+Reading BSD/OpenSSL style of MD5 file :
+ There are hash type (MD5), filename, and MD5 hash in each line.
+There may be loss of space before/after ().
+
+MD5 (filename_1) = 123456789ABCDEF0123456789ABCDEF0
+MD5(filename_2) = 23456789ABCDEF1023456789ABCDEF01
+MD5 (filename_3)= 3456789ABCDEF1203456789ABCDEF012
+
+Reading Easy MD5 Creator style of MD5 file :
+ There are filename and MD5 hash in each line.
+A filename may contain space.
+There must be only one space between filename and hash.
+
+a_filename_1 123456789ABCDEF0123456789ABCDEF0
+some_filename_2 23456789ABCDEF1023456789ABCDEF01
+other filename_3 3456789ABCDEF1203456789ABCDEF012
+
