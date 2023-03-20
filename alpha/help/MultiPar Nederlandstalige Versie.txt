@@ -1,0 +1,24 @@
+MultiPar Nederlandstalige Versie   /   Dutch Language Version MultiPar
+
+MultiPar ondersteunt het gebruik van sneltoetsen voor de meest gebruikte opdrachten.
+
+Pauze/Hervatten = Pause toets
+Annuleren = Esc toets
+OK = Enter toets
+Help = F1
+Verifieer = F5
+
+Sneltoetsen zijn (in het scherm) te herkennen aan het streepje onder de eerste letter van de betreffende toets.
+
+De overige toetsen die de sneltoets functie ondersteunen zijn te gebruiken door het combineren van de ALT toets en de eerste letter van de opdracht in het MultiPar scherm.
+
+Voorbeelden MultiPar hoofdscherm (in aanvulling op bovenstaande sneltoetsen): 
+
+ALT + b is Bladeren 
+ALT + t is Toevoegen
+ALT + e is Verwijderen
+ALT + n is Nieuwe lijst
+ALT + o is Openen
+ALT + s is Sluiten
+ALT + v is Voorbeeld
+ALT + m is Maak

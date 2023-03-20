@@ -1,0 +1,110 @@
+[ MultiPar GUI - version 1.3.2.6 or later ]
+
+Usage: MultiPar.exe [command] [/base path] [/list path] [files]
+
+Command:
+/create : open Create window with specified source files
+/verify : open Verify window with a specified recovery file
+/clean  : remove integration and delete saved files
+
+When there is no command;
+If multiple files are specified, it will open Create window.
+If a single recovery file is specified, it will open Verify window.
+If a single another file is specified, it will open Create window.
+
+
+[ Format of path ]
+
+ Path of [files] can be either absolute path (full path)
+or relative path from base directory.
+When /base isn't set,
+the sub-directory of the first path becomes the base directory.
+When /base is set, 
+relative path of following files is based on there.
+
+ If you failed to write a path or format correctly,
+the input and following option may be ignored.
+When a path contains space (' '),
+the path must be covered by "" like "C:\Program Files\abc\abc.txt".
+Be careful to use '\' in a path, because it may be escape character.
+It is safe to use '/' instead of '\' to be called by script language.
+Each '/' in a path will be converted to '\' internally.
+
+
+[ About "/base" option ]
+
+ If you want to specify base directory,
+use /base and path of the directory like;
+/create /base "dir-path"
+/create /base "dir-path" "source file 1" "source file 2"
+/create /base "dir-path" /list "file-list"
+/verify /base "dir-path" "recovery file"
+The [/base path] can be either absolute path (full path)
+or relative path from current directory.
+
+
+[ About "/list" option ]
+
+ If you want to specify many source files for creation,
+use /list and path of the file-list like;
+/create /list "file-list"
+/create /base "dir-path" /list "file-list"
+The file-list is a text file, which contain file path in each line.
+Non-ASCII characters must be encoded by UTF-8.
+After reading the list, MultiPar will delete it automatically.
+
+
+[ When you set a folder instead of files ]
+
+ If only a single folder is specified for creation,
+all files in the folder will be selected.
+When base directory is set by /base and files are not set,
+all files in the base directory will be selected.
+
+
+[ About "/clean" option ]
+
+ Mostly /clean is used before un-install.
+Association and Shell Extention will be removed.
+Short-cut incons will be deleted.
+MultiPar.log and temporary files will be deleted.
+When "Display Delete Confirmation Dialog box" in the Recycle Bin is checked,
+confimation to delete MultiPar.ini is shown.
+Because the MultiPar.ini file will go to the Recycle Bin,
+it is possible to keep current setting for update install.
+
+
+[ About INI File ]
+
+ There are some special settings in "MultiPar.ini",
+which may not be set at Option window.
+
+ If you want to set your favorite font like "Arial",
+write this line "FontName=Arial" under "[Option]" section.
+The font is shown as an item at "GUI options" section on "GUI options" tab
+on MultiPar's Option window.
+
+ You may add a new line for "Range of redundancy" on
+"MultiPar Options" -> "Client behavior" tab -> "Creation options" section.
+To do so, manually add or edit an item of "RedundancyMax".
+If you want to set the max 10%, the line is "RedundancyMax=10".
+The range of value is from 5 to 200.
+
+ If you want to sort source files on Verify window by Status,
+write this line "Sort=8" under "[Option]" section.
+To return normal behavior (disable sorting), just erase the line.
+
+ If you want to limit size of Recovery Files,
+write a line of "RecoveryFileLimit=1" under "[Option]" section.
+It's same as an option:
+"Variable (limited to size of largest data file)" on QuickPar.
+
+
+Example of lines on "MultiPar.ini";
+
+[Option]
+FontName=Arial
+RedundancyMax=10
+Sort=8
+RecoveryFileLimit=1
+
