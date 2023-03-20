@@ -1,0 +1,25 @@
+These are sample script files.
+It will show command-line arguments.
+
+To know details, read "Batch script" or "Python script" page of Help documents.
+The English file location is "help\0409\batch.htm" or "help\0409\python.htm".
+
+
+[ Batch Processing after Creation ]
+
+Check "Start batch script" option on "Batch Processing after Creation:" section.
+Put "auto_c.cmd" or "auto_c.py" in "save" folder of MultiPar.
+
+auto_c.cmd : Batch script
+auto_c.py  : Python script
+
+
+[ Batch Processing after Verification or Repair ]
+
+Check "Start batch script" option on "Batch Processing after Verification or Repair:" section.
+Put "auto_v.cmd", "auto_v.py", or "auto_vl.py" in "save" folder of MultiPar.
+
+auto_v.cmd : Batch script
+auto_v.py  : Python script
+auto_vl.py : Python script with file-list on JSON file
+
