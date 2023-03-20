@@ -1,0 +1,515 @@
+[ par2j.exe - version 1.3.2.8 or later ]
+
+Type "par2j.exe" to see version, test integrity, and show usage below.
+
+
+Usage
+t(rial)  [options] <par file> [input files]
+c(reate) [options] <par file> [input files]
+  available: f,fu,fo,fa,fe,ss,sn,sr,sm,rr,rn,rp,rs,rd,rf,ri,
+             lr,lp,ls,lc,m,vs,vd,c,d,in,up,uo
+v(erify) [options] <par file> [external files]
+r(epair) [options] <par file> [external files]
+  available: f,fu,fo,lc,m,vl,vs,vd,d,uo,w,b,br,bi
+l(ist)   [uo,h   ] <par file>
+
+Option
+ /f    : Use file-list instead of filename
+ /fu   : Use file-list which is encoded with UTF-8
+ /fo   : Search file only for wildcard
+ /fa"*": Adding file at search with wildcard
+ /fe"*": Excluding file at search with wildcard
+ /ss<n>: Slice size
+ /sn<n>: Number of source blocks
+ /sr<n>: Rate of source block count and size
+ /sm<n>: Slice size becomes a multiple of this value
+ /rr<n>: Rate of redundancy (%)
+ /rn<n>: Number of recovery blocks
+ /rp<n>: Number of possible recovered files
+ /rs<n>: Starting recovery block number
+ /rd<n>: How to distribute recovery blocks to recovery files
+ /rf<n>: Number of recovery files
+ /ri   : Use file index to name recovery files
+ /lr<n>: Limit number of recovery blocks in a recovery file
+ /lp<n>: Limit repetition of packets in a recovery file
+ /ls<n>: Limit size of splited files
+ /lc<n>: Limit CPU feature
+ /m<n> : Memory usage
+ /vl<n>: Verification level
+ /vs<n>: Skip verification by recent result
+ /vd"*": Set directory of recent result
+ /c"*" : Set comment
+ /d"*" : Set directory of input files
+ /in   : Do not create index file
+ /up   : Write Unicode Filename packet for non-ASCII filename
+ /uo   : Console output is encoded with UTF-8
+ /w    : Write information on JSON file
+ /p    : Purge recovery files when input files are complete
+ /b    : Backup existing files at repair
+ /br   : Send existing files into recycle bin at repair
+ /bi   : Replace files even when repair was failed
+ /h    : List hash value of input files
+
+
+[ Usage description ]
+
+key input :
+ Push "c" key if you want to cancel process.
+ Push "p" / "r" key if you want to pasue / resume process.
+
+exit code (bit-wise OR) :
+  0 = normal end
+  1 = fatal error
+  2 = cancel by c-key
+  4 = input files are incomplete
+  8 | 4 = need more blocks to repair
+ 16 = repair succeeded
+ 16 | 4 = repair failed
+ 32 | 4 = rename, move, and/or restore is possible
+ 64 | 4 = rejoin and/or reconstruct is possible
+128 | 4 = repair is possible
+128 | 8 | 4 = repair may be possible
+256 = PAR files are incomplete
+
+specifying <par file> :
+ <par file> is either absolute path or relative path from current directory.
+Note, it is not relative path from the PAR client's directory.
+
+trial :
+ You do trial construction of PAR recovery files.
+You can test how many or how large those files with your settings.
+This is much faster than create command.
+
+create :
+ You create PAR recovery files.
+To specify PAR files, <par file> cannot contain "*" or "?".
+If you create multiple PAR files like "sample.par2, sample.vol0+1.par2, sample.vol1+2.par2",
+set base filename. Normaly it is same as filename of index file. (sample.par2)
+The default extension (.par2) is appended automatically, unless it exists.
+
+ You can write multiple input files in command line.
+The order of files in a recovery set is different from this command order.
+If you don't set [input files], the filename of <par file> without extension
+will be used as a single input file.
+You cannot supply input files of same filename as the creating PAR files.
+
+ All input files must have same base-directory (root).
+This directory can be set by /d option, or directory of <par file> is used.
+Though it is possible to input with absolute path,
+[input files] are set as relative path from the base-directory.
+A short filename in a path will be converted to long filename.
+
+ [input files] can contain "*" or "?" for search.
+"*" is treated as multiple unknown characters.
+"?" is treated as single unknown character.
+If it is "*", all files in the specified directory are searched.
+If these are "*.txt" and "*.doc", files with extensions ".txt" and ".doc"
+in the specified directory are searched.
+When you don't see hidden files on Windows Explorer, they are ignored by search.
+If you want to search hidden files, change Windows Explorer setting to see them.
+
+ [input files] can be folder, too.
+If it is "folder_name", files in the folder are searched also.
+(This is same as "folder_name/*".)
+If it is "folder_name/", files in the folder are not searched.
+
+verify :
+ You check files in a recovery set.
+If some files are damaged or missing, this show how many slices are available.
+
+ If you have multiple PAR files, specifying whichever filename is possible,
+but setting base filename (or filename of the smallest file) is preferable,
+because the selected file is scanned at first.
+For when the specified PAR file does not exist,
+<par file> may contain "*" or "?" with partial filename to search another PAR file.
+
+ You may specify external files, which are outside of par/input file's directory.
+[external files] can be both par file and input file.
+Though it is possible to add files by searching with "*" or "?",
+folders (and files in sub-folders) are ignored.
+Though relative path from current directory is possible, abusolute path is safe.
+
+repair :
+ You check and reapir files in a recovery set.
+This makes temporary files while check, so slower than verify only.
+If you want to check only, use verify command.
+
+list :
+ You see what files are included in a recovery set.
+This does not check files, so run very fast.
+This may work, even if recovery files are damaged or not enough.
+
+
+[ Option description ]
+
+ Every options must start with prefix "/" or "-".
+If you use either one at first option, you must use it at all following options.
+It means that it is impossible to mix "/" and "-" in options of same command line.
+If PAR file's filename (or relative path) is started by "-",
+you need to use "/" for prefix of options to distinguish PAR file.
+
+ /f, /fu :
+ Set this, if you use file-list for file name or file path.
+When this option is set, [input files] or [external files] is path of file-list.
+The file-list is a text file, which contains filenames in each line.
+If you encode filename in the list by UTF-8, set /fu instead of /f.
+
+ /fo :
+ Set this, if you want to ignore folders at wildcard matching search.
+This setting disable recursive search into sub-folders also.
+Note, sub-directory of each input file is still possible.
+At verification, this disables searching misnamed files in sub-folders.
+
+ /fa or /fe :
+ Set this, if you want to exclude files at wildcard matching search.
+When this option is set, [input file] is "*" normally.
+The format to allow is /fa"sub-directory and/or filename with * or ?".
+The format to deny is /fe"sub-directory and/or filename with * or ?".
+The path must be a relative from base-directory.
+"**" replesents any characters.
+"*" replesents any characters except directory separator.
+"?" replesents a single character except directory separator.
+
+ While you may set this option multiple times to exclude some types,
+the total length of the exclusion list is limited to 8000 characters.
+When one or more allow-options are set,
+files which don't match all of them are excluded.
+When one or more deny-options are set,
+files which match one of them are excluded.
+When a file matches both option, deny-option is prior.
+
+ The ending character will change search behavior as following;
+"abc" matches a file which name is "abc".
+"abc/" matches an empty folder which name is "abc".
+"abc/*" matches "abc" folder and inner files direct under the folder.
+"abc/**" matches "abc" folder and all inner files and folders recursively.
+
+ for example;
+/fa"**.zip" to add all .ZIP files in all folders recursively.
+/fe"**.par2" to exclude all PAR2 files in all folders recursively.
+/fe"*.bat" to exclude .BAT files in base-directory.
+/fe"folder1/**" to exclude folder1 and inner files recursively.
+/fe"*/*.tmp" to exclude .TMP files in sub-folders.
+/fe"**/" to exclude all empty folders recursively.
+
+ /ss :
+ This is Input File Slice size.
+This must be a multiple of 4 under 2 GB in this application.
+But, this is good to be multiple of 16 for speed.
+For compatibility, it's good to set less than 100,000,000 bytes (95 MB).
+If /sn is set with this,
+the number of source blocks will be limited up to the value.
+If /sm is set with this,
+size will be adjusted (from -25% to +50%) for better efficiency.
+(the range of count is from -33% to +33%.)
+
+ for example, "/ss262144 /sn3000 /sm2048" will try the size from 192 KB
+to 384 KB for each 2 KB, or the count will be limited up to 3000 blocks.
+
+ /sn :
+ This is the number of source blocks.
+This is not an exact number.
+Because the Slice size is a multiple of 4,
+the actual number of source blocks will be different slightly.
+The number will be adjusted (from -12.5% to +6.25%) for better efficiency.
+32768 is the max number of source blocks.
+If /ss or /sr is set with this,
+the number of source blocks will be limited up to this value.
+
+ /sr :
+ Source block count divided by block size is the rate.
+If the value is 10, source block count becomes 1% of block size.
+The range is from 1 (0.1%) to 1023 (102%).
+The rate will be adjusted (from -0.09% to +0.09%) for better efficiency.
+If /sn is set with this,
+the number of source blocks will be limited up to the value.
+When all options (/ss, /sn and /sr) are not set,
+"/sr10 /sn3000" is used as default setting.
+
+ for example, "/sr10 /sn3000" will try the rate from 0.91% to 1.09%,
+or the count will be limited up to 3000 blocks.
+
+ /sm :
+ If this is set, Slice size becomes a multiple of this value.
+You may set a cluster size of HDD/CD/DVD or UseNet article size.
+The value must be a multiple of 4 and the max is 4194300. (2^22-4)
+
+ for example, /sm2048 , /sm4096 , /sm384000
+
+ /rr :
+ Redundancy can be from 0.01% to 1000%.
+It accepts the rate value to two decimal places.
+The recognized decimal point character is either "." or ",".
+It is possible to set either /rr, /rn, or /rp.
+When these options are not set, recovery block is not made.
+
+ for example,  /rr10 , /rr30 , /rr100 , /rr0.5 , /rr3.14
+
+ /rn :
+ Set number of recovery blocks directly.
+For the convenience, 65535 is the max number of recovery blocks.
+(overt than 65536th block is worthless, as its recovery data is same as previous.)
+It is possible to set either /rr, /rn, or /rp.
+When these options are not set, recovery block is not made.
+
+ for example,  /rn10 , /rn1024 , /rn2000
+
+ /rp :
+ Set number of possible recovered files, even when they are totally lost.
+This is useful to make minimum recovery files to recover a few source files.
+It sets parity blocks to be sum of source blocks on larger source files.
+The value may have a decimal place to set extra redundancy.
+The format is "/rp[files].[redundancy]", and the max value is "/rp999.99".
+The recognized decimal point character is either "." or ",".
+It is possible to set either /rr, /rn, or /rp.
+When these options are not set, recovery block is not made.
+
+ for example,  /rp1 , /rp2 , /rp1.05 , /rp2.1
+
+ /rs :
+ Set starting number of recovery blocks.
+For example, when 100 recovery blocks are on creating,
+the number of created recovery blocks are from 100 to 199 for /rs100,
+and from 1000 to 1099 for /rs1000.
+Default is 0, and from 0 to 99 are created as 100 recovery blocks.
+
+ /rd :
+ How to put recovery blocks in recovery files.
+/rd0 = default, all the same amount. Put all in a file, if /rf nor /lr are not set.
+/rd1 = variable different amount. /lr is ignored.
+/rd2 = powers of two sizing scheme. /rf is ignored.
+/rd3 = decimal weights sizing scheme by persicum. /rf is ignored.
+
+ /rf :
+ Set how many recovery files you want to create.
+(index file is not included in this number.)
+This option is available with /rd0 or /rd1.
+When both /rf and /lr are set, /lr is prior to /rf, and more recovery files may be created.
+When neither are not set, it's automatically set by number of input files and redundancy.
+
+ /ri :
+ By setting this, file index is used to name recovery files.
+Normaly, number of recovery blocks is used like ".volXX+YY" as volume index.
+It becomes ".vol_ZZ" by this option.
+If you create same size recovery files, or don't care how many blocks,
+this simple numbering scheme may be good.
+When it is important to know how many blocks, don't use this option.
+
+ /lr :
+ Set this limit, if you want to set max size of recovery files.
+This is the max number of blocks in a file, not max size of file itself.
+Because it may be difficult to predict recovery file size,
+use trial command to see how is the size.
+When it's "/lr" or "/lr0", block count of the largest input file is used.
+(If the max file is 1000 KB and block size is 10 KB, /lr is same as /lr100.)
+When split size "/ls" is set with "/lr0",
+block count of the splited file size is used instead of the largest input file.
+
+ for example,  /lr , /lr10 , /lr2000
+
+ /lp :
+ Set this limit, if you want smaller recovery file.
+Normaly log2+1 of recovery block count is used for packet repetition.
+block count     0 to     1 ->  once
+block count     2 to     3 ->  twice
+block count     4 to     7 ->  3 times
+block count     8 to    15 ->  4 times
+block count    16 to    31 ->  5 times
+block count    32 to    63 ->  6 times
+block count    64 to   127 ->  7 times
+block count   128 to   255 ->  8 times
+block count   256 to   511 ->  9 times
+block count   512 to  1023 -> 10 times
+block count  1024 to  2047 -> 11 times
+block count  2048 to  4095 -> 12 times
+block count  4096 to  8191 -> 13 times
+block count  8192 to 16383 -> 14 times
+block count 16384 to 32767 -> 15 times
+block count 32768 to 65535 -> 16 times
+
+If you create some recovery files, 
+packet repetition in a file can be smaller, may be 4 is enough.
+Max limit value is 7.
+/lp is same as /lp4 option.
+
+ for example,  /lp2 , /lp4 , /lp7
+
+ /ls :
+ The spliting feature doesn't belong to PAR spec, just for utility.
+It will split input files after create recovery files,
+and save them in the directory of recovery files.
+This splitting is enabled, only when there is no sub-directory nor folder.
+Split size must be lower than 4 GB.
+Split size will become multiple of slice size automatically.
+If you set 10000 and slice size is 3000, the split size will be 9000.
+If a file is smaller than the split size, it will be copied simply.
+
+ The original files are not deleted after split.
+Splited file pieces have additional incremental number extension,
+like ".001", ".002", ".003", ,,, , ".999"
+Other small copied files don't have extra extension.
+
+ /ls1 has a special feature of appending recovery record to an archive file.
+This is possible, only when there is one input file of .ZIP or .7z format.
+When recovery files are created in a different directory,
+the protected archive file is made in the directory.
+
+ for example,  /ls10000 , /ls1048576, /ls1
+
+ /lc :
+ Set this, if you want to set number of using threads for Multi-Core CPU,
+or want to disable extra feature. (SSE2 is always used.)
+The format is "/lc#", # is from 1 to 11 as the number of using threads,
+12 to use quarter number of physical Cores,
+13 to use half of physical Cores,
+14 to use 3/4 number of physical Cores,
+15 to use the number of physical Cores (disable Hyper Threading),
+or 15 to use one less number of physical Cores on CPU with 6 or more physical Cores.
+Without this option (or /lc0),
+it uses the number of physical Cores on CPU with 6 or more physical Cores,
+or one more threads on CPU with Hyper Threading and 5 or less physical Cores.
+
+ You may set additional combinations; +16 to disable SSSE3,
++128 to disable CLMUL, +256 to disable JIT, +512 to disable AVX2,
++32 or +64 (slower device) to enable GPU acceleration.
+
+ for example,  /lc1 to use single Core, /lc45 to use half Cores and GPU
+
+ /m :
+ Set this, if you want to set memory usage.
+If too many memory is allocated, system will use swap file.
+Because swap causes serious speed down, limiting memory usage may useful.
+The value is from 1 to 7. (from 1/8 to 7/8)
+It is a rate against the PC's available physical memory. (not total memory)
+If this is not set or the value is 0, the rate depends on free memory.
+/m0 = Auto is default (between 6/8 and 7/8 mostly)
+/m1 = 1/8, 12.5%
+/m4 = 4/8, 50%
+/m7 = 7/8, 87.5%
+
+ For debug usage, it's possible to switch file access mode.
++8  = Sequential scan mode for HDD (or Optical drive)
++16 = Random access mode for SSD (or RAM drive)
++32 = Multi-read more files on SSD (must set with +16)
+Normally users should not set this, unless automatic selection has a problem.
+
+ /vl :
+ Set this, if you want faster or extra verification.
+Default is detailed search but rarely slow.
+If there is not enough memory for detailed search,
+simple version will be used automatically.
+In additional verification, all files in base directory are checked as input files,
+and all par files in <par file>'s directory are checked.
+/vl0 = detailed verification
+/vl1 = simple verification
+/vl2 = additional & detailed verification
+/vl3 = additional & simple verification
+/vl4 = aligned verification
+
+ If you want to prevent making temporary files
+and recover damaged source files directly,
+set /vl4 for aligned verification and direct recovery.
+When you set /vl4, external files are ignored.
+Additional files and splited files are ignored, too.
+All backup settings (/b /br /bi) are disabled.
+Direct recovery will over write recovered blocks on damaged files.
+There is a risk of failed repair, and loss of damaged files.
+
+ /vs :
+ Set this, if you want to save a current verification result
+and/or re-use a previous verification results.
+This feature is disabled by default. (same as /vs0)
+If you want to disable this feature, set 0.
+If you want to re-use a result of recent verification, set value from 1 to 7.
+Old data files are erased, when there is no update for the specified period.
+(1= 1 day, 2= 3 days, 3= 1 week, 4= half month, 5= 1 month, 6= 1 year, 7= unlimited)
+If you want to newly create a result of this time, add 8 to period.
+
+ One recent verification result data is saved as 2 files, "2_***.bin" and "2_***.ini".
+*** part depends on Recovery Set ID.
+Don't modify these files, or corrupted data will make failure.
+
+ /vd :
+ If you want to save recent verification results in a different directory
+from the PAR client's directory, use this setting to set path.
+
+ /c :
+ Comment may be useful for memo ?
+If you include space in comment, use "" to specify where is end.
+
+ for example, /csomething , /c"something important data."
+
+ /d :
+ If input files exist in a different directory from PAR file,
+use this setting to set the path as base-directory.
+This is either absolute path or relative path from current directory.
+If you include space in path, use "" to specify where is end.
+Note, setting "/dC:" is same as setting current directory of C-drive.
+If you want to set direct root of C-drive, you must set "/dC:/".
+
+ for example, /dC:/data/ , /d"C:/Program Files/" , /d../data/
+
+ When this is not set, the directory of PAR file is used.
+If input files are specified with absolute path in command-line,
+the parent directory of the first input file is used.
+
+ If damaged files exist in read-only media like CR-ROM or DVD-ROM,
+copy all files to HDD at first, then repair those damaged files.
+
+ /in :
+ Set this, if do not you want to create an Index File.
+This is ignored, when recovery files are not created.
+
+ /up :
+ This may be good for non-ASCII filename.
+This is helpful only when the PAR2 client supports Unicode Filename packet.
+Normally this option is worthless, because most clients don't recognize it.
+
+ /uo :
+ This setting is useful to show filename of non-supported language.
+You may decode the UTF-8 encoded output with Internet Browser.
+
+ /w :
+ If you want to save verification result on a JSON file, set this.
+The filename is the selected PAR file with ".json" extension.
+You may change the saved directory by /vd option.
+
+"SelectedFile" and other items with directory:
+To omit escape sequence in JSON, directory mark is replaced from \ to /.
+
+"RecoveryFile":
+Useless files aren't listed.
+External files are distinguishable by directory mark /.
+
+"MisnamedFile":
+Names are stored in a set of "Correct name":"Wrong name".
+
+ /p :
+ If you want to remove recovery files after verification or repair, set this.
+Only when all input files are complete, this will purge recovery files.
+It tries to send recovery files to recycle bin always.
+When recycle bin isn't available like USB memory, it will just delete them.
+Be careful to set this option.
+
+ /b :
+ If you want to make backup at repair, set this.
+This is important setting, because this application may contain bugs.
+The existing damaged file is renamed by adding number extension like ".1" or ".2".
+
+ /br :
+ This is almost same as /b option.
+The backup file is sent to recycle bin instead of the original directory.
+When path of a damaged file is too long, this works as same as /b above.
+
+ /bi :
+ Set this, when you want partially reconstructed files by incomplete recovery.
+It aligns found blocks in correct positions for each file,
+even when repair is impossible or incomplete.
+This option has a risk of further data loss,
+because missing or damaged blocks are filled by zero bytes.
+Then, it is safe to use this with /b or /br.
+
+ /h :
+ If you want to see hash of files in recovery file, use this.
+You can compare yourself with other hash checking soft.
+
