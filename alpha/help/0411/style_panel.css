@@ -1,0 +1,21 @@
+* {
+line-height:1.8;
+text-underline-position:under;
+}
+
+body {
+padding: 0px 0px 0px 160px ;
+}
+
+div#left_area {
+position: fixed !important;
+position: absolute;
+padding: 0px 0px 0px 10px ;
+top: 0;
+left: 0;
+width: 150px;
+height: 100%;
+background-color: #fffbf0 ;
+overflow: auto;
+}
+

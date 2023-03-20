@@ -1,0 +1,118 @@
+<html lang="ja">
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=Shift_JIS">
+<link rel="stylesheet" href="style.css">
+<title>基本的な操作</title>
+</head>
+<body>
+
+<font size=5>MultiPar の基本的な操作</font>
+<hr>
+
+<h3>QuickPar との互換性</h3>
+<p>&nbsp
+操作方法は <a href="http://www.quickpar.org.uk/" target="_blank" title="http://www.quickpar.org.uk/">QuickPar</a> とほとんど同じです。
+ただし、開発環境や実装方法が異なるので、動作が異なる所もあります。
+更に、ディレクトリ構造の反映や作成前のプレビュー機能など、
+QuickPar に無くても便利だと思ったものは追加しています。
+こういう機能を追加して欲しいという要望があれば連絡してください。
+</p>
+<p>&nbsp
+QuickPar の標準設定は UseNet で使うために最適化されてるので、MultiPar のと異なります。
+QuickPar と同じにしたいなら、次の項目を標準設定から変更する必要があります。<br>
+[GUI の設定] ページ上の、[<a href="option2.htm#unit_size">ブロック・サイズをその単位の倍数にする</a>] 項で、<br>&nbsp
+「<b>yEnc 用: 3,000 行</b>」を選択する。<br>
+[GUI の設定] ページ上の、[<a href="option2.htm#block_allocation">ブロックの割り当て方法</a>] 項で、<br>&nbsp
+「<b>ブロック数を制限する: 3,000</b>」にチェックを入れ、「<b>ブロック・サイズ: 384,000</b>」を指定する。<br>
+[クライアントの挙動] ページ上の、[作成時の設定] 項で、<br>&nbsp
+「<b>下層フォルダ内を検索しない</b>」にチェックを入れる。<br>
+[クライアントの挙動] ページ上の、[検査と修復時の設定] 項で、<br>&nbsp
+「<a href="option3.htm#reuse_result">検査結果を再利用する</a>」の「<b>15 日間</b>」を選択する。
+</p>
+<p>&nbsp
+MultiPar と QuickPar で挙動が違う点がいくつかあります。
+MultiPar は PAR2 ファイル作成時に、効率のいいブロック・サイズを探すので、
+同じように設定しても QuickPar とは異なるブロック数が初期選択されます。
+QuickPar の [Recovery File Size: Variable (power of 2 sizing scheme)] にしたいなら、
+MultiPar では「サイズ指定方式: 異なる大きさにする」を選択してください。
+既存のリカバリ・ファイルに対して「作り直し」で更に作成する際には、
+QuickPar が元のファイルはそのままにして新しいのを追加するのに対して、
+MultiPar では元のファイルを上書きして作り直します。
+</p>
+<p>&nbsp
+MultiPar が QuickPar と大きく異なるのは複数言語への対応です。
+日本語や特殊文字などの非英数文字を、
+QuickPar はパソコン固有のエンコードで記録してますが、MultiPar は UTF-8 を使ってます。
+そのため、MultiPar が記録した非英数文字のファイル名を QuickPar は正しく読み取ることができません。
+PAR2 クライアントの中では、MultiPar と <a href="https://github.com/Parchive/par2cmdline" target="_blank" title="https://github.com/Parchive/par2cmdline">par2cmdline</a> が Unicode のファイル名に対応してます。
+</p>
+<p>&nbsp
+Peter Clements さんが QuickPar と同じような GUI を使うことを許可してくれたので、
+日本語のファイル名を扱う為に MultiPar を作りました。
+QuickPar に不具合が起きた外国ユーザーのために、英語版の GUI も作りました。
+他の PAR クライアントが使いにくい時には、MultiPar が役に立つでしょう。
+MultiPar を翻訳したい人は、私にメールを送ってください。
+MultiPar は次のような多くの国で使われています。<br>
+アメリカ、ベルギー、中国、デンマーク、イギリス、フランス、ドイツ、インド、イタリア、日本、オランダ、ポーランド、ポルトガル、ロシア、スペイン、ウクライナ、など
+</p>
+
+<hr>
+
+<h3>キー操作</h3>
+
+<dl><dt><b>
+ALT</b> キー
+</dt><dd>&nbsp
+ボタンに「開く(<b><u>O</u></b>)」のような下線付きの文字が含まれる場合は、
+「ALT」キーとその文字のキーを同時に押すことで、
+そのボタンをクリックするのと同じ操作ができます。
+</dd></dl>
+
+<dl><dt><b>
+F1</b> キー
+</b></dt><dd>&nbsp
+「F1」キーを押すと、このヘルプが表示されます。
+バージョン情報の画面にも「<b>ヘルプ</b>」ボタンがあります。
+</dd></dl>
+
+<dl><dt><b>
+F5</b> キー
+</dt><dd>&nbsp
+検査画面で「F5」キーを押すと、最初から検査をやり直します。
+</dd></dl>
+
+<dl><dt><b>
+Delete</b> キー
+</dt><dd>&nbsp
+作成画面で、リスト内のソース・ファイルを選択した状態で「Delete」キーを押すと、そのファイルをリストから取り除きます。
+これは「取り除く」ボタンを押すのと同じです。
+</dd></dl>
+
+<dl><dt><b>
+Page Up</b>、<b>Page Down</b>、<b>Home</b>、<b>End</b> キー
+</dt><dd>&nbsp
+作成画面や作り直し画面で、ブロック数や冗長性のスライダー・バーを選択した状態でこれらのキーを押します。
+「Page Up」か「Page Down」キーを押すと、スライダーが大きく左右に動きます。
+「Home」キーを押すと最小値になり、「End」キーを押すと最大値になります。
+</dd></dl>
+
+<dl><dt><b>
+Escape</b> キー
+</dt><dd>&nbsp
+作成中や検査・修復中や監視中に、「Escape」キーを押すと処理を中止します。
+これは「中断する」ボタンを押すのと同じです。
+実際にクライアントが止まるまでには時間がかかるので、
+結果が表示されるまでしばらく待ってください。
+</dd></dl>
+
+<dl><dt><b>
+Pause</b> キー
+</dt><dd>&nbsp
+作成中や検査・修復中に、「Pause」キーを押すと処理を一時休止・再開します。
+最初にキーを押すと処理が一時休止され、再度押すと処理が再開されます。
+実際にクライアントが一時休止・再開するまでには時間がかかるので、
+短時間に連続して押すとうまく休止しないことがあります。
+</dd></dl>
+
+</body>
+</html>

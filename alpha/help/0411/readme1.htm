@@ -1,0 +1,32 @@
+<html lang="ja">
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=Shift_JIS">
+<link rel="stylesheet" href="style.css">
+<title>説明書 - 動作環境</title>
+</head>
+<body>
+
+<h3>特徴や仕様など</h3>
+<p>&nbsp
+MultiPar は PAR 1.0 と PAR 2.0 の両方に対応してます。
+Parchive 仕様の詳細については <a href="http://parchive.sourceforge.net/" target="_blank" title="http://parchive.sourceforge.net/">Parchive project</a> を見てください。
+MultiPar はユニコード (UTF-8 または UTF-16) でファイル名を扱うので、
+日本語だけでなく他の言語のファイル名もきちんと検査・修復することができます。
+</p>
+<p>&nbsp
+MultiPar の PAR 2.0 ではファイルだけでなくフォルダを扱うこともできます。
+ただし、QuickPar はサブ・ディレクトリを正しく認識しないので、
+MultiPar でディレクトリ構造を含むパリティ書庫を作成しても、
+QuickPar ではうまく検査できないことに注意してください。
+<a href="https://github.com/Parchive/par2cmdline" target="_blank" title="https://github.com/Parchive/par2cmdline">par2cmdline</a> は MultiPar と同じくユニコードとディレクトリ構造を認識するので大丈夫です。
+MultiPar はパリティ書庫にコメントを付けることができますが、
+QuickPar など他の PAR クライアントはコメント機能に対応してないようです。
+</p>
+
+<h3>動作環境</h3>
+<p>&nbsp
+Windows Vista かそれ以降 (Windows 7, 8, 10) のパソコンが必要です。
+</p>
+
+</body>
+</html>
