@@ -1,0 +1,238 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=ISO-8859-1">
+<link rel="stylesheet" href="style_panel.css">
+<title>Create window</title>
+</head>
+<body>
+
+<font size=5>Create window</font><br><font size=1><br></font>&nbsp
+When you start MultiPar without selecting a recovery file, this window opens. 
+On the window, you select source files and specify how to create new recovery files.
+<hr>
+
+<h3>Source files</h3>
+
+<dl><dt><b>
+Base directory</b> and <b>Browse</b> button
+</dt><dd>&nbsp
+This directory is the folder where source files exist. 
+You may change this by clicking "Browse" button, Drag & Drop a folder, or double-click the path box. 
+When you select a new folder, all files in the folder will be selected.
+</dd></dl>
+
+<dl><dt><b>
+Add Files</b>, <b>Remove Files</b>, or <b>Reset List</b> buttons
+</dt><dd>&nbsp
+You may add or remove source files by clicking those buttons. 
+By right-clicking the file-list, popup menu will appear. 
+To add files, "Drag & Drop" or "Copy & Paste" works, too. 
+Every files must exist under the base directory. 
+Though you can select files only in the parent folder for PAR 1.0, 
+you can select files in the parent folder and sub-folders for PAR 2.0.
+</dd></dl>
+
+<p>&nbsp
+Selected files are listed on the file-list, and the total data size and blocks are calculated. 
+PAR 1.0 supports upto 256 files, and PAR 2.0 supports upto 32768 files. 
+It is recomended to use archiver (ZIP, RAR, TAR or something) for many files. 
+In PAR 2.0, parent folders are treated as sub-directory in filenames. 
+Only empty folders (without files in them) are shown as folder in the file-list.
+</p>
+
+<dl><dt><b>
+Split Files</b> and <b>Limit Size to
+</b></dt><dd>&nbsp
+In PAR 2.0, you can split source files by checking this option. 
+The split size will be a multiple of block size, which is the highest size under than this limit. 
+Splited files are saved in the recovery files' path.
+Including folder disables this feature.
+</dd></dl>
+
+<dl><dt><b>
+Append Recovery record
+</b></dt><dd>&nbsp
+In PAR 2.0, you can append recovery record to an archive file (ZIP or 7z format). 
+This feature will join created PAR2 files at the end of a single source file. 
+While recovery record is attached, general archivers can treat the archive ordinary. 
+When you open the archive with recovery record by MultiPar, complete archive file is shown as "Appended". 
+Caution, if you repair it, attached recovery record will be removed.
+</dd></dl>
+
+<hr>
+
+<h3>Block allocation</h3>
+
+<p>&nbsp
+For PAR 1.0, number of source blocks is same as number of source files (except empty file). 
+If their size are different each other, it will become inefficient. 
+When you treat such files of varied size, you should pack them into an archive, 
+and split it into pieces of same size, then create PAR1 files for the pieces.
+</p>
+
+<p>&nbsp
+For PAR 2.0, many blocks are aligned in each source file. 
+After source files are selected, 
+ideal blocks are allocated automatically by your <a href="option2.htm#block_allocation">selected allocating method</a>. 
+You may change block size or number of blocks manually. 
+As you set more blocks, the speed will be slow down. 
+As you set fewer blocks, it will be inefficient to recover small damage. 
+For practical use, number of blocks would better be thousand or several thousands. 
+When you input block size directly, 
+you may type the size with unit like "KB" or "MB". 
+For compatibility, it's good to set less than 100,000,000 bytes (95 MB).
+</p>
+
+<hr>
+
+<h3>Recovery files</h3>
+
+<dl><dt><b>
+Base Filename
+</b></dt><dd>&nbsp
+"Base Filename" is a base of naming recovery files. 
+Though this will be set automatically, you may change it to favorite name. 
+After the base, volume number and extension are appended.
+</dd></dl>
+
+<dl><dt><b>
+Path</b> and <b>Browse</b> button
+</dt><dd>&nbsp
+This is path of the directory where recovery files will be saved. 
+When you change "Base directory", this is set to the location. 
+You may change this by clicking "Browse" button, Drag & Drop a folder, or double-click the path box. 
+</dd></dl>
+
+<dl><dt><b>
+Comment</b> button
+</dt><dd>&nbsp
+If you want to write personal note, you may enter comment. 
+But, other PAR clients ignore this comment.
+</dd></dl>
+
+<dl><dt><b>
+Redundancy
+</b></dt><dd>&nbsp
+"Redundancy" is a rate of how much damage can be recovered. 
+For example, if you set 10% for source files of 500MB, 
+you will be able to recover damage or lost upto 50MB. 
+<b>Caution</b>, actual possibility of recovery depends on the distribution of damage. 
+In general, while dense damage in narrow area may be recovered with small redundancy, 
+sparse damage over wide area requires larger redundancy. 
+When you set 0%, only an index file to verify will be created.
+</dd></dl>
+
+<dl><dt><b>
+Number of Recovery blocks
+</b></dt><dd>&nbsp
+You may input the number of recovery blocks directly. 
+You can set more blocks than the range of redundancy slider.
+</dd></dl>
+
+<dl><dt><b>
+Fit to free space</b> button and <b>Media size
+</b></dt><dd>&nbsp
+When you want to fill CD or DVD with both source files and recovery files, this feature is useful. 
+You may select the media or input the writable size directly. 
+It is safe to set a bit smaller redundancy, 
+because the calculation considers total data size only.
+</dd></dl>
+
+<dl><dt><b>
+Sizing scheme</b> and <b>Number of recovery files
+</b></dt><dd>&nbsp
+"Sizing scheme" is how are the size of recovery files. 
+When "<b>All the same size</b>" or "<b>Variable size</b>" is selected, 
+you can set the number of recovery files. 
+Then, the specified number of recovery files of same size or different size will be created. 
+When "<b>Powers of 2 sizing scheme</b>" or "<b>Decimal weights sizing scheme</b>" is selected, 
+the number of recovery blocks in each recovery file will be 
+"1, 2, 4, 8, 16, 32, 64, 128..." or "1, 1, 2, 5, 10, 10, 20, 50...". 
+Each recovery file will be smaller than the largest source file (or splited source files).
+</dd></dl>
+
+<p>&nbsp
+Sample distribution of 500 blocks for each sizing scheme:<br>
+<center><table border=1 cellspacing=0 cellpadding=2 width="98%">
+<tr bgcolor="E0F0E0"><th>Sizing scheme<th colspan=2>How many blocks in each recovery file
+<tr><td>All the same size<td>167, 167, 166 (when 3 files)<td>84, 84, 83, 83, 83, 83 (when 6 files)
+<tr><td>Variable size<td>72, 144, 284 (when 3 files)<td>8, 16, 32, 64, 128, 252 (when 6 files)
+<tr><td>Powers of 2 sizing scheme<td colspan=2>1, 2, 4, 8, 16, 32, 64, 128, 245 (total 9 files)
+<tr><td>Decimal weights sizing scheme<td colspan=2>1, 1, 2, 5, 10, 10, 20, 50, 100, 100, 200, 1 (total 12 files)
+</table></center>
+</p>
+
+<dl><dt><b>
+Efficiency
+</b></dt><dd>&nbsp
+This is a rate of how much data the recovery files can recover. 
+For example, when the efficiency is 95% for recovery files of 200MB, 
+you will be able to recover upto 190MB.
+</dd></dl>
+
+<dl><dt><b>
+Number of files that can be fully reconstructed if missing (Min - Max)
+</b></dt><dd>&nbsp
+You may refer these values to know the recoverying capability of recovery files. 
+When sizes of source files are largely different, recovering a file may require more redundancy than you thought.
+</dd></dl>
+
+<hr>
+
+<dl><dt><b>
+Open</b> button
+</dt><dd>&nbsp
+If you want to open an existing recovery file, push this to select which. 
+The current setting over Create window is not saved.
+</dd></dl>
+
+<dl><dt><b>
+Exit</b> button
+</dt><dd>&nbsp
+You can close MultiPar by pushing this. 
+Be careful, because there is no warning before exit. 
+The current setting over Create window is not saved.
+</dd></dl>
+
+<dl><dt><b>
+Options</b> button
+</dt><dd>&nbsp
+If you want to change settings, push this, then <a href="option.htm">Option window</a> will appear.
+</dd></dl>
+
+<dl><dt><b>
+About</b> button
+</dt><dd>&nbsp
+By pushing this, you can see version number on About window. 
+You may launch this Help from there.
+</dd></dl>
+
+<dl><dt><b>
+Preview</b> button
+</dt><dd>&nbsp
+If you want to know the size of each recovery file, 
+you can see <a href="preview.htm">Preview window</a> by pushing this.
+</dd></dl>
+
+<dl><dt><b>
+Create</b> button
+</dt><dd>&nbsp
+After you selected source files and done every setting, 
+you push this to create recovery files. 
+<a href="creating.htm">Creating window</a> will open to show the progress. 
+When multiple instances of MultiPar are running, 
+it waits finish of another instance's task, and will start next.
+</dd></dl>
+
+<div id="left_area">
+<p><a href="index.htm">Help for MultiPar</a></p>
+<a href="create.htm">Create window</a><br>
+<a href="preview.htm">Preview window</a><br>
+<a href="creating.htm">Creating window</a><br>
+<a href="verify.htm">Verify window</a><br>
+<a href="recreate.htm">Recreate window</a><br>
+<a href="option.htm">Option window</a>
+</div>
+
+</body>
+</html>

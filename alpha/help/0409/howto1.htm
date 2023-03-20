@@ -1,0 +1,123 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=ISO-8859-1">
+<link rel="stylesheet" href="style.css">
+<title>Basic use</title>
+</head>
+<body>
+
+<font size=5>Basic use of MultiPar</font>
+<hr>
+
+<h3>Compatibility with QuickPar</h3>
+<p>&nbsp
+How to use is almost same as <a href="http://www.quickpar.org.uk/" target="_blank" title="http://www.quickpar.org.uk/">QuickPar</a>. 
+But there are some different behavior, 
+because the development environment and how to implement are different. 
+Moreover I added some useful features which QuickPar lacks; 
+such like supporting directory tree or preview before creation. 
+If you have a new idea, you may request by mail.
+</p>
+<p>&nbsp
+While QuickPar's default settings are optimized for UseNet, they are different from those of MultiPar. 
+If you want to set similar setting as QuickPar, you need to change the following items from default setting;<br>
+On [GUI options] page, in [<a href="option2.htm#unit_size">Restrict block size to multiples of the unit</a>] section,<br>&nbsp
+select "<b>For yEnc: 3,000 lines</b>".<br>
+On [GUI options] page, in [<a href="option2.htm#block_allocation">Block allocating method</a>] section,<br>&nbsp
+check "<b>Limit Block count up to: 3,000</b>" and set "<b>Block size: 384,000</b>".<br>
+On [Client behavior] page, in [Creation options] section,<br>&nbsp
+check "<b>Don't search subfolders</b>".<br>
+On [Client behavior] page, in [Verification and Repair options] section,<br>&nbsp
+select "<b>For 15 days</b>" at "<a href="option3.htm#reuse_result">Re-use verification result</a>".
+</p>
+<p>&nbsp
+There are some different behavior between MultiPar and QuickPar. 
+Because MultiPar tries to select efficient block size to create PAR2 files, 
+initial block count may differ, even when the setting is same. 
+If you want "Recovery File Size: Variable (power of 2 sizing scheme)" in QuickPar, 
+select "Sizing scheme: Variable size" in MultiPar. 
+When you create additional recovery files against existing recovery set by "Extra", 
+QuickPar creates extra files without modifying original files, 
+but MultiPar re-creates all files by over-writing original files.
+</p>
+<p>&nbsp
+The biggest difference between MultiPar and QuickPar is the support of multi-languages. 
+While QuickPar saves non-ASCII filename by a system specific character encoding, 
+MultiPar saves by UTF-8. 
+Then, QuickPar cannot read non-ASCII filename correctly which was saved by MultiPar. 
+In PAR2 clients, MultiPar and <a href="https://github.com/Parchive/par2cmdline" target="_blank" title="https://github.com/Parchive/par2cmdline">par2cmdline</a> can support Unicode filename.
+</p>
+<p>&nbsp
+Because Peter Clements allowed me to use similer GUI with QuickPar, 
+I made MultiPar to treat Japanese filename. 
+I made English GUI for foreign users, who got failure in QuickPar. 
+When you have trouble using other PAR clients, MultiPar will help. 
+If you want to translate MultiPar's text or message, send mail to me. 
+MultiPar is used in many countries like;<br>
+America, Belgium, China, Denmark, England, France, Germany, India, Italy, Japan, Netherlands, Poland, Portugal, Russia, Spain, Ukraina, and so on.
+</p>
+
+<hr>
+
+<h3>Short-cut keys</h3>
+
+<dl><dt><b>
+ALT-key
+</b></dt><dd>&nbsp
+Some buttons have a character with under-line, like "<b><u>O</u></b>pen". 
+For those buttons, pushing "ALT-key" and [the under-lined character]-key at one time is same as clicking the button. 
+For example, "ALT+O" is same as clicking the "<u>O</u>pen" button. 
+</dd></dl>
+
+<dl><dt><b>
+F1-key
+</b></dt><dd>&nbsp
+You may push "F1-key" to launch this Help. 
+There is "<b>Help</b>" button on About window, too.
+</dd></dl>
+
+<dl><dt><b>
+F5-key
+</b></dt><dd>&nbsp
+On Verify window, you may push "F5-key" to verify again newly.
+</dd></dl>
+
+<dl><dt><b>
+Delete-key
+</b></dt><dd>&nbsp
+While you are selecting some source files in file-list on Create window, 
+you may push "Delete-key" to remove the files from list. 
+This is same as pushing "Remove Files" button.
+</dd></dl>
+
+<dl><dt><b>
+Page Up</b>, <b>Page Down</b>, <b>Home</b>, and <b>End -keys
+</b></dt><dd>&nbsp
+While you are selecting a slider-bar of "Block Count" or "Redundancy" on Create window or Recreate window, 
+you may push these keys. 
+If you push "Page Up-key" or "Page Down-key", the slider moves largely. 
+It becomes minimum by pushing "Home-key", and becomes maximum by pushing "End-key".
+</dd></dl>
+
+<dl><dt><b>
+Escape-key
+</b></dt><dd>&nbsp
+While it is Creating, Verifying, Repairing, or Monitoring, 
+you may push "Escape-key" to cancel the process. 
+This is same as pushing "Cancel" button. 
+Because it requires some interval to interrupt a client actually, 
+you need to wait for a while until the result is shown.
+</dd></dl>
+
+<dl><dt><b>
+Pause-key
+</b></dt><dd>&nbsp
+While it is Creating, Verifying, or Repairing, 
+you may push "Pause-key" to pause or resume the process. 
+Pushing first time will pause the progress, and second time will resume it again. 
+Because it requires some interval to interrupt a client actually, 
+pushing the key multiple times quickly may fail to pause.
+</dd></dl>
+
+</body>
+</html>

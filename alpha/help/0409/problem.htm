@@ -1,0 +1,102 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=ISO-8859-1">
+<link rel="stylesheet" href="style.css">
+<title>Known problem</title>
+</head>
+<body>
+
+<font size=5>Known problem</font>
+<hr>
+
+<h3>Error of PAR clients</h3>
+<p>&nbsp
+If an error is occured in a PAR client while create/verify/repair, 
+that is shown as "Error : something..." on GUI. 
+When PAR client is stopped by an error, 
+the output of PAR client is save in log file without option setting. 
+A user may refer the log to see what is the problem. 
+When a user want to report the problem by sending mail to a developer, 
+he should attach the log file with the mail.
+</p>
+<p>&nbsp
+When "malloc" error happened, decrease the number of source blocks. 
+If source files exist on un-writable media like CD/DVD, 
+copy those files on HDD at first, then repair the copied files. 
+If the source files are very large, be careful about available space of HDD. 
+If you cannot open or repair files, other applications or system may prevent your file access. 
+You should close others and confirm your privilege.
+</p>
+
+<h3>Error: checksum mismatch</h3>
+<p>&nbsp
+When "checksum mismatch" error happened, it was caused by a hardware problem (such like failure in CPU, RAM, HDD). 
+Because MultiPar consumes most machine power, PC may become un-stable by high stress or over-heat. 
+If MultiPar detects calculation error, it stops to avoid invalid creation or failed repair. 
+Your PC should be enough stable for heavy task.
+</p>
+<p>&nbsp
+There are some solutions to try;<br>
+(1) Change BIOS setting for safe running.<br>&nbsp
+If you set over-clocking, return to the original value. 
+If you set faster memory access mode, change to slower speed.<br>
+(2) Check memory error.<br>&nbsp
+Recent Windows OS has memory test feature. 
+If it finds error, you must replace the bad module. 
+Even when you never see a problem at daily small memory usage, 
+MultiPar may use larger memory space and can reveal failure.<br>
+(3) Change MultiPar setting to disable GPU acceleration.<br>&nbsp
+There is "Hardware environment" section on "System settings" tab of MultiPar Options. 
+Un-check "Enable GPU acceleration".<br>
+(4) Change MultiPar setting to disable extra feature of CPU.<br>&nbsp
+There are some check-boxes in "Extra feature". 
+Un-check them one by one and test until no error. 
+The order of un-checking is from "AVX2", "JIT(SSE2)", "CLMUL", to "SSSE3".<br>
+(5) Change MultiPar setting to use less number of threads.<br>&nbsp
+Move "CPU usage" slider from right to left.<br>
+(6) Change MultiPar setting to use less memory.<br>&nbsp
+Select smaller number at "Memory usage upto around".
+</p>
+
+<h3>Collision of Hash values</h3>
+<p>&nbsp
+If hash value of a damaged file happens to be same as hash value of its original file, 
+PAR clients cannot detect the damage. 
+This is very rare case, but serious problem if happen. 
+Because data in complete files are used to recover damaged files, 
+miss-detection of damage causes failure of recovery. 
+If you get this problem, you may check files with another hash like SHA-1.
+</p>
+<p>&nbsp
+Because PAR uses MD5 hash, accidental collision problem will not happen normally. 
+In addition to MD5, PAR 2.0 uses CRC-32 to check completeness, 
+then the chance of miss-detection is very low. 
+Caution, MD5 was broken already as cryptgraphic hash. 
+When a malicious cracker modified files by forging same hash values, 
+PAR clients cannot detect the intended modification.
+</p>
+
+<h3>Problem of PAR 1.0 specifications</h3>
+<p>&nbsp
+PAR 1.0 uses MD5 hash to distinguish source files. 
+When there are files of same contents, their MD5 becomes same also. 
+In this case, those files are distinguished by filename only. 
+If one of them are lost and another is misnamed, 
+it is difficult to determine which file is lost or misnamed. 
+When a file is thought as lost, it requires parity volume to recover. 
+If you know those files have same contents, 
+it is much faster to copy from another file.
+</p>
+
+<h3>Fault of PAR 1.0 & 2.0 specifications</h3>
+<p>&nbsp
+There is a fault in the method of creating generator matrix in PAR 1.0 and 2.0. 
+Rarely the matrix is not invertible, and repair will be failed. 
+If you cannot repair files with enough recovery blocks, 
+you would better try with different recovery blocks. 
+When there are extra blocks in the set of PAR2 files, 
+MultiPar tries to solve this problem automatically.
+</p>
+
+</body>
+</html>

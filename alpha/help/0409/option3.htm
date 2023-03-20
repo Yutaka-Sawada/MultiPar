@@ -1,0 +1,267 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=ISO-8859-1">
+<link rel="stylesheet" href="style_panel.css">
+<title>Option - Client behavior</title>
+</head>
+<body>
+
+<font size=5>Client behavior</font>
+<hr>
+
+<h3>Common options</h3>
+
+<dl><dt><b>
+Log output of clients
+</b></dt><dd>&nbsp
+You can save command-line by GUI and output from the client. 
+This log is useful, when you get an error, 
+or if you want to use the PAR client on Command Prompt. 
+The log file is "<tt>MultiPar.log</tt>" in "<tt>save</tt>" folder. 
+The folder can be opened by double-clicking status text on Creating or Verify window. 
+If the log file becomes too large, next output is saved in another file "<tt>MultiPar.#.log</tt>". 
+When you don't need those log files anymore, delete them by yourself.
+</dd></dl>
+
+<dl><dt><b>
+Clear log
+</b></dt><dd>&nbsp
+When you want to delete all log files at once, push this button.
+</dd></dl>
+
+<dl><dt><b>
+Run clients with lower priority
+</b></dt><dd>&nbsp
+When the response of PC to your control becomes too slow, while MultiPar is running, 
+you may check this option. 
+This is useful to run MultiPar in background, while you do another task on the same PC.
+</dd></dl>
+
+<dl><dt><b>
+Don't wait finish of other tasks
+</b></dt><dd>&nbsp
+Only when you want to run multiple instances' tasks at the same time, 
+check this option. 
+Because each creating or repairing task consumes PC resource exclusively, 
+total speed may happen to be slower than queued tasks.
+</dd></dl>
+
+<hr>
+
+<h3>Creation options</h3>
+
+<dl><dt><b>
+Format of recovery files
+</b></dt><dd>&nbsp
+You can change the version of newly creating PAR files. 
+You should use "<b>PAR 2.0</b>" normally. 
+You may use "<b>PAR 1.0</b>", only when source files are almost same size.
+<!--You may use PAR 3.0 only when you are not satisfied with PAR 2.0 format.-->
+<!--Currently "<b>PAR 3.0</b>" is available only for testing purpose of new technology. 
+If you want to test old sample PAR3 files, 
+you move "<tt>par3j_old.exe</tt>" from "<tt>tool</tt>" folder to the parent folder, 
+and rename it to "<tt>par3j.exe</tt>".-->
+</dd></dl>
+
+<dl><dt><b>
+Range of redundancy
+</b></dt><dd>&nbsp
+You can change the range of redundancy slider-bar on Create window. 
+This may be useful, if you want to set small or large redundancy mostly. 
+Even when the range is limited, you can set more redundancy by typing number of recovery blocks directly.
+</dd></dl>
+
+<dl><dt><b>
+Always use folder name for base filename
+</b></dt><dd>&nbsp
+Unless you type the filename by yourself, 
+"Base Filename" is set automatically after you select source files at first. 
+The method of naming is same as QuickPar like; 
+(1) When there is only one source file, the filename is used. 
+(2) When there are multiple source files, the preceding common part of filenames is used. 
+(3) Else, the folder name of parent directory is used. 
+If you want to use the last naming method always, 
+check this option.
+</dd></dl>
+
+<dl><dt><b>
+Don't search subfolders
+</b></dt><dd>&nbsp
+When a folder includes subfolders, 
+all files in each folder are searched recursively by default. 
+If you want to ignore subfolders, check this option. 
+Even when it's checked, you can add inner files manually.
+</dd></dl>
+
+<dl><dt><b>
+Don't create index file
+</b></dt><dd>&nbsp
+Index file is the smallest PAR file, which does not contain any recovery blocks. 
+It is available to verify source files, but is useless to recover a damage. 
+If you don't need the file, check this option.
+</dd></dl>
+
+<hr>
+
+<h3>Verification and Repair options</h3>
+
+<dl><dt><b>
+Monitor files to verify
+</b></dt><dd>&nbsp
+If you check this option, 
+MultiPar will monitor recovery files and source files after the first verification. 
+When new files are added or some files are modified, they are verified automatically. 
+After when a previous verification was ended by error, all files were complete, 
+or all files were repaired successfully, monitoring will finish. 
+If you want to cancel monitoring at any time, push "<b>Escape-key</b>". 
+After that, you may click "Verify" button or push "F5-key" to start monitoring again.
+</dd></dl>
+
+<dl><dt><b>
+Repair automatically
+</b></dt><dd>&nbsp
+If you check this option, MultiPar will start repair after verification if possible. 
+When this isn't checked, it does verification only. 
+If you are lazy to click "Repair" button everytime, this may be useful. 
+The setting is enabled for all verification by "F5-key", "Add", or "Monitor". 
+Even when some files might be restored, if it is impossible to repair all files, 
+it won't repair at all.
+</dd></dl>
+
+<a name="verification_level"></a>
+<dl><dt><b>
+Verification level
+</b></dt><dd>&nbsp
+Normally "<b>Detailed verification</b>" is good. 
+"<b>Simple verification</b>" is faster, when damage didn't delete or insert bytes. 
+"<b>Additional verification</b>" will check all files in the base directory. 
+When filenames of damaged files are different, 
+or when source files are contained in a non-compressed archive like ISO-image, 
+select "Additional verification" to add them automatically. 
+"<b>Aligned verification</b>" is the fastest, but it doesn't backup damaged files. 
+Because it will over-write damaged file directly, there is a risk of more data loss at failed recovery.
+</dd></dl>
+
+<a name="reuse_result"></a>
+<dl><dt><b>
+Re-use verification result
+</b></dt><dd>&nbsp
+If you want to skip some part of verification at next time, set some period in this option. 
+When you open a recovery file at first, files are verified automatically and the result is saved. 
+When you push "Repair" buttom afterwards, 
+the result is re-used and most part of actual verification will be skipped, 
+then the speed becomes faster. 
+By default setting (<b>For a time</b>), GUI keeps the result until it is closed. 
+When you set a longer period (<b>For some days</b>), GUI keeps the result for the period. 
+<b>Caution !</b> with this setting you may see the <b>past status</b> of files. 
+If you want to see the <b>current status</b> of files, push "<b>F5-key</b>", 
+then all files will be re-verified newly. 
+The data files are "<tt>***.bin</tt>" or "<tt>***.ini</tt>" in "<tt>save</tt>" folder. 
+Though old results beyond the period are erased, 
+sometimes those files may become many and large, 
+then be careful about setting long period.
+</dd></dl>
+
+<p>&nbsp
+The difference by setting of re-use feature:<br>
+<center><table border=1 cellspacing=0 cellpadding=2 width="98%">
+<tr bgcolor="E0F0E0"><th rowspan=2>application and setting<th colspan=3>MultiPar<th rowspan=2>QuickPar<br>(as reference)
+<tr bgcolor="E0F0E0"><th>Not used<th>For a time (default)<th>For some days
+<tr><td>When you open a recovery file<td colspan=2 bgcolor="E0E0FF">verify newly<td colspan=2 bgcolor="FFE0E0">re-use previous verification result
+<tr><td>When you click Repair button<br>
+or When you add some new files
+<td bgcolor="E0E0FF">verify again newly<td colspan=3 bgcolor="FFE0E0">re-use previous verification result
+<tr><td>When you push F5-key to re-verify<td colspan=4 bgcolor="E0E0FF">verify again newly
+</table></center>
+</p>
+
+<dl><dt><b>
+Don't search subfolders
+</b></dt><dd>&nbsp
+When a file is missing, it will search the misnamed or moved file in folders recursively by default. 
+If you want to ignore subfolders by the reason of taking time, check this option.
+</dd></dl>
+
+<hr>
+
+<h3>PAR2 options</h3>
+
+<dl><dt><b>
+Save UTF-16 filename additionally
+</b></dt><dd>&nbsp
+MultiPar supports "Unicode Filename packet" (UTF-16 filename) in PAR 2.0 specifications. 
+Only when you use non-ASCII characters in filename, 
+and you send PAR2 files to someone who has another PAR2 client which supports the packet, 
+you should check this option. 
+Usually it is worthless, because most PAR2 clients ignore the packet. 
+No need to check this for MultiPar and par2_tbb, which use UTF-8 filename.
+</dd></dl>
+
+<dl><dt><b>
+Use file index for volume number
+</b></dt><dd>&nbsp
+Standard PAR2 filenames contain how many recovery blocks as their volume number. 
+If you want to use index of files instead of number of blocks, check this option. 
+When you transport PAR2 files over UseNet, you must not check this, 
+because the number of blocks is important for downloaders.
+</dd></dl>
+
+<a name="packet_repetition"></a>
+<dl><dt><b>
+Packet repetition
+</b></dt><dd>&nbsp
+When you create many recovery blocks, the PAR2 files may have many repeating packets. 
+You can disable or decrease the repetition of packets. 
+If you want smaller PAR2 files, 
+you may select "<b>Not used</b>" (no repetition) or "<b>Upto # times</b>" (packets will be repeated upto # times.). 
+If you create only one recovery file, you should select "<b>No restriction</b>".
+</dd></dl>
+
+<!--
+
+<hr>
+
+<h3>PAR3 options</h3>
+
+<p>&nbsp
+My sample PAR3 is implemented only for personal testing purpose. 
+Because I modify its algorithm and format sometimes while writing the proposal, 
+current samples won't be compatible with future PAR 3.0 specifications. 
+This section would be obsolete in future versions.
+</p>
+
+<dl><dt><b>
+Create PAR 2.0 compatible PAR3 file
+</b></dt><dd>&nbsp
+If you want to create PAR3 files which enables verification by PAR2 client, check this option. 
+PAR2 client like QuickPar can use those PAR3 files for verification. 
+Because PAR3 recovery data is not compatible for PAR2, 
+PAR2 client cannot recover lost files with PAR3 files.
+</dd></dl>
+
+<dl><dt><b>
+Use incomplete recovery
+</b></dt><dd>&nbsp
+Only when you cannot repair files by the lack of recovery blocks, 
+you may try this option. 
+This method retrieves damaged blocks from corrupt files, 
+and tries to repair them as possible as it can. 
+For setting, low value will read more damaged blocks and slow, 
+and high value will read less damaged blocks and fast. 
+When "Delete damaged files after Reapir" option isn't checked, 
+if the repair is failed, "<tt>.incomplete</tt>" is inserted into filename and lost area is filled by zero.
+</dd></dl>
+-->
+
+<div id="left_area">
+<p><a href="index.htm">Help for MultiPar</a></p>
+<a href="create.htm">Create window</a><br>
+<a href="preview.htm">Preview window</a><br>
+<a href="creating.htm">Creating window</a><br>
+<a href="verify.htm">Verify window</a><br>
+<a href="recreate.htm">Recreate window</a><br>
+<a href="option.htm">Option window</a>
+</div>
+
+</body>
+</html>

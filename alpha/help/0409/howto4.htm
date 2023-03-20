@@ -1,0 +1,106 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=ISO-8859-1">
+<link rel="stylesheet" href="style.css">
+<title>Verify and repair</title>
+</head>
+<body>
+
+<font size=5>How to verify and repair files</font><br><font size=1><br></font>&nbsp
+If there are lost or damaged files after verification, you can try to repair them. 
+There are something to do, before repair and after failed repair.
+<hr>
+
+<h3>Way to start MultiPar after selecting a recovery file</h3>
+<p>&nbsp
+If you have set options in <a href="option1.htm">"System settings" page</a>, 
+you can start MultiPar by selecting a recovery file. 
+This way is easier than opening a recovery file by pushing "Open" button after you start MultiPar. 
+Even when there are multiple recovery files of same set, you must select one of them. 
+If you happen to select multiple recovery files, 
+Create window may open, or multiple Verify windows will open.
+<dl><dt>
+When you have checked "Associate with ... files";
+</dt><dd>&nbsp
+If you right-click after selecting a recovery file over Windows Explorer, right-click menu appears. 
+Then, you click "<b>Open with MultiPar</b>" on the menu. 
+Or, you simply double-click the recovery file, which you want to open.
+</dd></dl>
+
+<dl><dt>
+When you have checked "Integrate MultiPar into Shell";
+</dt><dd>&nbsp
+If you right-click after selecting a recovery file over Windows Explorer, right-click menu appears. 
+When you select "<b>MultiPar</b>" on the menu, sub-menu appears. 
+Then, you click "<b>Verify Recovery Volume</b>" on the sub-menu.
+</dd></dl>
+<dl><dt>
+When you have checked "Create MultiPar icon on desktop";
+</dt><dd>&nbsp
+You select a recovery file and Drag & Drop it onto the MultiPar icon.
+</dd></dl>
+<dl><dt>
+When you have checked "Add MultiPar icon to [SendTo] menu";
+</dt><dd>&nbsp
+If you right-click after selecting a recovery file over Windows Explorer, right-click menu appears. 
+When you select "<b>SendTo</b>" on the menu, sub-menu appears. 
+Then, you click "<b>MultiPar</b>" on the sub-menu.
+</dd></dl>
+</p>
+
+<h3>Prepare to repair damaged files</h3>
+<p>&nbsp
+While you may verify written files on read-only media like CD-R or DVD-R, 
+you cannot repair damaged files immediately. 
+When you repair files, you need to copy those files on HDD. 
+Even if they are damaged files or fragments of unknown filename, 
+you should bring all source files and recovery files to a folder on HDD. 
+To retrieve as many data as you can from the damaged media, you would better use "<b>File Salvager software</b>". 
+There are many shareware and freeware for the purpose. 
+Because "Data Recovery service" by a specialist company requires more money, 
+it's the last way to restore important data.
+</p>
+
+<hr>
+
+<h3>If you cannot verify by incomplete PAR2 files</h3>
+<p>&nbsp
+When some vital packets are missing in a PAR2 file, it will be hard to verify or repair. 
+But all kinds of packets may exist in multiple PAR2 files. 
+Because MultiPar will search other PAR2 files of same base filename in the folder automatically, 
+you should set same base filename for all PAR2 files of the same recovery set. 
+(Base filename is a filename except extension and volume number.) 
+When other PAR2 files are put in another folder, or are renamed to different base filename, 
+you must add them manually by "Add" button.
+</p>
+
+<h3>If you cannot repair by a lack of available blocks</h3>
+<p>&nbsp
+Get more blocks as possible as you can. 
+If there is a same source file on different location, you should copy it or add it by "Add" button. 
+You need to find more blocks from the damaged media. 
+If you cannot recognize fragments are pieces of which source file, 
+you select "Additional verification" at "<a href="option3.htm#verification_level">Verification level</a>". 
+If there are old files of modified version in a previous backup, it is worth to add them.
+</p>
+<p>&nbsp
+When a transported file had been damaged already, you cannot salvage lost data on your side. 
+If there are other recovery files, you get them, too. 
+If there is same file on another site, you may get it again. 
+Or, you may ask someone to give another set of recovery files.
+</p>
+
+<h3>If you failed to repair, even when you have enough blocks</h3>
+<p>&nbsp
+Mostly this is caused by "exclusive file access" or "limited privilege". 
+While a damaged file or recovered file is being accessed exclusively, it's impossible to replace them. 
+An example is Anti-Virus scanner, and you may need to exclude working folder from real-time scan. 
+When status of a damaged file became "<b>Locked</b>" after failed repair, 
+the file is being used by another application. 
+Of course, you cannot repair (modify) a system file, which is protected by OS. 
+When repair was failed by a fault of PAR1/2 specifications, 
+you may solve the problem by getting one more available block.
+</p>
+
+</body>
+</html>

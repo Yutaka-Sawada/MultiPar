@@ -1,0 +1,54 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=ISO-8859-1">
+<link rel="stylesheet" href="style.css">
+<title>Introducing Parchive</title>
+</head>
+<body>
+
+<font size=5>Introduction to Parchive</font>
+<hr>
+
+<p>&nbsp
+PAR is a clipped from Parchive or Parity Archive, which means container of parity. 
+Even if original files are damaged or lost, 
+it is possible to repair them by extracting the parity. 
+Two types of PAR files are made in same time. 
+While an index file contains data for verification only, 
+recovery files contain data for both verification and repair. 
+Normally they don't distinguish, and they are just called as PAR files.
+</p>
+<p>
+<table>
+<tr><td>Example of PAR1 files:</td></tr>
+<tr><td><tt>Data.PAR</tt></td><td>Index file</td></tr>
+<tr><td><tt>Data.P01</tt></td><td>First recovery file</td></tr>
+<tr><td><tt>Data.P02</tt></td><td>Second recovery file</td></tr>
+<tr><td><tt>Data.P03</tt></td><td>Third recovery file</td></tr>
+<tr><td><font size=1>&nbsp</font></td></tr>
+<tr><td>Example of PAR2 files:</td></tr>
+<tr><td><tt>Data.PAR2</tt></td><td>Index file</td></tr>
+<tr><td><tt>Data.vol0+1.PAR2</tt></td><td>First recovery file, which contains 1 recovery block</td></tr>
+<tr><td><tt>Data.vol1+2.PAR2</tt></td><td>Second recovery file, which contains 2 recovery blocks</td></tr>
+<tr><td><tt>Data.vol3+4.PAR2</tt></td><td>Third recovery file, which contains 4 recovery blocks</td></tr>
+</table>
+</p>
+<p>&nbsp
+Though the index file is usable for verification only, 
+it is very smaller than recovery files. 
+The construction of recovery file is different between PAR1 and PAR2. 
+In PAR1, recovery data is calculated for a group of arrayed source files. 
+The requirement is simple like; 
+it requires 1 recovery file to restore 1 file, or it requires 3 recovery files to restore 3 files.
+</p>
+<p>&nbsp
+In PAR2, recovery data is calculated for a group of allocated blocks in all source files. 
+While saving the recovery data, 
+it is possible to change the number of recovery blocks in each recovery file. 
+Thus, the required number of recovery files can be minimum by their required recovery blocks.
+In above example, you need second recovery file to recover 2 blocks, 
+or you need first and third recovery files to recover 5 blocks.
+</p>
+
+</body>
+</html>

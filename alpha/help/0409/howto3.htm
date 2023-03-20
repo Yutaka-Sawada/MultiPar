@@ -1,0 +1,60 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=ISO-8859-1">
+<link rel="stylesheet" href="style.css">
+<title>Design recovery files</title>
+</head>
+<body>
+
+<font size=5>How to design the recovery files</font><br><font size=1><br></font>&nbsp
+After selecting source files, you design how the recovery files will become.
+<hr>
+
+<h3>How much redundancy you need</h3>
+<p>&nbsp
+The most important setting in creating recovery files is "<b>Redundancy</b>". 
+As you set more redundancy, it will be possible to repair, 
+but more time and space are required. 
+The required quantity depends on your circumstance; 
+like error rate of the saving drive or reliability of the network. 
+If you create as an insurance against rare incident, 5% or 10% may be enough. 
+If you get error often, you may require more, such as 30% or 50%. 
+If you want to protect seriously, backup source files and create recovery files.
+</p>
+
+<p>&nbsp
+A whole file is lost by a human mistake like careless deletion or forgotten transport. 
+In this case, the problem is whether you have enough redundancy to reconstruct the whole file. 
+The measure is "<b>Number of files that can be fully reconstructed if missing</b>" on the bottom of Create window. 
+The "<b>Min - Max</b>" means that, how many files you can repair at least min and under than max. 
+The min should be 1 or more for safety.
+</p>
+
+<h3>How is the efficiency</h3>
+<p>&nbsp
+There is a measure of recovering capability, 
+that is "<b>Efficiency</b>" on the bottom of Create window. 
+Unless you have a trouble to keep saving space, 
+you don't need to take care usually. 
+When there is a big difference between settings, 
+you would better to select a efficient way, 
+but you can ignore small difference like several percent. 
+Because the possibility of repair is largely varied by distribution of damage, 
+it is worthless to aim for the best efficiency.
+</p>
+
+<hr>
+
+<h3>If you post the recovery files on UseNet</h3>
+<p>&nbsp
+On Option window, 
+it is important to set <a href="option2.htm#unit_size">the unit of blocks</a> for UseNet. 
+Though it depends on the server, mostly it is "For yEnc: 3,000 lines" or "For yEnc: 5,000 lines". 
+No need to change other settings. 
+If you want smaller recovery files, 
+you may limit <a href="option3.htm#packet_repetition">repetition of packets</a> by selecting "<b>Upto 4 times</b>". 
+On Create window, you should select "<b>Powers of 2 sizing scheme</b>" at "Sizing scheme".
+</p>
+
+</body>
+</html>

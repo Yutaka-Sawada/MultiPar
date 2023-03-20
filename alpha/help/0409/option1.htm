@@ -1,0 +1,127 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=ISO-8859-1">
+<link rel="stylesheet" href="style_panel.css">
+<title>Option - System settings</title>
+</head>
+<body>
+
+<font size=5>System settings</font>
+<hr>
+
+<h3>Integration</h3>
+
+<dl><dt><b>
+Associate with ... files
+</b></dt><dd>&nbsp
+You can associate MultiPar with these file types. 
+Their extensions are PAR1 (<tt>.PAR</tt>, <tt>.P01</tt>, <tt>.P02</tt>, <tt>.P03</tt>, <tt>.P04</tt>, <tt>.P05</tt>, <tt>.P06</tt>, <tt>.P07</tt>, <tt>.P08</tt>, <tt>.P09</tt>), 
+PAR2 (<tt>.PAR2</tt>), PAR3 (<tt>.PA3</tt>), and SFV/MD5 (<tt>.SFV</tt> and <tt>.MD5</tt>). 
+Before you check one of them, you should de-associate it from another application (like QuickPar).
+</dd></dl>
+
+<a name="shortcut"></a>
+<dl><dt><b>
+Integrate MultiPar into Shell
+</b></dt><dd>&nbsp
+This option adds <b>MultiPar</b> on right-click menu over <b>Windows Explorer</b>. 
+On the sub-menu, you click "<b>Create Recovery Files</b>" to create PAR files, 
+or click "<b>Verify Recovery File</b>" to verify files by the PAR file. 
+However this feature is similar to shortcut icon in [SendTo], 
+you can supply more files, because there is no limit of length as command line. 
+When only one folder is selected to create, the folder becomes base directory, 
+and all files in the folder will be selected. 
+When <a href="http://www.7-zip.org">7-Zip</a> is installed, it's possible to pack files, and create PAR files for the archive.
+</dd></dl>
+
+<hr>
+
+<h3>Program Shortcut</h3>
+<p>&nbsp
+Shortcut icon on desktop or [<b>SendTo</b>] menu is usable to start MultiPar for invoking Open or Create. 
+If you drop down a recovery file on the shortcut icon, 
+MultiPar will open the recovery file. 
+If you drop down some source files on the shortcut icon, 
+MultiPar will create recovery files for them.
+</p>
+
+<hr>
+
+<a name="folder_location"></a>
+<h3>Folder location</h3>
+<p>&nbsp
+By pushing these buttons, you can open MultiPar related folders directly. 
+Though this feature is useful to refer documents, be careful not to delete important files. 
+The current user's temporary files and log files are saved in the user specific "<tt>save</tt>" folder, 
+and it is possible to erase those files in this folder anytime.
+</p>
+
+<hr>
+
+<h3>Hardware environment</h3>
+
+<dl><dt><b>
+Memory usage upto around
+</b></dt><dd>&nbsp
+This option is not strict, but a rough rate against available memory size. 
+"<b>Auto</b>" is good normally. 
+Only when you want to keep memory for other applications or system cache, 
+you may try lower rate.
+</dd></dl>
+
+<dl><dt><b>
+File access mode
+</b></dt><dd>&nbsp
+Only when MultiPar fails to recognize a drive type, you may change this option. 
+To enforce random access mode on the drive (SSD or RAM drive), select "<b>SSD</b>". 
+To enforce sequential scan mode on the drive (HDD or Optical drive), select "<b>HDD</b>". 
+Because random access mode is very slow (and maybe harmful) on HDD, 
+you should select "<b>Auto</b>" normally.
+</dd></dl>
+
+<dl><dt><b>
+CPU usage
+</b></dt><dd>&nbsp
+If you have recent PC with Multi-Core CPU, you may change the usage rate. 
+When you want to keep some CPU power for another task or cool down PC, this is useful.
+</dd></dl>
+
+<p>
+<center><table border=1 cellspacing=0 cellpadding=2 width="90%">
+<tr bgcolor="E0F0E0"><th>Position of slider<th>Number of using threads (max 16)
+<tr><td>Left most<td>Quarter number of physical Cores
+<tr><td>Second from left<td>Half of physical Cores
+<tr><td>Medium<td>3/4 number of physical Cores
+<tr><td>Second from right<td>For CPU with 5 or less Cores, number of physical Cores (exclude Hyper Threading)<br>
+For CPU with 6 or more Cores, number of physical Cores -1
+<tr><td>Right most<td>For CPU with Hyper Threading is enabled on 5 or less Cores, number of physical Cores +1<br>
+For CPU with 6 or more Cores, number of physical Cores
+</table></center>
+</p>
+
+<dl><dt><b>
+Extra feature
+</b></dt><dd>&nbsp
+The proper features are selected from checked items. 
+Only when a feature doesn't work correctly, remove the check.
+</dd></dl>
+
+<dl><dt><b>
+Enable GPU acceleration
+</b></dt><dd>&nbsp
+When your PC includes a GPU device, you may check this option for speed-up. 
+If OS's response is too slow or PC is over heat, you should disable it.
+</dd></dl>
+
+<div id="left_area">
+<p><a href="index.htm">Help for MultiPar</a></p>
+<a href="create.htm">Create window</a><br>
+<a href="preview.htm">Preview window</a><br>
+<a href="creating.htm">Creating window</a><br>
+<a href="verify.htm">Verify window</a><br>
+<a href="recreate.htm">Recreate window</a><br>
+<a href="option.htm">Option window</a>
+</div>
+
+</body>
+</html>

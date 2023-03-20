@@ -1,0 +1,96 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=ISO-8859-1">
+<link rel="stylesheet" href="style.css">
+<title>Add recovery record</title>
+</head>
+<body>
+
+<font size=5>How to add recovery record to ZIP or 7-Zip archive</font>
+<hr>
+
+<p>&nbsp
+ZIP archive (extension <tt>.zip</tt>) is used widely and 7-Zip archive (extension <tt>.7z</tt>) is useful. 
+Because they don't have a feature of recovery record, someone might feel RAR archive is better. 
+But, by using Parchive, normal ZIP or 7-Zip archive can be protected with recovery record also.
+</p>
+<p>
+<table border=0 cellspacing=0 cellpadding=1>
+<tr><td>Step 1:</td>
+<td>Create a ZIP or 7-Zip archive file.</td>
+<td><table border=1 cellspacing=0 cellpadding=2>
+<tr><td bgcolor="FFE0E0">ZIP or 7-Zip archive file</td></tr></table>
+</td></tr>
+<tr><td>Step 2:</td>
+<td width="40%" nowrap>Create a single PAR2 file for the archive file.</td>
+<td><table border=1 cellspacing=0 cellpadding=2>
+<tr><td bgcolor="E0E0FF">PAR2 recovery file</td></tr></table>
+</td></tr>
+<tr><td nowrap>Step 3:</td>
+<td colspan=2>With binary editor or Copy command, append the PAR2 file to the archive file. 
+Then, the appended archive file contains recovery record. 
+The construction of the file is like below;
+</td></tr>
+<tr>
+<td colspan=3 align="center"><table border=1 cellspacing=0 cellpadding=2>
+<tr><td bgcolor="FFE0E0">Original archive file</td><td bgcolor="E0E0FF">Appended PAR2 recovery data</td></tr></table>
+</td></tr>
+
+<tr><td colspan=3><br>Step 4 is required only for ZIP archive:</td></tr>
+<tr><td></td><td colspan=2>
+There is "end of central directory record" (starting with a byte sequence of: 0x06054b50) at the end of ZIP file. 
+With binary editor, copy the section (22-bytes or more) and append it to the end of recovery data. 
+The construction of the file is like below;
+</td></tr>
+<tr>
+<td colspan=3 align="center"><table border=1 cellspacing=0 cellpadding=2>
+<tr><td bgcolor="FFE0E0">Original ZIP archive file</td><td bgcolor="E0E0FF">Appended PAR2 recovery data</td>
+<td bgcolor="FFE0FF">End of central directory record</td>
+</tr></table>
+</td></tr>
+
+<tr><td></td><td colspan=2><br>
+When the ZIP file is ZIP64 format, 
+there are "zip64 end of central directory record" (starting with a byte sequence of: 0x06064b50), 
+"zip64 end of central directory locator", and "end of central directory record" at the end of ZIP file. 
+With binary editor, copy the 3 sections (total 98-bytes or more) and append them to the end of recovery data.
+</td></tr>
+<tr>
+<td colspan=3 align="center"><table border=1 cellspacing=0 cellpadding=2>
+<tr><td bgcolor="FFE0E0">Original ZIP64 archive file</td><td bgcolor="E0E0FF">Appended PAR2 recovery data</td>
+<td bgcolor="FFE0FF">The final 3 sections of ZIP64 format</td>
+</tr></table>
+</td></tr>
+
+</table>
+</p>
+<p>&nbsp
+Because the file header is still the one of archive, it's treated as an archive file, 
+and normal archiver software can extract inner files. 
+Because the file contains PAR2 packets, PAR2 client can treat it as PAR2 file also. 
+As MultiPar can treat a PAR2 file which has different extension from "<tt>.par2</tt>", 
+Drag&Drop the protected archive onto MultiPar short-cut icon will verify the archive file. 
+On the MultiPar GUI, the archive with recovery record is shown as "Appended" status, 
+when the original part of archive is complete.
+</p>
+<p>&nbsp
+Note, if you repair the archive, 
+recovery record (appended PAR2 recovery data) will be removed. 
+When you want to keep the PAR2 recovery data, 
+you need to copy the file at first, and rename it to "<tt>something.par2</tt>", 
+then open the "<tt>something.par2</tt>" by MultiPar (or QuickPar). 
+Though you can split a protected archive into original part and recovery record by a binary editor, 
+it's not easy task for normal users.
+</p>
+<p>&nbsp
+I think this method is useful to protect only one archive file. 
+It is same as having two files (an archive file and its PAR2 file), 
+but is convenient for transport / public / distribution as one ZIP/7-Zip file. 
+Normally freeware/shareware publication site accepts only one archive file. 
+If an archiver software has a built-in feature to append PAR2 recovery data to a created archive, 
+it may be useful.
+</p>
+
+</body>
+</html>
+

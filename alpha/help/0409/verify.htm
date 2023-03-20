@@ -1,0 +1,182 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=ISO-8859-1">
+<link rel="stylesheet" href="style_panel.css">
+<title>Verify window</title>
+</head>
+<body>
+
+<font size=5>Verify window</font><br><font size=1><br></font>&nbsp
+When you start MultiPar by selecting a recovery file, this window opens and verification is started. 
+You see which files are damaged or lost, and you can repair them if there is enough recovery data. 
+If you want to verify again newly, push "<b>F5-key</b>". 
+When multiple instances of MultiPar are running, 
+it waits finish of another instance's task, and will start next.
+<hr>
+
+<dl><dt><b>
+Base directory</b> and <b>Browse</b> button
+</dt><dd>&nbsp
+This directory is the folder where source files exist. 
+If source files exist in a different folder from where recovery files exist, 
+all source files are treated as lost. 
+Then, you must select the folder by clicking "Browse" button, 
+Drag & Drop a folder, or double-click the path box.
+</dd></dl>
+
+<dl><dt><b>
+Creator</b> and <b>Comment</b>
+</dt><dd>&nbsp
+"Creator" is a name of PAR client which was used to create the selected recovery file. 
+When a comment is saved in the file, it is shown, too.
+</dd></dl>
+
+<p>&nbsp
+On the file-list, recovery files are put on upper side, 
+and source files are put on lower side. 
+Because Size and Status of each file are shown, 
+it is easy to know which is incomplete. 
+Total size and number of total blocks are shown, too.
+</p>
+
+<p>&nbsp
+After verification, the result like number of files on each status is shown. 
+When source files are damaged or lost, 
+you can know whether it is possible to repair or not. 
+You may recognize the status easily by their icon color. 
+<font color="#009000">[green file]</font> indicates the file is complete. 
+<font color="#807800">[yellow file]</font> indicates the file is damaged or misnamed. 
+<font color="#C00000">[red file]</font> indicates the file is missing. 
+<font color="#807800">[yellow folder]</font> indicates the folder exists. 
+<font color="#C00000">[red folder]</font> indicates the folder is missing. 
+Manually added external files are shown as [white file].
+</p>
+
+<hr>
+
+<dl><dt><b>
+Display of progress
+</b></dt><dd>&nbsp
+Window title indicates which step now, 
+and Progress bar indicates the current position in the step. 
+Because there are some steps, bar moves sometimes until the whole process complete.
+</dd></dl>
+
+<dl><dt><b>
+Meter of found blocks
+</b></dt><dd>&nbsp
+On the meter, each area represents the number of blocks by width; 
+<font color="#009000">[green area]</font> indicates available source blocks, 
+<font color="#807800">[yellow area]</font> indicates recoverable source blocks, 
+<font color="#C00000">[red area]</font> indicates how many blocks are lacking. 
+At a glance, you see how many blocks are lost, and you need how many blocks to repair.
+</dd></dl>
+
+<dl><dt><b>
+Area of status text
+</b></dt><dd>&nbsp
+When you see an error message, the error is saved in log file. 
+Double-click here, then "<tt>save</tt>" folder will be opened. 
+</dd></dl>
+
+<dl><dt><b>
+Time left
+</b></dt><dd>&nbsp
+This is a required time to finish. 
+You may need to wait longer than this time, because the calculation is rough.
+</dd></dl>
+
+<hr>
+
+<dl><dt><b>
+Add</b> button
+</dt><dd>&nbsp
+By pushing this button or Drag&Drop files on list, you can add other files to be verified. 
+If you want to add external files out of base directory or recovery file's directory, 
+you need to add them by yourself. 
+The list of added files will be reset by selecting a new recovery file or changing base directory. 
+When you want to add all files under the base directory, 
+you would better set "<a href="option3.htm#verification_level">Verification level</a>" to "Additional verification".
+</dd></dl>
+
+<dl><dt><b>
+Pause</b> or <b>Resume</b> button
+</dt><dd>&nbsp
+You may pause the process temporary by pushing "Pause" button. 
+While pausing, you can resume the process at the point by pushing "Resume" button. 
+You may push "<b>Pause-key</b>" to pause or resume, too.
+</dd></dl>
+
+<dl><dt><b>
+Repair</b>, <b>Restore</b>, <b>Rename</b>, or <b>Verify</b> button
+</dt><dd>&nbsp
+You push this button to start verify and repair if possible. 
+The caption is varied by recovering beavior. 
+When total repair is possible, it's "Repair". 
+When easy correction and/or rejoin is possible, it's "Restore". 
+When rename is possible, it's "Rename". 
+When repair is impossible at all, it's "Verify".
+</dd></dl>
+
+<dl><dt><b>
+Cancel</b> button
+</dt><dd>&nbsp
+If you want to cancel the verification or repair, push "Cancel" button. 
+You may push "<b>Escape-key</b>" to cancel, too.
+</dd></dl>
+
+<dl><dt><b>
+Extra</b> button
+</dt><dd>&nbsp
+If you want to create extra recovery files or recreate recovery files against the same set of source files in the current recovery file, 
+push this to open <a href="recreate.htm">Recreate window</a>. 
+<b>Caution</b>, newly created files will overwrite existing files of same name.
+</dd></dl>
+
+<hr>
+
+<dl><dt><b>
+Open</b> button
+</dt><dd>&nbsp
+If you want to open another recovery file to verify, push this to select which. 
+If the selected file would not be recognized as a supported file, 
+you should set proper file extension for the file type.
+</dd></dl>
+
+<dl><dt><b>
+New</b> button
+</dt><dd>&nbsp
+If you want to create new recovery files, push this to open <a href="create.htm">Create window</a>.
+</dd></dl>
+
+<dl><dt><b>
+About</b> button
+</dt><dd>&nbsp
+By pushing this, you can see version number on About window. 
+You may launch this Help from there.
+</dd></dl>
+
+<dl><dt><b>
+Options</b> button
+</dt><dd>&nbsp
+If you want to change settings, push this, then <a href="option.htm">Option window</a> will appear.
+</dd></dl>
+
+<dl><dt><b>
+Exit</b> button
+</dt><dd>&nbsp
+You can close MultiPar by pushing this.
+</dd></dl>
+
+<div id="left_area">
+<p><a href="index.htm">Help for MultiPar</a></p>
+<a href="create.htm">Create window</a><br>
+<a href="preview.htm">Preview window</a><br>
+<a href="creating.htm">Creating window</a><br>
+<a href="verify.htm">Verify window</a><br>
+<a href="recreate.htm">Recreate window</a><br>
+<a href="option.htm">Option window</a>
+</div>
+
+</body>
+</html>

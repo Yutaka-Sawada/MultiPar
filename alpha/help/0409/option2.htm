@@ -1,0 +1,182 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=ISO-8859-1">
+<link rel="stylesheet" href="style_panel.css">
+<title>Option - GUI options</title>
+</head>
+<body>
+
+<font size=5>GUI options</font>
+<hr>
+
+<h3>GUI options</h3>
+
+<dl><dt><b>
+Language
+</b></dt><dd>&nbsp
+You can change language of user interface. 
+"<b>Auto</b>" is default setting of PC. 
+Only when you want to use different language, select another. 
+This change will become enabled, when you start MultiPar next time. 
+</dd></dl>
+
+<dl><dt><b>
+Font
+</b></dt><dd>&nbsp
+You can change looks and size of characters. 
+Normally "<b>MS Shell Dlg 2</b>" is the standard font for dialog. 
+When you set another font at OS's graphic setting, the font may be shown in this list. 
+If you want to set your favorite font like "Arial", 
+write this line "<tt>FontName=Arial</tt>" under "<tt>[Option]</tt>" section on "<tt>MultiPar.ini</tt>" file directly.
+</dd></dl>
+
+<dl><dt><b>
+Format of file size
+</b></dt><dd>&nbsp
+You may select your favorite format. 
+When you don't care small difference, "<b>With unit</b>" looks simple. 
+If you use Windows Explorer, "<b>With kilo-bytes</b>" looks samely. 
+</dd></dl>
+
+<dl><dt><b>
+Style of text on progress-bar
+</b></dt><dd>&nbsp
+You may change background of text over progress-bar.
+</dd></dl>
+
+<hr>
+
+<h3>Supported media and sizes</h3>
+<p>&nbsp
+These contents are used for a list of "<b>Media</b>" on Create window. 
+In the edit box, you must put "<b>:</b>" between the media's name and size. 
+The name is left side, "<b>:</b>" is middle, and the size is right side. 
+The size must be value only, don't use comma or unit simbol like MB. 
+The max length of name is 18, and max size is 999999999999 (931 GB).
+</p>
+
+<hr>
+
+<a name="unit_size"></a>
+<h3>Restrict block size to multiples of the unit</h3>
+<p>&nbsp
+When you create PAR2 files, you may change the block allocation. 
+By setting an unit size of blocks, 
+the block size will become a multiple of the unit.
+</p>
+
+<dl><dt><b>
+No restriction on the size
+</b></dt><dd>&nbsp
+When you don't set unit, you will be able to change the block size freely.
+</dd></dl>
+
+<dl><dt><b>
+Exact
+</b></dt><dd>&nbsp
+You can set the unit as bytes directly. 
+By setting <b>Cluster size</b> of your saving drive, 
+you can verify and repair efficienctly. 
+For example, you would better set 2 KB for CD-R or DVD-R. 
+It may be from 4 KB to 64 KB for HDD, 
+or from 512-bytes to 4KB for USB memory.
+</dd></dl>
+
+<dl><dt><b>
+For yEnc</b> or <b>For UUEncode
+</b></dt><dd>&nbsp
+Only when you post the files on <b>UseNet</b>, you should set the unit as lines of the encoding. 
+Because the setting depends on your UseNet server, 
+you must follow the directions of the server.
+</dd></dl>
+
+<hr>
+
+<a name="block_allocation"></a>
+<h3>Block allocating method</h3>
+<p>&nbsp
+When you select source files to create PAR2 files, 
+source blocks are allocated for the files. 
+By this option, you can change the method of how to allocate blocks. 
+Everytime you add or remove files, blocks will be allocated by the selected method automatically.
+</p>
+
+<dl><dt><b>
+Limit Block count up to
+</b></dt><dd>&nbsp
+As there are many blocks, creation will require more time. 
+If you want to limit the number of blocks, set the max block count and check this. 
+Be careful not to set too few blocks, 
+because large block size will be inefficient to recover small damages. 
+In the era of CD or DVD, par2cmdline sets 2,000 blocks and QuickPar sets 3,000 blocks.
+</dd></dl>
+
+<dl><dt><b>
+Rate (count / size)
+</b></dt><dd>&nbsp
+This rate is block count divided by block size. 
+For example, setting "1%" for 10,000-bytes block size gives 100 blocks, 
+as "<tt>100 blocks / 10000-bytes = 0.01 = 1%</tt>". 
+This calculation method is ideal for widely varied data size. 
+As total data size becomes large, more blocks will be allocated, but the change is mild.
+</dd></dl>
+
+<dl><dt><b>
+Block size
+</b></dt><dd>&nbsp
+You may set preferred block size. 
+When you set unit size, resulting block size will be adjusted. 
+If you treat similar data size usually, this calculation method may be good. 
+Be careful about the result of too few or too many blocks.
+</dd></dl>
+
+<p>&nbsp
+Because MultiPar tries to find efficient allocation by adjusting block size, 
+the result may be different from your specified value. 
+If you want to get a specific block size always, 
+set "Block size" here, and select "No restriction on the size" on <a href="option2.htm#unit_size">above section</a>. 
+If you want to allocate blocks like QuickPar, 
+you need to check "Limit Block count up to" and set "Block size".
+</p>
+
+<p>&nbsp
+Example of how are the blocks in different level of total data size:<br>
+<center><table border=1 cellspacing=0 cellpadding=2 width="98%">
+<tr bgcolor="E0F0E0"><th>Method
+<th width="23%">CD level (600MB)
+<th width="25%">DVD level (4GB)
+<th width="25%">BD level (20GB)
+
+<tr><td>Rate (count / size): 1%
+<td bgcolor="D0F0F0" rowspan=2>Block count: 2,508<br>Block size: 245 KB
+<td bgcolor="FFFFD0">Block count: 6,553<br>Block size: 640 KB
+<td bgcolor="FFFFD0">Block count: 14,655<br>Block size: 1,431 KB
+
+<tr><td>Limit Block count up to: 3,000<br>Rate (count / size): 1%
+<td bgcolor="E0E0FF">Block count: 3,000<br>Block size: 1,398 KB
+<td bgcolor="E0E0FF">Block count: 3,000<br>Block size: 6,990 KB
+
+<tr><td nowrap>Block size: 262,144 bytes
+<td bgcolor="D0F0F0" rowspan=2>Block count: 2,400<br>Block size: 256 KB
+<td bgcolor="FFFFD0">Block count: 16,384<br>Block size: 256 KB
+<td bgcolor="FFE0E0">Block count: 32,768<br>Block size: 640 KB
+
+<tr><td nowrap>Limit Block count up to: 3,000<br>Block size: 262,144 bytes
+<td bgcolor="E0E0FF">Block count: 3,000<br>Block size: 1,398 KB
+<td bgcolor="E0E0FF">Block count: 3,000<br>Block size: 6,990 KB
+
+</table></center>
+</p>
+
+<div id="left_area">
+<p><a href="index.htm">Help for MultiPar</a></p>
+<a href="create.htm">Create window</a><br>
+<a href="preview.htm">Preview window</a><br>
+<a href="creating.htm">Creating window</a><br>
+<a href="verify.htm">Verify window</a><br>
+<a href="recreate.htm">Recreate window</a><br>
+<a href="option.htm">Option window</a>
+</div>
+
+</body>
+</html>

@@ -1,0 +1,83 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=ISO-8859-1">
+<link rel="stylesheet" href="style.css">
+<title>ReadMe - Installation</title>
+</head>
+<body>
+
+<h3>Install or uninstall with installer package</h3>
+<p>&nbsp
+Double click setup file ( <tt>MultiPar131_setup.exe</tt> or something like this name ),
+and follow the installer dialog. 
+At version up, if you want to use previous setting, overwrite install is possible. 
+Before overwrite install, you should un-check "Integrate MultiPar into Shell". 
+You may need to re-start OS after overwrite install or uninstall rarely. 
+To install under "<tt>Program Files</tt>" or "<tt>Program Files (x86)</tt>" directory, 
+you must start the installer with administrative privileges by selecting 
+"Run as administrator" on right-click menu.
+</p>
+<p>&nbsp
+You can uninstall through the Windows OS's Control Panel, 
+or double click <tt>unins000.exe</tt> in a folder which MultiPar was installed. 
+Because uninstaller does not delete setting files or newly put files, 
+you may delete them by yourself.
+</p>
+<p>&nbsp
+When you have used installer package, you should not move install folder. 
+Or else, you will fail to uninstall later.
+</p>
+
+<h3>Installation for multiple users by installer package</h3>
+<p>&nbsp
+If multiple users may log-on a PC, the administrator can install MultiPar for everyone. 
+By installing with administrative privileges, installer made Start Menu icon, 
+Desktop icon, and File association will be available for all users. 
+When he installed under "<tt>Program Files</tt>" directory, each user keeps individual setting. 
+When he installed in another folder, all users share same setting. 
+In either case, user made icons and association are available for the user only.
+</p>
+
+<hr>
+
+<h3>Install with archive version</h3>
+<p>&nbsp
+Unpack compressed file ( <tt>MultiPar131.zip</tt> or something like this name ) in a folder.
+<tt>MultiPar.exe</tt> is the interface of MultiPar.
+</p>
+<p>&nbsp
+You can create short-cut icon or send-to link at Option window later. 
+If you associate PAR file extensions "<tt>.par</tt>" or "<tt>.par2</tt>" with MultiPar, 
+de-associate them from other application like QuickPar at first. 
+</p>
+
+<h3>Un-install with archive version</h3>
+<p>&nbsp
+If you associate PAR file with MultiPar, de-associate them from this. 
+Delete all files in the install folder, in which you extract files. 
+If you installed MultiPar under "<tt>Program Files</tt>" directory, 
+setting data was saved in MultiPar folder under "<tt>Application Data</tt>" directory, 
+so you need to delete the folder.
+</p>
+<p>&nbsp
+When you integrated MultiPar into shell at Option window, 
+you must clear the check before un-install. 
+If you have deleted <tt>MultiPar.exe</tt> already, you can un-install the DLL manually. 
+Open "Command Prompt" and change directory to MultiPar's folder, 
+then type "<tt>RegSvr32.exe /u MultiParShlExt64.dll</tt>" to remove shell extension. 
+You cannot delete "<tt>MultiParShlExt64.dll</tt>", while it is used by OS or Explorer. 
+You may log-off and log-on again to OS before deleting the file.
+</p>
+
+<h3>Change installed folder of archive version</h3>
+<p>&nbsp
+Move files in the install folder. 
+If you associated PAR file with MultiPar, de-associate once, and associate again. 
+If you want to use same setting at another PC, copy the setting file "<tt>MultiPar.ini</tt>".
+If you move MultiPar into "Program Files" directory, 
+setting data is saved in MultiPar folder under "Application Data" directory, 
+so you need to move "<tt>MultiPar.ini</tt>" into the folder, too.
+</p>
+
+</body>
+</html>

@@ -1,0 +1,865 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=ISO-8859-1">
+<meta http-equiv="Content-Style-Type" content="text/css">
+<style type="text/css">
+<!--
+textarea{width:100%;}
+-->
+</style>
+<title>Batch script</title>
+</head>
+<body>
+
+<font size=5>Sample of batch script</font>
+<hr>
+
+<p>&nbsp
+Because MultiPar consists of PAR clients and GUI, 
+it is possible to use a PAR client on Command prompt. 
+Read a manual of command line for the details of command and option. 
+It's available by batch file (or command script).
+</p>
+<p>&nbsp
+Below are some samples of batch file for Windows 7. 
+Copy & paste the whole lines into a text file. 
+Modify the options for PAR2 files, and set the path of <tt>par2j.exe</tt>. 
+Write absolute path like;<br>
+<code>SET par2_path="C:\something directory\MultiPar\par2j.exe"</code><br>
+Read manuals (<tt>Command_***.txt</tt>) to know the detail of options. 
+Read Windows OS 's help for Command prompt's usage.
+</p>
+<p>&nbsp
+Save a sample script to a file like <tt>batch.bat</tt> or <tt>batch.cmd</tt>. 
+To specify path of files or folders, Drag & Drop them on the batch file. 
+When you put a shortcut icon of the batch file in "SendTo" menu, 
+you can call the batch file by selecting files then Righ-Click & SendTo.
+</p>
+<p>&nbsp
+If you want to confirm the result of scripting, 
+add "<code>PAUSE</code>" at the end of batch file. 
+If you want to see how each command line is parsed, 
+remove "<code>@ECHO OFF</code>" at the top of batch file, 
+or add "<code>ECHO</code>" in front of the questionable line. 
+These may help you understanding how batch script works.
+</p>
+<p>&nbsp
+If you want to switch flow by the result, you may use a special environment variable "<code>ERRORLEVEL</code>". 
+"<code>if ERRORLEVEL number task~</code>" means that the task will start when ERRORLEVEL is greater than or equal to the number. 
+"<code>if not ERRORLEVEL number task~</code>" means that the task will start when ERRORLEVEL is less than the number. 
+It's possible to refer the value by using "<code>%ERRORLEVEL%</code>". 
+The code is such like "<code>set err = %ERRORLEVEL%</code>". 
+When you want to refer ERRORLEVEL in "for ~ do ~" loop, 
+you must set a local variable as "<code>setlocal enabledelayedexpansion</code>" and use "<code>!ERRORLEVEL!</code>".
+</p>
+
+<hr>
+
+<h3>Index</h3>
+<table width="100%">
+<tr><td><a href="#C1">Create individual PAR2 set in each selected folder (with GUI)</a><td>
+<tr><td><a href="#C2">Create individual PAR2 set in each subfolder under a selected folder (with GUI)</a><td>
+<tr><td><a href="#C3">Create one PAR2 file per each file in a selected folder</a><td>
+<tr><td><a href="#C4">Create individual PAR2 set per each set of 4 files from many selected files</a><td>
+<tr><td><a href="#C5">Create PAR2 recovery data and append it to each original ZIP / 7-Zip archive file</a><td>
+<tr><td><hr width="95%"></td>
+<tr><td><a href="#V1">Verify and/or Repair individual PAR2 set in each selected folder with GUI</a><td>
+<tr><td><a href="#V2">Create, Verify or Repair individual PAR2 set in each subfolder under a selected folder with GUI</a><td>
+<tr><td><hr width="95%"></td>
+
+<tr><td><a href="#A1">Add MD5 checksum to each file independently in a selected folder (NTFS only)</a><td>
+<tr><td><a href="#A2">Verify each file independently by MD5 checksum in a selected folder (NTFS only)</a><td>
+
+<tr><td><hr width="95%"></td>
+<tr><td><a href="#N1">Play sound for notification</a><td>
+<tr><td><hr width="95%"></td>
+<tr><td><a href="#B1">Batch processing after MultiPar GUI 's Creation</a><td>
+<tr><td><a href="#B2">Batch processing after MultiPar GUI 's Verification / Repair</a><td>
+</table>
+
+<hr>
+
+<a name="C1"></a>
+<h3>Create individual PAR2 set in each selected folder (with GUI)</h3>
+<p>
+<table border=1 cellspacing=0 cellpadding=2 width="100%">
+<tr><td>Command<td>"path of batch file" "path of folder1" "path of folder2" "path of folder3"... 
+<tr><td>Input<td>specify some folders
+<tr><td>Action<td>This sample creates individual PAR2 set in each selected folder. 
+For example, when you supply 7 folders, total 7 PAR2 set are made. 
+It is possible to show GUI for setting, too.
+</table>
+</p>
+
+<textarea cols=64 rows=23 readonly wrap=off>
+@ECHO OFF
+SETLOCAL
+
+SET par2_path="path of par2j.exe"
+
+:GetFilePath
+REM check input path
+IF "%~1"=="" GOTO End
+IF NOT EXIST "%~1" GOTO NextFile
+
+REM run PAR2 client
+ECHO create for %1
+%par2_path% c /sm2048 /rr20 /rd1 /rf3 "%~1\%~n1.par2" *
+
+IF ERRORLEVEL 1 GOTO End
+
+:NextFile
+SHIFT
+GOTO GetFilePath
+
+:End
+ENDLOCAL</textarea>
+
+<p>&nbsp
+If you want to use MultiPar GUI for setting, you may call <tt>MultiPar.exe</tt> instead of <tt>par2j.exe</tt>. 
+When a GUI is closed, next GUI is opened with next folder. 
+You may set an option in "Automated tasks" to close GUI automatically after creation.
+</p>
+
+<textarea cols=64 rows=21 readonly wrap=off>
+@ECHO OFF
+SETLOCAL
+
+SET multipar_path="path of MultiPar.exe"
+
+:GetFilePath
+REM check input path
+IF "%~1"=="" GOTO End
+IF NOT EXIST "%~1" GOTO NextFile
+
+REM open MultiPar GUI
+ECHO create for %1
+%multipar_path% /create %1
+
+:NextFile
+SHIFT
+GOTO GetFilePath
+
+:End
+ENDLOCAL</textarea>
+
+<p>&nbsp
+If you don't want to wait the finish of each creation, 
+you may use "<code>START</code>" command in the script. 
+Because all MultiPar GUIs will open at once for each folder, 
+you can start each creation anytime.
+</p>
+
+<textarea cols=64 rows=21 readonly wrap=off>
+@ECHO OFF
+SETLOCAL
+
+SET multipar_path="path of MultiPar.exe"
+
+:GetFilePath
+REM check input path
+IF "%~1"=="" GOTO End
+IF NOT EXIST "%~1" GOTO NextFile
+
+REM open MultiPar GUI
+ECHO create for %1
+START "" %multipar_path% /create %1
+
+:NextFile
+SHIFT
+GOTO GetFilePath
+
+:End
+ENDLOCAL</textarea>
+
+<hr>
+
+<a name="C2"></a>
+<h3>Create individual PAR2 set in each subfolder under a selected folder (with GUI)</h3>
+<p>
+<table border=1 cellspacing=0 cellpadding=2 width="100%">
+<tr><td>Command<td>"path of batch file" "path of a folder"
+<tr><td>Input<td>specify a folder
+<tr><td>Action<td>This sample creates individual PAR2 set in each subfolder under the selected folder. 
+For example, when there are 7 subfolders, total 7 PAR2 set are made.
+</table>
+</p>
+
+<textarea cols=64 rows=33 readonly wrap=off>
+@ECHO OFF
+SETLOCAL
+
+REM check input path
+IF "%~1"=="" GOTO End
+IF NOT EXIST "%~1" (
+ECHO The path does not exist.
+GOTO End
+)
+
+REM set options for PAR2 client
+SET par2_path="path of par2j.exe"
+
+REM recursive search of subfolders
+PUSHD %1
+FOR /D /R %%G IN (*.*) DO CALL :ProcEach "%%G"
+POPD
+
+GOTO End
+
+REM run PAR2 client
+:ProcEach
+ECHO create for %1
+%par2_path% c /fo /sm2048 /rr20 /rd1 /rf3 "%~1\%~n1.par2" *
+
+GOTO :EOF
+
+:End
+ENDLOCAL</textarea>
+
+<p>&nbsp
+Don't remove an option <code>/fo</code> in the command-line. 
+By this option, PAR2 file contains files only in each subfolder.
+</p>
+
+<p>&nbsp
+If you want to use MultiPar GUI for setting, you may call <tt>MultiPar.exe</tt> instead of <tt>par2j.exe</tt>. 
+When a GUI is closed, next GUI is opened with next folder. 
+You may set an option in "Automated tasks" to close GUI automatically after creation. 
+You may check "Always use folder name for base filename" option in "Client behavior", 
+then each PAR2 set is named by the folder.
+</p>
+
+<textarea cols=64 rows=33 readonly wrap=off>
+@ECHO OFF
+SETLOCAL
+
+REM check input path
+IF "%~1"=="" GOTO End
+IF NOT EXIST "%~1" (
+ECHO The path does not exist.
+GOTO End
+)
+
+SET multipar_path="path of MultiPar.exe"
+
+REM recursive search of subfolders
+PUSHD %1
+ECHO "%1"
+FOR /D /R %%G IN (*.*) DO CALL :ProcEach "%%G"
+POPD
+
+GOTO End
+
+REM open MultiPar GUI
+:ProcEach
+ECHO create for %1
+%multipar_path% /create %1
+
+GOTO :EOF
+
+:End
+ENDLOCAL</textarea>
+
+<hr>
+
+<a name="C3"></a>
+<h3>Create one PAR2 file per each file in a selected folder</h3>
+<p>
+<table border=1 cellspacing=0 cellpadding=2 width="100%">
+<tr><td>Command<td>"path of batch file" "path of a folder"
+<tr><td>Input<td>specify a folder
+<tr><td>Action<td>This sample creates one PAR2 file per each file in the selected folder. 
+If there is a subfolder in a folder, files in the subfolder are searched, too. 
+Instead of creating PAR2 files for all files in a subfolder like previous sample, 
+this creates one PAR2 file per each file in a subfolder. 
+For example, when there are 7 files in the folder, total 7 PAR2 files are made. 
+</table>
+</p>
+
+<textarea cols=64 rows=33 readonly wrap=off>
+@ECHO OFF
+SETLOCAL
+
+REM check input path
+IF "%~1"=="" GOTO End
+IF NOT EXIST "%~1" (
+ECHO The path does not exist.
+GOTO End
+)
+
+REM set options for PAR2 client
+SET par2_path="path of par2j.exe"
+
+REM recursive search of files
+PUSHD %1
+FOR /R %%G IN (*.*) DO CALL :ProcEach "%%G"
+POPD
+
+GOTO End
+
+REM run PAR2 client
+:ProcEach
+ECHO create for %1
+%par2_path% c /fo /sm2048 /rr10 /ri /in /lr32767 "%~1.par2" %1
+
+GOTO :EOF
+
+:End
+ENDLOCAL</textarea>
+
+<p>&nbsp
+Don't remove an option <code>/in</code> in the command-line. 
+By this option, index file isn't created.
+</p>
+
+<hr>
+
+<a name="C4"></a>
+<h3>Create individual PAR2 set per each set of 4 files from many selected files</h3>
+<p>
+<table border=1 cellspacing=0 cellpadding=2 width="100%">
+<tr><td>Command<td>"path of batch file" "path of file1" "path of file2" "path of file3" "path of file4" "path of file5"... 
+<tr><td>Input<td>specify many files
+<tr><td>Action<td>This sample creates individual PAR2 set per each set of 4 files from many selected files. 
+For example, when you supply 11 files, total 3 PAR2 set are made. (11 = 4 + 4 + 3)
+</table>
+</p>
+
+<textarea cols=64 rows=27 readonly wrap=off>
+@ECHO OFF
+SETLOCAL
+
+REM set options for PAR2 client
+SET par2_path="path of par2j.exe"
+
+SET /a N=1
+
+:GetFilePath
+REM check input path
+IF "%~1"=="" GOTO End
+IF NOT EXIST "%~1" GOTO End
+
+REM run PAR2 client
+ECHO create for "%~d1%~p1par_set%N%"
+%par2_path% c /sm2048 /rr20 /rd1 /rf3 "%~d1%~p1par_set%N%.par2" %1 %2 %3 %4
+
+SET /a N=N+1
+
+SHIFT
+SHIFT
+SHIFT
+SHIFT
+GOTO GetFilePath
+
+:End
+ENDLOCAL</textarea>
+
+<p>&nbsp
+You may modify this sample to accept more files up 9. 
+Be careful about the number of source files and "<code>SHIFT</code>" per each step.
+</p>
+
+<hr>
+
+<a name="C5"></a>
+<h3>Create PAR2 recovery data and append it to each original ZIP / 7-Zip archive file</h3>
+<p>
+<table border=1 cellspacing=0 cellpadding=2 width="100%">
+<tr><td>Command<td>"path of batch file" "path of archive file1" "path of archive file2" "path of archive file3"... 
+<tr><td>Input<td>specify some ZIP / 7-Zip archive files
+<tr><td>Action<td>This sample creates PAR2 recovery data and append it to each original ZIP / 7-Zip archive file. 
+Though ZIP / 7-Zip archive don't have a feature of recovery record, 
+parchive can add the extra feature. 
+For example, when you supply 7 archive files, total 7 archive files with recovery record are made. 
+</table>
+</p>
+
+<textarea cols=64 rows=36 readonly wrap=off>
+@ECHO OFF
+SETLOCAL
+
+REM set options for PAR2 client
+SET par2_path="path of par2j.exe"
+
+:GetFilePath
+REM check input path
+IF "%~1"=="" GOTO End
+IF NOT EXIST "%~1" GOTO End
+
+REM check format
+IF /i "%~x1" NEQ ".zip" (
+IF /i "%~x1" NEQ ".7z" (
+GOTO NextFile
+)
+)
+
+REM ignore already appended file
+%par2_path% l %1
+IF NOT ERRORLEVEL 1 GOTO NextFile
+
+REM run PAR2 client
+ECHO append to %1
+%par2_path% c /fo /sm2048 /rr10 /ri /in /lr32767 /lp4 "%~1.par2" %1
+
+REM join 2 files
+COPY /b "%~1"+"%~1.vol_1.par2" /v "%~1"
+DEL "%~1.vol_1.par2"
+
+:NextFile
+SHIFT
+GOTO GetFilePath
+
+:End
+ENDLOCAL</textarea>
+
+<p>&nbsp
+Don't remove options <code>/ri</code> and <code>/in</code> in the command-line. 
+By this option, index file isn't created and filename has fixed volume number. 
+When joinning original archive and recovery data, 
+it is important to put original archive at first, then append recovery data at the last. 
+From the nature of ZIP / 7-Zip archive, 
+appended PAR2 recovery data has no effect to extract or decompress. 
+If you want to keep PAR2 file separately, comment out the line of "<code>DEL</code>" command.
+</p>
+<p>&nbsp
+To verify the archive, just Drag&Drop it onto MultiPar short-cut icon. 
+(or right-click SendTo or ShellExtension works, too.) 
+On the MultiPar GUI, 
+the archive with PAR2 recovery data is shown as "Appended" status, 
+when the original part of archive is complete. 
+If you repair the archive, the archive returns to the original form. 
+(appended PAR2 recovery data is removed.) 
+When you want to keep the PAR2 recovery data, 
+you need to un-check an option "Delete damaged files after Repair". 
+Then the recovery data is renamed by adding "<tt>.1</tt>" after filename.
+</p>
+
+<hr>
+
+<a name="V1"></a>
+<h3>Verify and/or Repair individual PAR2 set in each selected folder with GUI</h3>
+<p>
+<table border=1 cellspacing=0 cellpadding=2 width="100%">
+<tr><td>Command<td>"path of batch file" "path of folder1" "path of folder2" "path of folder3"... 
+<tr><td>Input<td>specify some folders
+<tr><td>Action<td>This sample calls MultiPar GUI for individual PAR2 set in each selected folder. 
+For example, when you supply 7 folders, GUI are opened 7 times one by one. 
+It is possible to repair by the GUI. 
+When a GUI is closed, next GUI is opened with next PAR2 set.
+</table>
+</p>
+
+<textarea cols=64 rows=21 readonly wrap=off>
+@ECHO OFF
+SETLOCAL
+
+SET multipar_path="path of MultiPar.exe"
+
+:GetFilePath
+REM check input path
+IF "%~1"=="" GOTO End
+IF NOT EXIST "%~1" GOTO NextFile
+
+REM open MultiPar GUI
+ECHO verify for %1
+%multipar_path% /verify "%~1\%~n1.par2"
+
+:NextFile
+SHIFT
+GOTO GetFilePath
+
+:End
+ENDLOCAL</textarea>
+
+<p>&nbsp
+The key is setting the PAR filename to be based on the folder name. 
+If you set prefix/suffix to filename at creating time, you need to set same one at verifying time.
+</p>
+
+<hr>
+
+<a name="V2"></a>
+<h3>Create, Verify or Repair individual PAR2 set in each subfolder under a selected folder with GUI</h3>
+<p>
+<table border=1 cellspacing=0 cellpadding=2 width="100%">
+<tr><td>Command<td>"path of batch file" "path of a folder"
+<tr><td>Input<td>specify a folder
+<tr><td>Action<td>This sample calls MultiPar GUI for individual PAR2 set in each subfolder under the selected folder. 
+When PAR2 files don't exist, it creates PAR2 set for the subfolder. 
+When PAR2 files exist, it verifys files in the subfolder. 
+For example, when there are 7 subfolders, total 7 PAR2 set are made. 
+Next time you specify the folder, MultiPar verifies the 7 subfolders one by one.
+</table>
+</p>
+
+<textarea cols=64 rows=38 readonly wrap=off>
+@ECHO OFF
+SETLOCAL
+
+REM check input path
+IF "%~1"=="" GOTO End
+IF NOT EXIST "%~1" (
+ECHO The path does not exist.
+GOTO End
+)
+
+SET multipar_path="path of MultiPar.exe"
+
+REM recursive search of subfolders
+PUSHD %1
+ECHO "%1"
+FOR /D /R %%G IN (*.*) DO CALL :ProcEach "%%G"
+POPD
+
+GOTO End
+
+REM open MultiPar GUI
+:ProcEach
+IF EXIST "%~1\%~n1.par2" (
+ECHO verify for %1
+%multipar_path% /verify "%~1\%~n1.par2"
+) else (
+ECHO create for %1
+%multipar_path% /create %1
+)
+
+GOTO :EOF
+
+:End
+ENDLOCAL</textarea>
+
+<p>&nbsp
+The key is setting the PAR filename to be based on the folder name. 
+You must check "Always use folder name for base filename" option in "Client behavior", then each PAR2 set is named by the folder.
+</p>
+
+<p>&nbsp
+When a GUI is closed, next GUI is opened with next folder. 
+You may set an option in "Automated tasks" to close GUI automatically after creation. 
+If you want to skip complete files at verification, you may set option to close GUI automatically after verification, too.
+</p>
+
+<hr>
+
+<a name="A1"></a>
+<h3>Add MD5 checksum to each file independently in a selected folder (NTFS only)</h3>
+<p>
+<table border=1 cellspacing=0 cellpadding=2 width="100%">
+<tr><td>Command<td>"path of batch file" "path of a folder"
+<tr><td>Input<td>specify a folder
+<tr><td>Action<td>This sample adds MD5 checksum to each file independently in a selected folder. 
+If there is a subfolder in a folder, files in the subfolder are searched, too. 
+This uses "Alternate Data Stream" and works over NTFS only. 
+Checksum data is saved in an alternate stream "<tt>original filename:digest.md5</tt>", 
+but it's invisible by Windows Explorer.
+</table>
+</p>
+
+<textarea cols=64 rows=38 readonly wrap=off>
+@ECHO OFF
+SETLOCAL
+
+REM check input path
+IF "%~1"=="" GOTO End
+IF NOT EXIST "%~1" (
+ECHO The path does not exist.
+GOTO End
+)
+
+REM set options for SFV/MD5 client
+SET client_path="path of sfv_md5.exe"
+
+REM recursive search of files
+PUSHD %1
+FOR /R %%G IN (*.*) DO CALL :ProcEach "%%G"
+POPD
+
+ECHO Finished to add checksums into alternate stream.
+PAUSE
+GOTO End
+
+REM run SFV/MD5 client
+:ProcEach
+ECHO create for %1
+%client_path% c "%~1:digest.md5" %1
+
+IF ERRORLEVEL 1 (
+ECHO Stop at this point.
+PAUSE
+EXIT
+)
+
+GOTO :EOF
+
+:End
+ENDLOCAL</textarea>
+
+<p>&nbsp
+There are some cautions. 
+Some binary/text editor seems to remove alternate data stream automatically at over-writing. 
+If you modify a file, you will need to re-add checksum to the new file again. 
+Adding checksum will update files' modification time, even though original file data isn't changed. 
+A user needs to use a special tool to see/delete/copy the stream, because those streams are untouchable by Windows Explorer. 
+While an alternate stream is kept at copy/move between NTFS drives, it will be removed on other file system. 
+For example, you cannot backup data in alternate stream on CD/DVD.
+</p>
+
+<hr>
+
+<a name="A2"></a>
+<h3>Verify each file independently by MD5 checksum in a selected folder (NTFS only)</h3>
+<p>
+<table border=1 cellspacing=0 cellpadding=2 width="100%">
+<tr><td>Command<td>"path of batch file" "path of a folder"
+<tr><td>Input<td>specify a folder
+<tr><td>Action<td>This sample verify each file independently by MD5 checksum in a selected folder. 
+If there is a subfolder in a folder, files in the subfolder are searched, too. 
+This uses "Alternate Data Stream" and works over NTFS only. 
+Checksum data must have been saved in an alternate stream "<tt>original filename:digest.md5</tt>".
+</table>
+</p>
+
+<textarea cols=64 rows=43 readonly wrap=off>
+@ECHO OFF
+SETLOCAL
+
+REM check input path
+IF "%~1"=="" GOTO End
+IF NOT EXIST "%~1" (
+ECHO The path does not exist.
+GOTO End
+)
+
+REM set options for SFV/MD5 client
+SET client_path="path of sfv_md5.exe"
+
+REM recursive search of files
+PUSHD %1
+FOR /R %%G IN (*.*) DO CALL :ProcEach "%%G"
+POPD
+
+ECHO Finished to verify files by checksums in alternate stream.
+PAUSE
+GOTO End
+
+REM run SFV/MD5 client
+:ProcEach
+ECHO verify for %1
+%client_path% v "%~1:digest.md5"
+
+IF ERRORLEVEL 4 (
+ECHO This file is broken.
+PAUSE
+GOTO :EOF
+)
+IF ERRORLEVEL 1 (
+ECHO Stop at this point.
+PAUSE
+EXIT
+)
+
+GOTO :EOF
+
+:End
+ENDLOCAL</textarea>
+
+<hr>
+
+<a name="N1"></a>
+<h3>Play sound for notification</h3>
+<p>&nbsp
+This sample plays sound by Media Player. 
+This is good to notify the end of process to user, while running script. 
+This can play any file format which is supported by Media Player.
+</p>
+
+<textarea cols=64 rows=13 readonly wrap=off>
+@ECHO OFF
+SETLOCAL
+
+REM set path of sound file
+SET SNDPATH=%systemroot%\Media\ringout.wav
+
+REM set playing time by mil seconds
+SET HTA_MAX_TIME=5000
+
+REM call HTA application (JavaScript and Media Player plag-in)
+mshta.exe "about:playing... &lt;OBJECT CLASSID='CLSID:22D6F312-B0F6-11D0-94AB-0080C74C7E95' WIDTH=100 HEIGHT=100&gt;&lt;param name='src' value='%SNDPATH%'&gt;&lt;param name='PlayCount' value='1'&gt;&lt;param name='autostart' value='true'&gt;&lt;/OBJECT>&lt;script&gt;window.resizeTo(10,10);setTimeout(function(){window.close()},%HTA_MAX_TIME%);&lt;/script&gt;"
+
+ENDLOCAL</textarea>
+
+<hr>
+
+<a name="B1"></a>
+<h3>Batch processing after MultiPar GUI 's Creation</h3>
+<p>&nbsp
+MultiPar GUI can start script after creation. 
+The script file must be <tt>auto_c.cmd</tt> in the user's <tt>save</tt> folder. 
+A user may write any script in this file. 
+The script gets two parameters from GUI as below;<br>
+<code>
+%1 = Path of a recovery file<br>
+%2 = Path of base directory of source files
+</code>
+</p>
+<p>&nbsp
+This sample script moves created PAR2 recovery files into another folder. 
+</p>
+
+<textarea cols=64 rows=35 readonly wrap=off>
+@ECHO OFF
+TITLE After creation
+SETLOCAL
+
+REM List up parameters
+ECHO Path of this batch file =
+ECHO %0
+ECHO.
+
+ECHO Path of a recovery file =
+ECHO %1
+ECHO.
+
+ECHO Path of base directory of source files =
+ECHO %2
+ECHO.
+
+REM check the extension for .par2
+IF /i "%~x1" NEQ ".par2" (
+ECHO The recovery file format isn't PAR2.
+GOTO End
+)
+
+REM insert * between filename and extension
+SET search_path="%~d1%~p1%~n1*%~x1"
+
+REM move all created recovery files into another folder
+SET destination_folder="C:/Sample/"
+
+ECHO Moving %search_path%
+move %search_path% %destination_folder%
+ECHO Above files were gone to %destination_folder%
+
+:End
+ENDLOCAL</textarea>
+
+<hr>
+
+<a name="B2"></a>
+<h3>Batch processing after MultiPar GUI 's Verification / Repair</h3>
+<p>&nbsp
+MultiPar GUI can start script after verification or repair. 
+The script file must be <tt>auto_v.cmd</tt> in the user's <tt>save</tt> folder. 
+A user may write any script in this file. 
+The script gets three parameters from GUI as below;<br>
+<code>
+%1 = Path of a recovery file<br>
+%2 = Path of base directory of source files<br>
+%3 = Exit code of the used client (refer the command-line manual)
+</code>
+</p>
+<p>&nbsp
+This sample script opens ZIP or 7-Zip archive only when it is complete. 
+To use this script, you need to create some recovery files for an archive at first. 
+At that time, the key is setting the base filename to be same as the source file like;<br>
+source file's name = <tt>something.zip</tt><br>
+recovery files' name = <tt>something.zip.par2, something.zip.vol0+4.par2, something.zip.vol4+8.par2</tt><br>
+Thus, when you open the index file "<tt>something.zip.par2</tt>", 
+the filename without last extension becomes the name of source file.
+</p>
+
+<textarea cols=64 rows=55 readonly wrap=off>
+@ECHO OFF
+TITLE After verification
+SETLOCAL
+
+REM List up parameters
+ECHO Path of this batch file =
+ECHO %0
+ECHO.
+
+ECHO Path of a recovery file =
+ECHO %1
+ECHO.
+
+ECHO Path of base directory of source files =
+ECHO %2
+ECHO.
+
+ECHO Status of source files = %3
+ECHO.
+
+REM check the source file is complete
+IF NOT %3==0 (
+IF NOT %3==16 (
+ECHO The file is broken.
+GOTO End
+)
+)
+
+REM remove last extension from path
+SET new_path="%~d1%~p1%~n1"
+ECHO Target file = %new_path%
+
+IF EXIST %new_path% (CALL :OpenFile %new_path%) ELSE ECHO The file does not exist.
+
+GOTO End
+
+:OpenFile
+REM check the format and open the supported file
+IF /i "%~x1" EQU ".zip" (
+ECHO Open the ZIP archive
+%1
+GOTO :EOF
+)
+
+IF /i "%~x1" EQU ".7z" (
+ECHO Open the 7-Zip archive
+%1
+GOTO :EOF
+)
+
+ECHO The file format isn't supported.
+GOTO :EOF
+
+:End
+ENDLOCAL</textarea>
+
+<p>&nbsp
+This sample script moves log file (<tt>MultiPar.ini</tt>) to PAR2 file's directory. 
+If there is an old log file already, it appends new log after existing one. 
+To use this script, you need to enable log. 
+MultiPar Options -> [Client behavior] -> Check "Log output of clients".
+</p>
+
+<textarea cols=64 rows=26 readonly wrap=off>
+@ECHO OFF
+TITLE Move log file
+SETLOCAL
+
+SET old_path="%~d0%~p0MultiPar.log"
+SET new_path="%~1.log"
+
+ECHO Path of original log file =
+ECHO %old_path%
+ECHO Path of moved log file =
+ECHO %new_path%
+ECHO.
+
+ECHO Copying %old_path% to %new_path%.
+COPY /B %new_path% + %old_path% %new_path%
+
+IF %ERRORLEVEL% == 0 (
+REM If copy ok, delete original log file.
+DEL %old_path%
+) ELSE (
+REM If copy fail, move log file.
+ECHO Moving %old_path% to %new_path%.
+MOVE %old_path% %new_path%
+)
+
+ENDLOCAL</textarea>
+
+</body>
+</html>
+

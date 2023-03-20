@@ -1,0 +1,103 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=ISO-8859-1">
+<link rel="stylesheet" href="style_panel.css">
+<title>Option - Automated tasks</title>
+</head>
+<body>
+
+<font size=5>Automated tasks</font>
+<hr>
+
+<h3>File Deletion</h3>
+
+<dl><dt><b>
+Delete damaged files after Repair
+</b></dt><dd>&nbsp
+If you want to delete damaged source files and splited files after you repaired all files completely, check this option. 
+When source files have been complete at first, splited files are not deleted. 
+When this isn't checked, numbering extension will appended into filename of each damaged file. 
+This setting won't delete external files.
+</dd></dl>
+
+<dl><dt><b>
+Delete recovery files after Repair
+</b></dt><dd>&nbsp
+If you want to delete recovery files after you repaired all files completely, check this option. 
+When source files have been complete at first, 
+or you failed to repair, recovery files are not deleted. 
+If a recovery file is useless like wrong set, it will not be deleted. 
+When a specified recovery file don't have a standard extension, this setting is ignored. 
+You may delete a file manually from right-click menu on file-list after verification or repair.
+</dd></dl>
+
+<dl><dt><b>
+Send files to Recycle Bin
+</b></dt><dd>&nbsp
+This option is important, unless you are careful. 
+When this is checked, all auto-deleted files will goto recycle bin. 
+<b>Caution</b>, if there is no recycle bin for the drive like USB memory, files will be deleted simply.
+</dd></dl>
+
+<hr>
+
+<h3>Batch Processing after Creation, Verification, or Repair</h3>
+<p>&nbsp
+This batch processing will be started after when the Creation, Verification, or Repair was completed successfully. 
+If the process was stopped by error or was canceled manually, this isn't started. 
+For Verification or Repair, this is started, only when all source files are complete or repaired.
+</p>
+
+<dl><dt><b>
+Start batch script
+</b></dt><dd>&nbsp
+If you want to start something other tasks, check this option. 
+You need to write the task on a batch file; "<tt>auto_c.cmd</tt>" or "<tt>auto_v.cmd</tt>", 
+and put it in "<tt>save</tt>" folder. 
+You may open the folder at <a href="option1.htm#folder_location">"System settings" page</a>. 
+"<tt>auto_c.cmd</tt>" is started after Creation, 
+and "<tt>auto_v.cmd</tt>" is started after Verification or Repair. 
+These script get some parameters from MultiPar. 
+For the details, refer the <a href="batch.htm">page about Batch script</a>.
+</dd></dl>
+
+<dl><dt><b>
+Notify with flash window and sound
+</b></dt><dd>&nbsp
+If you want to notice the finish, check this option. 
+This will blink the window and play OS's "notification" sound.
+</dd></dl>
+
+<dl><dt><b>
+Close automatically
+</b></dt><dd>&nbsp
+If you want to close MultiPar automatically, check this option. 
+This won't wait the end of batch script.
+</dd></dl>
+
+<dl><dt><b>
+Open a source file
+</b></dt><dd>&nbsp
+If you want to open a verified source file, check this option. 
+This is ignored for multiple source files.
+</dd></dl>
+
+<dl><dt><b>
+Expand an archive file (by 7-Zip)
+</b></dt><dd>&nbsp
+When <a href="http://www.7-zip.org">7-Zip</a> is installed, this option is available. 
+This will show "Extract" dialog of 7-Zip, if source file is an archive file (ZIP, 7z, RAR, bz2, gz format).
+</dd></dl>
+
+<div id="left_area">
+<p><a href="index.htm">Help for MultiPar</a></p>
+<a href="create.htm">Create window</a><br>
+<a href="preview.htm">Preview window</a><br>
+<a href="creating.htm">Creating window</a><br>
+<a href="verify.htm">Verify window</a><br>
+<a href="recreate.htm">Recreate window</a><br>
+<a href="option.htm">Option window</a>
+</div>
+
+</body>
+</html>

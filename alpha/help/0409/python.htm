@@ -1,0 +1,321 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=ISO-8859-1">
+<meta http-equiv="Content-Style-Type" content="text/css">
+<style type="text/css">
+<!--
+textarea{width:100%;}
+-->
+</style>
+<title>Python script</title>
+</head>
+<body>
+
+<font size=5>Sample of Python script</font>
+<hr>
+
+<p>&nbsp
+To use Python script, you need to install <a href="https://en.wikipedia.org/wiki/Python_(programming_language)">Python</a> in your PC. 
+The official <a href="https://www.python.org/downloads/">download site is here</a>. 
+There are some useful documents and articles on the Internet. 
+You may edit a sample script for your usage.
+</p>
+
+<p>&nbsp
+Python script is saved on some text files in <tt>tool</tt> folder under MultiPar's installed directory. 
+If you put a script file on another folder or under <tt>Program Files</tt> directory, you must set the path of <tt>par2j64.exe</tt> or <tt>MultiPar.exe</tt> on your PC. 
+By default, I write relative path from the <tt>tool</tt> folder. 
+You can refer the directory on MultiPar's Option window: 
+"System settings" tab, "Folder location" section, "Open MultiPar's install folder" button.
+</p>
+
+<hr>
+
+<h3>Index</h3>
+<table width="100%">
+<tr><td><a href="#C1">Create individual PAR2 set in each selected folder</a><td>
+<tr><td><a href="#C2">Create individual PAR2 set in each selected folder with GUI</a><td>
+<tr><td><a href="#C3">Create multiple PAR2 sets for many files in a folder</a><td>
+<tr><td><hr width="95%"></td>
+
+<tr><td><a href="#Q1">Create multiple PAR2 sets for files or folders with Queuing GUI</a><td>
+<tr><td><a href="#Q2">Verify multiple PAR2 sets in a selected folder with Queuing GUI</a><td>
+<tr><td><hr width="95%"></td>
+
+<tr><td><a href="#D">Check difference of PAR and directory with GUI</a><td>
+<tr><td><a href="#R1">Rename included source files in PAR2 sets with GUI</a><td>
+<tr><td><a href="#R2">Read a selected JSON file and show contents</a><td>
+
+<tr><td><hr width="95%"></td>
+<tr><td><a href="#A1">Automate tasks after MultiPar GUI 's Creation</a><td>
+<tr><td><a href="#A2">Automate tasks after MultiPar GUI 's Verification / Repair</a><td>
+</table>
+
+<hr>
+
+<a name="C1"></a>
+<h3>Create individual PAR2 set in each selected folder</h3>
+<p>
+<table border=1 cellspacing=0 cellpadding=2 width="100%">
+<tr><td>Command<td>"path of script file" "path of folder1" "path of folder2" "path of folder3"... 
+<tr><td>Input<td>specify some folders
+<tr><td>Action<td>This sample creates individual PAR2 set in each selected folder. 
+For example, when you supply 7 folders, total 7 PAR2 set are made.
+<tr><td>Script file<td><tt>each_folder.py</tt>
+</table>
+</p>
+<p>&nbsp
+This sample tries to create efficient PAR2 files.
+</p>
+
+<hr>
+
+<a name="C2"></a>
+<h3>Create individual PAR2 set in each selected folder with GUI</h3>
+<p>
+<table border=1 cellspacing=0 cellpadding=2 width="100%">
+<tr><td>Command<td>"path of script file" "path of folder1" "path of folder2" "path of folder3"... 
+<tr><td>Input<td>specify some folders
+<tr><td>Action<td>This sample creates individual PAR2 set in each selected folder. 
+For example, when you supply 7 folders, total 7 PAR2 set are made. 
+It shows GUI for setting. 
+It's possible to filter source files by their size.
+<tr><td>Script file<td><tt>large_files.py</tt>
+<tr><td>Caution<td>You must check MultiPar Option: "Always use folder name for base filename" in "Creation options" section on "Client behavior" tab.
+</table>
+</p>
+<p>&nbsp
+Instead of searching all files in each specified folder, 
+it will filter files by their size. 
+In the sample, it selects files of 1 MB over. 
+You may change the limit size. 
+To send name of source files, it uses file-list.
+</p>
+
+<hr>
+
+<a name="C3"></a>
+<h3>Create multiple PAR2 sets for many files in a folder</h3>
+<p>
+<table border=1 cellspacing=0 cellpadding=2 width="100%">
+<tr><td>Command<td>"path of script file" "path of folder1" "path of folder2" "path of folder3"... 
+<tr><td>Input<td>specify some folders
+<tr><td>Action<td>This sample creates multiple PAR2 sets for many files in each selected folder. 
+For example, when you supply 3 folders, it creates independent multiple PAR2 sets in every folder. 
+In the sample, it will create a PAR2 set for 1000 source files. 
+It's possible to change the limit value. 
+When there are 3500 files in a folder, it will create 4 PAR2 sets in the folder.
+<tr><td>Script file<td><tt>group_files.py</tt>
+</table>
+</p>
+<p>&nbsp
+To distinguish PAR2 files, it uses stable filename with serial numbering. 
+They are like; <tt>#1.par2</tt>, <tt>#2.par2</tt>, <tt>#3.par2</tt>... 
+When there are sub directories in a folder, it will search inner files. 
+To send name of source files, it uses file-list. 
+The process may be very slow for many files.
+</p>
+
+<hr>
+
+<a name="Q1"></a>
+<h3>Create multiple PAR2 sets for files or folders with Queuing GUI</h3>
+<p>
+<table border=1 cellspacing=0 cellpadding=2 width="100%">
+<tr><td>Command<td>"path of script file" "path of file1 or folder1" "path of file2 or folder2" "path of file3 or folder3"... 
+<tr><td>Input<td>specify some files and/or folders (You may select them manually on GUI.)
+<tr><td>Action<td>This sample creates multiple PAR2 sets for every selected files or folders. 
+It creates one PAR2 set for each selected file or folder independently. 
+PAR2 set for a file will be made in the same directory with the source file's name. 
+PAR2 set for a folder will be made in the folder with the source folder's name. 
+For example, when 3 files and 2 folders are selected, 5 items are shown on a list. 
+Then, it will create 5 PAR2 sets continuously. 
+It's possible to stop queue on GUI.
+<tr><td>Script file<td><tt>queue_create.py</tt>
+<tr><td>Caution<td>While creation, existing PAR2 files are ignored. 
+When there are old PAR2 files already, it doesn't erase them. (However it may over-write same name files.) 
+If you want to re-create all PAR2 files newly, you must delete them at first manually.
+</table>
+</p>
+<p>&nbsp
+You must set command-line options of par2j for creation. 
+You should refer <tt>Command_par2j.txt</tt> in <tt>help</tt> folder. 
+Because all creating PAR2 sets will use the same options, test with a few files to see result at first. 
+When you want to confirm result by MultiPar, select a PAR2 set and push "Open with MultiPar" button.
+</p>
+<p>&nbsp
+While creation, it shows details on Command Prompt window. 
+You can control the progress by pushing a key on the Command Prompt. 
+You may pause the process by pushing P-key. 
+You may resume the process by pushing R-key. 
+You may cancel the process by pushing C-key.
+</p>
+<p>&nbsp
+You may create short-cut file of this script file. 
+Put the short-cut on <tt>desktop</tt> or <tt>SendTo</tt> folder of Windows OS. 
+Then, you can drag & drop files and/or folders on the short-cut. 
+Or, select files on right-click "SendTo" menu. 
+If you select one folder, it search inner items of the folder. 
+If you select multiple items or one file, they are selected directly.
+</p>
+
+<hr>
+
+<a name="Q2"></a>
+<h3>Verify multiple PAR2 sets in a selected folder with Queuing GUI</h3>
+<p>
+<table border=1 cellspacing=0 cellpadding=2 width="100%">
+<tr><td>Command<td>"path of script file" "path of folder"
+<tr><td>Input<td>specify a folder (You may select it manually on GUI.)
+<tr><td>Action<td>This sample verifies multiple PAR2 sets in a selected folder. 
+For example, when there are 7 PAR2 sets in a folder, they are shown on a list. 
+It will verify each PAR2 set continuously. 
+It's possible to stop queue on GUI.
+<tr><td>Script file<td><tt>queue_verify.py</tt>
+<tr><td>Caution<td>You must select MultiPar Option: "Re-use verification result" to be "For 3 days" or longer, 
+and you should check "Don't search subfolders" in "Verification and Repair options" section on "Client behavior" tab.
+</table>
+</p>
+<p>&nbsp
+In this sample, it tries verification only. 
+If you want to repair a damaged set automatically, use <tt>repair</tt> command instead of <tt>verify</tt> of par2j. 
+When you want to confirm result by MultiPar, select a PAR2 set and push "Open with MultiPar" button. 
+You may repair on the MultiPar GUI.
+</p>
+<p>&nbsp
+While verification, it shows details on Command Prompt window. 
+You can control the progress by pushing a key on the Command Prompt. 
+You may pause the process by pushing P-key. 
+You may resume the process by pushing R-key. 
+You may cancel the process by pushing C-key. 
+Even when you stop the verification task, it may save result partially.
+</p>
+<p>&nbsp
+When you push "Folder" button, it searches PAR2 sets in the selected folder. 
+By default, It doesn't search files recursively, because it may be slow. 
+If you want to search all sub-directories, you need to edit the script. 
+You may change behavior of starting verification automatically or not by editing the script.
+</p>
+
+<hr>
+
+<a name="D"></a>
+<h3>Check difference of PAR and directory with GUI</h3>
+<p>
+<table border=1 cellspacing=0 cellpadding=2 width="100%">
+<tr><td>Command<td>"path of script file" "path of folder1" "path of folder2" "path of folder3"...
+<tr><td>Input<td>specify some folders
+<tr><td>Action<td>This is a simple tool to show difference of PAR and directory contents. 
+<tr><td>Script file<td><tt>diff_folder.py</tt>
+<tr><td>Caution<td>Because it checks difference of files' existence and size only, 
+it cannot detect broken files. 
+Use MultiPar to see precise status of source files.
+</table>
+</p>
+
+<p>&nbsp
+This sample uses <tt>list</tt> command of par2j. 
+While it lists source files in the PAR2 set, it doesn't verify them. 
+After comparison with current directory-tree, 
+it paints blue color for additional files, 
+red color for missing files, 
+and yellow color for files of different size.
+</p>
+
+<hr>
+
+<a name="R1"></a>
+<h3>Rename included source files in PAR2 sets with GUI</h3>
+<p>
+<table border=1 cellspacing=0 cellpadding=2 width="100%">
+<tr><td>Command<td>"path of script file" "path of file"
+<tr><td>Input<td>specify a PAR2 file
+<tr><td>Action<td>This is a simple tool to edit names of source files in PAR2 files. 
+Because it works in a single file, you don't need to set path of another application.
+<tr><td>Script file<td><tt>par2_rename.py</tt>
+<tr><td>Caution<td>The modified PAR2 files by this tool are different from formal PAR2 files for renamed filenames.
+When someone generates new PAR2 files for renamed filenames by QuickPar/MultiPar,
+the PAR2 files are incompatible with these modified PAR2 files.
+</table>
+</p>
+
+<p>&nbsp
+If you don't see debug output, you may rename the script file's extension to <tt>.pyw</tt>. 
+Then, Command Prompt won't open.
+</p>
+
+<p>&nbsp
+How to use<br>
+<ol>
+<li>Select a PAR2 file by pushing [ File ] button. PAR2 files of same base name will be listed.</li>
+<li>Select a PAR2 file on the left list and push [ Read ] button. 
+It's good to select the smallest PAR2 file for fast search. 
+Only when PAR2 files are damaged, select a complete PAR2 file.</li>
+<li>Type a new filename on a edit box. 
+Select editing name on right list and push [ Rename ] button. 
+You may edit multiple filenames contiuously.</li>
+<li>After you finish to edit filenames, push [ Save ] button. 
+PAR2 files will be saved with prefix "<tt>new_</tt>" in the same folder.</li>
+</ol>
+</p>
+
+<hr>
+
+<a name="R2"></a>
+<h3>Read a selected JSON file and show contents</h3>
+<p>
+<table border=1 cellspacing=0 cellpadding=2 width="100%">
+<tr><td>Command<td>"path of script file" "path of file"
+<tr><td>Input<td>specify a JSON file
+<tr><td>Action<td>
+By setting <tt>/w</tt> option, par2j saves verification result on a JSON file. 
+This sample uses the JSON file.
+<tr><td>Script file<td><tt>read_json.py</tt>
+<tr><td>Caution<td>
+In the JSON file, par2j writes <tt>/</tt> as directory separator.
+</table>
+</p>
+
+<hr>
+
+<a name="A1"></a>
+<h3>Automate tasks after MultiPar GUI 's Creation</h3>
+<p>&nbsp
+MultiPar GUI can start script after creation. 
+The script file must be <tt>auto_c.py</tt> in the user's <tt>save</tt> folder. 
+A user may write any script in this file. 
+The script gets two parameters from GUI as below;<br>
+<code>
+%1 = Path of a recovery file<br>
+%2 = Path of base directory of source files
+</code>
+</p>
+<p>&nbsp
+I put a sample in "<tt>tool\batch</tt>" folder. 
+<tt>auto_c.py</tt> shows two parameters only.
+</p>
+
+<hr>
+
+<a name="A2"></a>
+<h3>Automate tasks after MultiPar GUI 's Verification / Repair</h3>
+<p>&nbsp
+MultiPar GUI can start script after verification or repair. 
+The script file must be <tt>auto_v.py</tt> or <tt>auto_vl.py</tt> in the user's <tt>save</tt> folder. 
+A user may write any script in this file. 
+The script gets three parameters from GUI as below;<br>
+<code>
+%1 = Path of a recovery file<br>
+%2 = Path of base directory of source files<br>
+%3 = Exit code of the used client (refer the command-line manual)
+</code>
+</p>
+<p>&nbsp
+I put two samples in "<tt>tool\batch</tt>" folder. 
+<tt>auto_v.py</tt> shows three parameters only. 
+<tt>auto_vl.py</tt> shows lists of recovery files and source files, too.
+</p>
+
+</body>
+</html>
+

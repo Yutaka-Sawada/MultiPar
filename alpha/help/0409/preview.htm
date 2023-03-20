@@ -1,0 +1,65 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=ISO-8859-1">
+<link rel="stylesheet" href="style_panel.css">
+<title>Preview window</title>
+</head>
+<body>
+
+<font size=5>Preview window</font><br><font size=1><br></font>&nbsp
+When you push "Preview" button on <a href="create.htm">Create window</a>, this window appears.
+<hr>
+
+<p>&nbsp
+Because the size of recovery files are hard to predict for most users, 
+MultiPar has "Preview" feature. 
+You can see the list of recovery files which you will create by the current setting. 
+You may consider the efficiency of those files. 
+If you are satisfied with them, you may create recovery files directly by pushing "<b>Create</b>" button. 
+Or you may return to Create window by pushing "<b>Cancel</b>" button.
+</p>
+
+<dl><dt><b>
+Source block usage
+</b></dt><dd>&nbsp
+This rate is a measure of block allocation. 
+When a file size is different from a multiple of block size, 
+the reminder in the last block of the file becomes a waste. 
+If all source blocks are filled by file data fully, the rate becomes 100%. 
+When it is lower than 90%, you may decrese the block size.
+</dd></dl>
+
+<dl><dt><b>
+Recovery block consumption
+</b></dt><dd>&nbsp
+This rate is a measure of recovery file's construction. 
+While recovery files consist of many packets, 
+there are some packets which don't contain recovery data. 
+If packets for recovery blocks consume most of the recovery files, the rate becomes high. 
+When it is too low, you may decrease the number of source blocks, 
+or limit <a href="option3.htm#packet_repetition">repetition of packets</a>.
+</dd></dl>
+
+<dl><dt><b>
+Efficiency of recovery files
+</b></dt><dd>&nbsp
+This rate is a measure of recovering capability. 
+For example, when the rate is 95% for recovery files of 300MB, 
+you will be able to recover upto 285MB. 
+Because this value is just an avarage assumption, 
+actual possibility depends on the distribution of damage. 
+The efficiency is important, when you save recovery files in a limited size.
+</dd></dl>
+
+<div id="left_area">
+<p><a href="index.htm">Help for MultiPar</a></p>
+<a href="create.htm">Create window</a><br>
+<a href="preview.htm">Preview window</a><br>
+<a href="creating.htm">Creating window</a><br>
+<a href="verify.htm">Verify window</a><br>
+<a href="recreate.htm">Recreate window</a><br>
+<a href="option.htm">Option window</a>
+</div>
+
+</body>
+</html>
