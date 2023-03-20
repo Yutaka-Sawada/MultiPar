@@ -1,0 +1,155 @@
+<html lang="zh">
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<link rel="stylesheet" href="style_panel.css">
+<title>设置 - 命令行行为</title>
+</head>
+<body>
+
+<font size=5>命令行行为</font>
+<hr>
+
+<h3>通用选项</h3>
+
+<dl><dt><b>
+记录命令行输出
+</b></dt><dd>&nbsp
+您可以用GUI保存命令行并从客户端输出日志。当您在使用过程中出现错误，或要在命令提示符上使用PAR客户端，日志就很有用。日志文件“<tt>MultiPar.log</tt>”保存在“<tt>save</tt>”文件夹中。“<tt>save</tt>”文件夹可以通过双击创建窗口或校验窗口中的状态文本打开。如果日志文件变得太大，下次输出的日志将保存为另一个文件"<tt>MultiPar.#.log</tt>"。当您不再需要日志文件时，请自行删除它们。
+</dd></dl>
+
+<dl><dt><b>
+清除记录
+</b></dt><dd>&nbsp
+当您想立即删除所有日志文件时，点击“清除”即可。
+</dd></dl>
+
+<dl><dt><b>
+以低优先度运行命令行
+</b></dt><dd>&nbsp
+当电脑对您的控制命令响应过慢时，纵使MultiPar处于运行状态，您也可以勾选此选项。当您需要在同一台电脑上执行其他任务，后台运行MultiPar时开启该功能将很有用。
+</dd></dl>
+
+<dl><dt><b>
+不等待其他任务完成
+</b></dt><dd>&nbsp
+仅当您想要同时运行多个实例的任务时，请勾选此项。由于每个创建或修复任务都会占用电脑资源，因此总处理速度可能比排队任务慢。
+</dd></dl>
+
+<hr>
+
+<h3>创建选项</h3>
+
+<dl><dt><b>
+恢复文件格式
+</b></dt><dd>&nbsp
+您可以更改新创建PAR文件的版本。通常来说，您应该使用“PAR 2.0”。只有当源文件大小大致相同时，才可以使用“PAR 1.0”。
+</dd></dl>
+
+<dl><dt><b>
+冗余度指定范围
+</b></dt><dd>&nbsp
+您可以在创建窗口中更改冗余滑动条的范围。 如果您主要想设置少量或大量冗余，这一功能将很有用。 即使范围有限，您也可以通过直接键入恢复块数量来设置更多冗余。
+</dd></dl>
+
+<dl><dt><b>
+总是使用文件夹名称作为基本文件名
+</b></dt><dd>&nbsp
+除非您自己键入文件名，否则在您首先选择源文件后会自动设置基本文件名。 命名方法与QuickPar相同：（1）当只有一个源文件时，则使用文件名；（2）当有多个源文件时，使用文件名前面的公共部分；（3）否则，使用父目录的文件夹名称。如果您想一直使用最后一个命名方法，请选勾选此项。
+</dd></dl>
+
+<dl><dt><b>
+不搜索子文件夹
+</b></dt><dd>&nbsp
+当文件夹包含子文件夹时，默认情况下会递归搜索每个文件夹中的所有文件。 如果要忽略子文件夹，请勾选此项。即使勾选了它，您也可以手动添加内部文件。
+</dd></dl>
+
+<dl><dt><b>
+不创建索引文件
+</b></dt><dd>&nbsp
+索引文件是最小的PAR文件，它不包含任何恢复块。它可以用来校验源文件，但无法恢复文件损坏。如果您不需要该文件，请勾选此项。
+</dd></dl>
+
+<hr>
+
+<h3>校验修复选项</h3>
+
+<dl><dt><b>
+监视校验的文件
+</b></dt><dd>&nbsp
+如果选中此选项，MultiPar将在首次校验后监控恢复文件和源文件。添加新文件或修改某些文件时，会自动校验它们。在先前的校验因错误而结束，或所有文件都保持完整，或所有文件都已成功修复，监控将完成。如果您想随时取消监控，请按退出键（Esc）。之后，您可以点击“校验”或按F5再次开始监控。
+</dd></dl>
+
+<dl><dt><b>
+自动开始修复
+</b></dt><dd>&nbsp
+如果选中此选项，如果可能的话，MultiPar将在校验后开始修复。如果未选中此选项，则仅进行校验。如果您懒得每次点击“修复”，此功能将很有用。自动开始修复适用于“F5”，“添加”，“监视”操作下的所有校验。即使某些文件能够恢复，但如果无法修复所有文件，它将不会自动修复。
+</dd></dl>
+
+<a name="verification_level"></a>
+<dl><dt><b>
+校验级别
+</b></dt><dd>&nbsp
+通常来说，“详细校验”是比较好的。当损坏没有被删除或插入字节时，“简单校验”会更快。“追加校验”将检查基本目录中的所有文件。当损坏的文件文件名不同时，或者源文件位于在ISO镜像等非压缩存档中，请选择“追加校验”以自动添加它们。“排列校验”是最快的，但它不会备份损坏的文件。因为它会直接覆盖损坏的文件，所以在恢复失败时存在更多数据丢失的风险。
+</dd></dl>
+
+<a name="reuse_result"></a>
+<dl><dt><b>
+使用过往校验结果
+</b></dt><dd>&nbsp
+如果您想在下次跳过部分校验，请在此选项中设置保留期。当您刚打开恢复文件时，会自动校验文件并保存校验结果。当您点击“修复”时，校验结果将被重复使用，并会跳过大部分实际校验，使得速度变快。在默认设置（短时间）下，GUI保存校验结果直到程序被关闭。当您设置较长的保留期（数天），在此期间内GUI会保留校验结果。请务必注意！使用此设置，您可以看到文件的过去状态。如果要查看文件的当前状态，请按F5，然后将重新校验所有文件。校验结果的数据文件“<tt>***.bin</tt>”或“<tt>***.ini</tt>”位于“<tt>save</tt>”文件夹中。尽管会清除过期的校验结果，但有时这些文件可能会变得很多很大，请不要设置过长的保留期。
+</dd></dl>
+
+<p>&nbsp
+使用过往校验功能设置的区别：<br>
+<center><table border=1 cellspacing=0 cellpadding=2 width="98%">
+<tr bgcolor="E0F0E0"><th rowspan=2>应用和设置<th colspan=3>MultiPar<th rowspan=2>QuickPar<br>（作为参考）
+<tr bgcolor="E0F0E0"><th width = "15%">未启用<th>短时间（默认）<th width = "15%">数天
+<tr><td>打开恢复文件时<td colspan=2 bgcolor="E0E0FF">首次校验<td colspan=2 bgcolor="FFE0E0">使用过往校验结果
+<tr><td>点击 “修复”时<br>或者添加新文件时
+<td bgcolor="E0E0FF">再次校验<td colspan=3 bgcolor="FFE0E0">使用过往校验结果
+<tr><td>按F5时<td colspan=4 bgcolor="E0E0FF">再次校验
+</table></center>
+</p>
+
+<dl><dt><b>
+Don't search subfolders
+</b></dt><dd>&nbsp
+When a file is missing, it will search the misnamed or moved file in folders recursively by default. 
+If you want to ignore subfolders by the reason of taking time, check this option.
+</dd></dl>
+
+<hr>
+
+<h3>PAR2选项</h3>
+
+<dl><dt><b>
+在PAR2文件中额外写入Unicode文件名
+</b></dt><dd>&nbsp
+MultiPar支持PAR 2.0规范中的“Unicode文件名包”（UTF-16文件名）。只有当您在文件名中使用非ASCII字符，并且将PAR2文件发送给另一个装有支持该数据包的PAR2客户端的人时，才应勾选此项。一般它没什么作用，因为大多数PAR2客户端忽略该数据包。没必要为使用UTF-8文件名的MultiPar和par2_tbb勾选此项。
+</dd></dl>
+
+<dl><dt><b>
+使用文件序号作为分卷编号
+</b></dt><dd>&nbsp
+标准PAR2文件名包含多少个恢复块作为其卷号。如果要使用文件索引而不是块数，请勾选此项。当您通过UseNet传输PAR2文件时，您不必勾选此项，因为块的数量对于下载程序而言很重要。
+</dd></dl>
+
+<a name="packet_repetition"></a>
+<dl><dt><b>
+数据包重复次数
+</b></dt><dd>&nbsp
+当您创建许多恢复块时，PAR2文件可能会包含许多重复数据包。您可以禁止或减少数据包的重复。如果您想要PAR2文件更小，您可以选择“不使用”或“最多#次”。如果只创建一个恢复文件，则应选择“不限制”。
+</dd></dl>
+
+<div id="left_area">
+<p><a href="index.htm">MultiPar使用指南</a></p>
+<a href="create.htm">创建窗口</a><br>
+<a href="preview.htm">预览窗口</a><br>
+<a href="creating.htm">正在创建窗口</a><br>
+<a href="verify.htm">校验窗口</a><br>
+<a href="recreate.htm">重建窗口</a><br>
+<a href="option.htm">设置窗口</a>
+</div>
+
+</body>
+</html>

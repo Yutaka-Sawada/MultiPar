@@ -1,0 +1,104 @@
+<html lang="zh">
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<link rel="stylesheet" href="style_panel.css">
+<title>设置 - 系统设置</title>
+</head>
+<body>
+
+<font size=5>系统设置</font>
+<hr>
+
+<h3>系统整合</h3>
+
+<dl><dt><b>
+关联…文件
+</b></dt><dd>&nbsp
+您可以将MultiPar与以下文件关联：它们的文件扩展名为PAR1(<tt>.PAR</tt>, <tt>.P01</tt>, <tt>.P02</tt>, <tt>.P03</tt>, <tt>.P04</tt>, <tt>.P05</tt>, <tt>.P06</tt>, <tt>.P07</tt>, <tt>.P08</tt>, <tt>.P09</tt>), PAR2(<tt>.PAR2</tt>), PAR3(<tt>.PA3</tt>), 以及SFV/MD5(<tt>.SFV</tt>和<tt>.MD5</tt>)。在您关联其中某一类文件之前，您应当将其与另外的应用程序（如QuickPar）取消关联。
+</dd></dl>
+
+<a name="shortcut"></a>
+<dl><dt><b>
+将MultiPar整合到右键菜单
+</b></dt><dd>&nbsp
+此选项能够将MultiPar添加到资源管理器的右键菜单。在子菜单中，您可以点击“创建恢复文件”来创建PAR文件，或者点击“校验恢复文件”用PAR文件来校验文件。此功能类似于“发送到”中的快捷方式图标，您可以添加更多文件，因为命令行没有长度限制。当选定某一文件夹用于创建恢复文件，则该文件夹将作为基本目录，并且该文件夹中的所有文件都将被选定。如果安装了<a href="http://www.7-zip.org">7-Zip</a>，就能打包文件，并为压缩文件创建PAR文件。
+</dd></dl>
+
+<hr>
+
+<h3>快捷方式</h3>
+<p>&nbsp
+桌面快捷方式图标或“发送到”菜单可用来启动MultiPar以调用“打开”或“创建”功能。如果您拖放恢复文件到快捷方式图标上，MultiPar将打开恢复文件。如果您拖放源文件到快捷方式图标上，MultiPar将会为它们创建恢复文件。
+</p>
+
+<hr>
+
+<a name="folder_location"></a>
+<h3>文件夹位置</h3>
+<p>&nbsp
+点击“文件夹位置”下的按钮，您可以打开直接打开MultiPar相关文件夹。尽管这一功能对引用文件很有用，但请注意，不要删除重要文件。用户的临时文件和日志文件被保存在用户特定的“<tt>save</tt>”文件夹下，可以随时清除该文件夹中的这些文件。
+</p>
+
+<hr>
+
+<h3>硬件环境</h3>
+
+<dl><dt><b>
+限制内存使用比例
+</b></dt><dd>&nbsp
+该设置选项不是严格的，而是对可用内存大小的粗略使用率。通常来说选择“自动”就足够了。只有当您想要为其他应用程序或系统缓存保留内存时，您才可以尝试调低使用率。
+</dd></dl>
+
+<dl><dt><b>
+File access mode
+</b></dt><dd>&nbsp
+Only when MultiPar fails to recognize a drive type, you may change this option. 
+To enforce random access mode on the drive (SSD or RAM drive), select "SSD". 
+To enforce sequential scan mode on the drive (HDD or Optical drive), select "HDD". 
+Because random access mode is very slow (and maybe harmful) on HDD, 
+you should select "Auto" normally.
+</dd></dl>
+
+<dl><dt><b>
+CPU利用率
+</b></dt><dd>&nbsp
+如果您的电脑拥有多核心CPU，您可以更改CPU使用率。如果您想为其它任务保留一些CPU或降低电脑温度，这将很有用。
+</dd></dl>
+
+<p>
+<center><table border=1 cellspacing=0 cellpadding=2 width="90%">
+<tr bgcolor="E0F0E0"><th>Position of slider<th>Number of using threads (max 16)
+<tr><td>Left most<td>Quarter number of physical Cores
+<tr><td>Second from left<td>Half of physical Cores
+<tr><td>Medium<td>3/4 number of physical Cores
+<tr><td>Second from right<td>For CPU with 5 or less Cores, number of physical Cores (exclude Hyper Threading)<br>
+For CPU with 6 or more Cores, number of physical Cores -1
+<tr><td>Right most<td>For CPU with Hyper Threading is enabled on 5 or less Cores, number of physical Cores +1<br>
+For CPU with 6 or more Cores, number of physical Cores
+</table></center>
+</p>
+
+<dl><dt><b>
+额外的功能
+</b></dt><dd>&nbsp
+勾选选项，选择合适的功能。仅当功能无法正常工作时，请取消勾选。
+</dd></dl>
+
+<dl><dt><b>
+启用GPU加速
+</b></dt><dd>&nbsp
+如果您的电脑有GPU设备，您可以勾选此项提升处理速度。如果操作系统响应太慢或电脑过热，则应当禁用。
+</dd></dl>
+
+<div id="left_area">
+<p><a href="index.htm">MultiPar使用指南</a></p>
+<a href="create.htm">创建窗口</a><br>
+<a href="preview.htm">预览窗口</a><br>
+<a href="creating.htm">正在创建窗口</a><br>
+<a href="verify.htm">校验窗口</a><br>
+<a href="recreate.htm">重建窗口</a><br>
+<a href="option.htm">设置窗口</a>
+</div>
+
+</body>
+</html>

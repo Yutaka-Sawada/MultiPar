@@ -1,0 +1,80 @@
+<html lang="zh">
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<link rel="stylesheet" href="style.css">
+<title>基本用法</title>
+</head>
+<body>
+
+<font size=5>MultiPar的基本用法</font>
+<hr>
+
+<h3>与QuickPar的兼容性</h3>
+<p>&nbsp
+MultiPar的使用方法与<a href="http://www.quickpar.org.uk/" target="_blank" title="http://www.quickpar.org.uk/">QuickPar</a>基本相同，但是操作还是存在一些差异，因为开发环境和实现方式不同。此外，我添加了一些QuickPar缺乏的有用的功能；比如在创建之前支持目录树或预览。如果您有新想法，可以通过邮件同我反馈。
+</p>
+<p>&nbsp
+虽然QuickPar的默认设置针对UseNet进行了优化，但与MultiPar的默认设置不同。如果要将MultiPar的默认设置设置成与QuickPar的类似，则需要从默认设置更改以下项目；<br>
+在[界面设置]页面上的[<a href="option2.htm#unit_size">限制分块大小为单位的倍数</a>]部分中，选择“<b>用于yEnc：3,000行</b>”。<br>
+在[界面设置]页面的[<a href="option2.htm#block_allocation">分块配置方法</a>]部分中，选择“<b>分块数量限制：3,000</b>”并设置“<b>分块大小：384,000</b>”。<br>
+在[命令行行为]页面的[创建选项]部分中，选中“<b>不搜索子文件夹</b>”。<br>
+在[命令行行为]页面的[校验修复选项]部分中，在“<a href="option3.htm#reuse_result">使用过往校验结果</a>”中选择“<b>保留15天</b>”。
+</p>
+<p>&nbsp
+MultiPar和QuickPar之间的操作有所差异。由于MultiPar尝试通过选择高效的分块大小来创建PAR2文件，因此即使设置相同，初始分块数量也可能不同。如果您想要QuickPar的“恢复文件大小：不同大小（2的幂）”，请在MultiPar中选择“大小分配方案：不同大小”。当您通过“再次重建”针对现有恢复集创建其他恢复文件时，QuickPar会创建额外的文件而不会修改原始恢复文件，但MultiPar会覆盖原始恢复文件来重新创建所有文件。
+</p>
+<p>&nbsp
+MultiPar与QuickPar相比最大区别是它支持多语言。QuickPar通过系统特定的字符编码保存非ASCII文件名，而MultiPar用UTF-8保存。其次，QuickPar无法正确读取由MultiPar保存的非ASCII文件名。在PAR2客户端中，MultiPar和<a href="https://github.com/Parchive/par2cmdline" target="_blank" title="https://github.com/Parchive/par2cmdline">par2cmdline</a>都支持Unicode文件名。
+</p>
+<p>&nbsp
+由于Peter Clements允许我使用与QuickPar类似的GUI，所以我制作了MultiPar来处理日文文件名。我为使用QuickPar遇到困难的外国用户制作了英文GUI。当您使用其他PAR客户端时遇到问题时，MultiPar可能会帮到您。如果您想翻译MultiPar的文字或信息，请发送邮件给我。 MultiPar在许多国家使用，如：美国，比利时，中国，丹麦，英国，法国，德国，印度，意大利，日本，荷兰，波兰，葡萄牙，俄罗斯，西班牙，乌克兰等。
+</p>
+
+<hr>
+
+<h3>快捷键</h3>
+
+<dl><dt><b>
+Alt
+</b></dt><dd>&nbsp
+有些按钮上的字母有下划线，如“打开（<u>O</u>pen）”。对于这些按钮，同时按“ALT”和“标下划线字母键”可起到相同作用。例如，“ALT + O”与鼠标点击“打开（<u>O</u>pen）”作用相同。
+</dd></dl>
+
+<dl><dt><b>
+F1
+</b></dt><dd>&nbsp
+您可以按“F1”键启用帮助。“关于”窗口也有“帮助”按钮。
+</dd></dl>
+
+<dl><dt><b>
+F5
+</b></dt><dd>&nbsp
+在校验窗口中，您可以按“F5”键重新再次校验。
+</dd></dl>
+
+<dl><dt><b>
+Delete
+</b></dt><dd>&nbsp
+当您在“创建”窗口中选择了文件列表中的某些源文件时，可以按“Delete”键从列表中移除文件。这与点击“移除”按钮的作用相同。
+</dd></dl>
+
+<dl><dt><b>
+Page Up</b>, <b>Page Down</b>, <b>Home</b>, <b>End
+</b></dt><dd>&nbsp
+在创建窗口或重建窗口中选中了“分块计数”或“冗余度”的滑块时，可以按这些键。按“Page Up”键或“Page Down”键，滑块会大幅移动。按“Home”键，滑块移动到最小值，按“End”键，滑块移动到最大值。
+</dd></dl>
+
+<dl><dt><b>
+Escape
+</b></dt><dd>&nbsp
+在创建、校验、修复或监控文件时，您可以按“Escape”键取消进程。这与点击“取消”作用相同。由于实际上需要一小段时间来中断客户端，所以您需要等一会儿才能显示结果。
+</dd></dl>
+
+<dl><dt><b>
+Pause
+</b></dt><dd>&nbsp
+在创建，校验或修复时，您可以按“Pause”键暂停或恢复进程。第一次按下将暂停进程，第二次将再次恢复进程。由于实际上需要一小段时间来中断客户端，所以快速多次按下“Pause”键可能会无法暂停进程。
+</dd></dl>
+
+</body>
+</html>

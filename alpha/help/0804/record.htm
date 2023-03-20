@@ -1,0 +1,76 @@
+<html lang="zh">
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<link rel="stylesheet" href="style.css">
+<title>添加恢复记录</title>
+</head>
+<body>
+
+<font size=5>如何为ZIP或7-Zip压缩包添加恢复记录</font>
+<hr>
+
+<p>&nbsp
+ZIP压缩（扩展名为.zip）被广泛使用，7-Zip压缩（扩展名为.7z）也非常有用。但由于它们没有恢复记录功能，所以有人可能会觉得RAR压缩更好。但是，通过使用Parchive，普通的ZIP或7-Zip存档也可以使用恢复记录进行保护。
+</p>
+<p>
+<table border=0 cellspacing=0 cellpadding=1>
+<tr><td>第1步：</td>
+<td>创建ZIP或7-Zip压缩文件。</td>
+<td><table border=1 cellspacing=0 cellpadding=2>
+<tr><td bgcolor="FFE0E0">ZIP或7-zip压缩文件</td></tr></table>
+</td></tr>
+<tr><td>第2步：</td>
+<td width="40%" nowrap>为压缩文件创建一个PAR2文件。</td>
+<td><table border=1 cellspacing=0 cellpadding=2>
+<tr><td bgcolor="E0E0FF">PAR2恢复文件</td></tr></table>
+</td></tr>
+<tr><td nowrap>第3步：</td>
+<td colspan=2>使用二进制编辑器或复制命令，将PAR2文件附加到压缩文件。然后，附加的压缩文件包含有恢复记录。文件结构如下图所示：
+</td></tr>
+<tr>
+<td colspan=3 align="center"><table border=1 cellspacing=0 cellpadding=2>
+<tr><td bgcolor="FFE0E0">原始压缩文件</td><td bgcolor="E0E0FF">附加的PAR2恢复文件</td></tr></table>
+</td></tr>
+
+<tr><td colspan=3><br>第4步（仅ZIP压缩需要执行）：</td></tr>
+<tr><td></td><td colspan=2>
+There is "end of central directory record" (starting with a byte sequence of: 0x06054b50) at the end of ZIP file. 
+With binary editor, copy the section (22-bytes or more) and append it to the end of recovery data. 
+<!--使用二进制编辑器，将ZIP压缩的最后一项“中间目录记录尾端”（22字节）复制到恢复数据的末尾。-->
+文件结构如下图所示：
+</td></tr>
+<tr>
+<td colspan=3 align="center"><table border=1 cellspacing=0 cellpadding=2>
+<tr><td bgcolor="FFE0E0">原始ZIP压缩文件</td><td bgcolor="E0E0FF">附加的PAR2恢复文件</td>
+<td bgcolor="FFE0FF">中间目录记录尾端</td>
+</tr></table>
+</td></tr>
+
+<tr><td></td><td colspan=2><br>
+When the ZIP file is ZIP64 format, 
+there are "zip64 end of central directory record" (starting with a byte sequence of: 0x06064b50), 
+"zip64 end of central directory locator", and "end of central directory record" at the end of ZIP file. 
+With binary editor, copy the 3 sections (total 98-bytes or more) and append them to the end of recovery data.
+</td></tr>
+<tr>
+<td colspan=3 align="center"><table border=1 cellspacing=0 cellpadding=2>
+<tr><td bgcolor="FFE0E0">原始ZIP64压缩文件</td><td bgcolor="E0E0FF">附加的PAR2恢复文件</td>
+<td bgcolor="FFE0FF">The final 3 sections of ZIP64 format</td>
+</tr></table>
+</td></tr>
+
+</table>
+</p>
+<p>&nbsp
+由于文件头仍然是压缩文件，因此它被视为压缩文件，并且一般的压缩软件可以提取其内部文件。由于该文件包含PAR2数据包，因此PAR2客户端也可将其视为PAR2文件。由于MultiPar可以处理与“.par2”具有不同扩展名的PAR2文件，将受保护的压缩文件拖放到MultiPar快捷方式图标上即可校验压缩文件。在MultiPar的GUI上，当压缩文件的原始部分是完整的时，带有恢复记录的压缩文件部分将显示为“附加”状态。
+</p>
+<p>&nbsp
+请注意，如果您修复压缩文件，将删除恢复记录（附加的PAR2恢复数据）。如果要保留PAR2恢复数据，首先需要复制文件，并将其重命名为“something.par2”，然后用MultiPar（或QuickPar）打开“something.par2”。虽然您可以通过二进制编辑器将受保护的压缩拆分为原始部分和恢复记录，但这对普通用户来说这并非易事。
+</p>
+<p>&nbsp
+我认为这种方法对于只保护一个存档文件很有用。这种方法只有一个文件，与两个文件（压缩文件及其PAR2文件）起相同的作用，更便于传输/分享/分发为一个ZIP / 7-Zip文件。一般情况，免费软件或共享软件发布站点只接受一个存档文件。如果压缩软件具有将PAR2恢复数据附加到创建的压缩文件的内置功能，这种方法可能会很有用。
+</p>
+
+</body>
+</html>
+

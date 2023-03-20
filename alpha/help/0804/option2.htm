@@ -1,0 +1,141 @@
+<html lang="zh">
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<link rel="stylesheet" href="style_panel.css">
+<title>设置 - 界面设置</title>
+</head>
+<body>
+
+<font size=5>界面设置</font>
+<hr>
+
+<h3>界面设置</h3>
+
+<dl><dt><b>
+语言
+</b></dt><dd>&nbsp
+您可以更改用户界面的语言。电脑默认语言设置为“自动”。只有当您想使用其他的语言时，请选择另一种语言。下次启动MultiPar时，语言更改设置才会生效。
+</dd></dl>
+
+<dl><dt><b>
+字体
+</b></dt><dd>&nbsp
+您可以更改文字的外观和大小。通常，“MS Shell Dlg 2”是对话框的标准字体。当您在操作系统的图形设置中设置了另一种字体时，该字体可能会显示在此列表中。如果要设置喜欢的字体，如“Arial”，直接在“<tt>MultiPar.ini</tt>”文件的“<tt>[Option]</tt>”部分里写下“<tt>FontName=Arial</tt>”即可。
+</dd></dl>
+
+<dl><dt><b>
+文件大小显示格式
+</b></dt><dd>&nbsp
+您可以选择自己喜欢的格式。如果您不在意细微差异，“With unit”看起来很简洁。 如果使用Windows资源管理器，“With kilo-bytes”看起来相同。
+</dd></dl>
+
+<dl><dt><b>
+在进度栏上的文本样式
+</b></dt><dd>&nbsp
+您可以更改进度条上的的文本背景。
+</dd></dl>
+
+<hr>
+
+<h3>媒介种类和容量</h3>
+<p>&nbsp
+这些内容被用于创建窗口的媒介列表。在编辑框，您必须在媒介名称和大小之间加上 “:”。名称在左边，“:”在中间，大小在右边。大小必须为值，不要使用逗号或MB等单位符。文件名最大长度为18位，最大大小为999999999999（931GB）。
+</p>
+
+<hr>
+
+<a name="unit_size"></a>
+<h3>限制分块大小为单位的倍数</h3>
+<p>&nbsp
+创建PAR2文件时，您可以更改块分配。通过设置块单位大小，块大小都将变成单位大小的倍数。
+</p>
+
+<dl><dt><b>
+不限制分块大小
+</b></dt><dd>&nbsp
+不设置单位大小时，您可以自由改变块大小。
+</dd></dl>
+
+<dl><dt><b>
+精确指定
+</b></dt><dd>&nbsp
+您可以直接将单位大小设置成字节。通过设置保存驱动器的群集（簇）大小，您可以高效地进行校验和修复。比如，您最好为CD-R或DVD-R设置2KB，为HDD设置4KB到64KB，为USB存储器设置512字节到4KB。
+</dd></dl>
+
+<dl><dt><b>
+用于yEnc 用于UUEncode
+</b></dt><dd>&nbsp
+只有在UseNet发布文件时，才应当将单位设置为编码行。由于设置取决于您的UseNet服务器，因此必须遵循服务器的说明。
+</dd></dl>
+
+<hr>
+
+<a name="block_allocation"></a>
+<h3>分块配置方法</h3>
+<p>&nbsp
+选择源文件创建PAR2恢复文件时，会为恢复文件分配源块。通过此选项，您可以更改配置块的方法。每次添加或删除文件时，将自动按所选方法分配块。
+</p>
+
+<dl><dt><b>
+分块数量限制
+</b></dt><dd>&nbsp
+由于分块越多，创建需要的时间也更多。如果要限制块数，请设置最大块数并勾选此项。注意不要设置太少的块，因为大的块大小将无法有效恢复小的损坏。在CD或DVD时代，par2cmdline设置了2,000个块，QuickPar设置了3,000个块。
+</dd></dl>
+
+<dl><dt><b>
+比例（数量/大小）
+</b></dt><dd>&nbsp
+比例等于是块数除以块大小。例如，为10,000字节块大小设置“1%”会生成100个块，“100块/ 10000字节= 0.01 = 1％”。该计算方法适用于各种数据大小。随着总数据量变大，将分配更多块，但变化是平滑的。
+</dd></dl>
+
+<dl><dt><b>
+分块大小
+</b></dt><dd>&nbsp
+您可以设置想要的块大小。设为单位大小时，将调整生成的块大小。如果您经常处理相似的数据大小，则此计算方法可能会很好。请注意块太少或太多的结果。
+</dd></dl>
+
+<p>&nbsp
+由于MultiPar尝试通过调整块大小来寻找有效分配，因此结果可能与指定的值不同。如果您想要始终获得特定的块大小，请在此处设置“块大小”，并在<a href="option2.htm#unit_size">上面的选项区</a>中选择“不限制大小”。如果要像QuickPar一样分配块，则需勾选“分块数量限制”并设置分块大小。
+</p>
+
+<p>&nbsp
+不同级别的总数据大小的块的情况示例：<br>
+<center><table border="1" cellspacing="0" cellpadding="2" width="98%">
+<tr bgcolor="E0F0E0"><th>方法
+<th width="22%">CD（600MB）
+<th width="24%">DVD（4GB）
+<th width="24%">BD（20GB）
+
+<tr><td>比例(数量/大小)：1%
+<td bgcolor="D0F0F0" rowspan=2>块数：2,508<br>块大小：245KB
+<td bgcolor="FFFFD0">块数：6,553<br>块大小：640KB
+<td bgcolor="FFFFD0">块数：14,655<br>块大小：1,431KB
+
+<tr><td>限制块数到：3,000<br>比例(数量/大小)：1%
+<td bgcolor="E0E0FF">块数：3,000<br>块大小：1,398KB
+<td bgcolor="E0E0FF">块数：3,000<br>块大小：6,990KB
+
+<tr><td nowrap>块大小：262,144字节
+<td bgcolor="D0F0F0" rowspan=2>块数：2,400<br>块大小：256KB
+<td bgcolor="FFFFD0">块数：16,384<br>块大小：256KB
+<td bgcolor="FFE0E0">块数：32,768<br>块大小：640KB
+
+<tr><td nowrap>限制块数到：3,000<br>块大小：262,144字节
+<td bgcolor="E0E0FF">块数：3,000<br>块大小：1,398KB
+<td bgcolor="E0E0FF">块数：3,000<br>块大小：6,990KB
+
+</table></center>
+</p>
+
+<div id="left_area">
+<p><a href="index.htm">MultiPar使用指南</a></p>
+<a href="create.htm">创建窗口</a><br>
+<a href="preview.htm">预览窗口</a><br>
+<a href="creating.htm">正在创建窗口</a><br>
+<a href="verify.htm">校验窗口</a><br>
+<a href="recreate.htm">重建窗口</a><br>
+<a href="option.htm">设置窗口</a>
+</div>
+
+</body>
+</html>

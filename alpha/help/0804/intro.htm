@@ -1,0 +1,38 @@
+<html lang="zh">
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<link rel="stylesheet" href="style.css">
+<title>Parchive简介</title>
+</head>
+<body>
+
+<font size=5>Parchive简介</font>
+<hr>
+
+<p>&nbsp
+PAR是Parchive或Parity Archive的缩写格式，意为奇偶校验的容器。即使原始文件损坏或丢失，也可以通过提取奇偶校验来修复它们。Parchive会同时生成两种PAR文件。索引文件仅包含用于校验的数据，恢复文件同时包含用于校验和修复的数据。通常，它们不作区分，都被称为PAR文件。
+</p>
+<p>
+<table>
+<tr><td>PAR1文件示例：</td></tr>
+<tr><td><tt>Data.PAR</tt></td><td>索引文件</td></tr>
+<tr><td><tt>Data.P01</tt></td><td>第一个恢复文件</td></tr>
+<tr><td><tt>Data.P02</tt></td><td>第二个恢复文件</td></tr>
+<tr><td><tt>Data.P03</tt></td><td>第三个恢复文件</td></tr>
+<tr><td><font size=1>&nbsp</font></td></tr>
+<tr><td width = 150>PAR2文件示例：</td></tr>
+<tr><td><tt>Data.PAR2</tt></td><td>索引文件</td></tr>
+<tr><td><tt>Data.vol0+1.PAR2</tt></td><td>第二个PAR2恢复文件，包含1个恢复块</td></tr>
+<tr><td><tt>Data.vol1+2.PAR2</tt></td><td>第二个恢复文件，包含2个恢复块</td></tr>
+<tr><td><tt>Data.vol3+4.PAR2</tt></td><td>第三个恢复文件，包含4个恢复块</td></tr>
+</table>
+</p>
+<p>&nbsp
+尽管索引文件仅用于校验，但它比恢复文件小得多。PAR1和PAR2的恢复文件的构造不同。在PAR1中，恢复数据用于计算一组阵列源文件。条件很简单：它需要1个恢复文件来恢复1个文件，或者需要3个恢复文件来恢复3个文件。
+</p>
+<p>&nbsp
+在PAR2中，恢复数据用于计算所有源文件中的一组分配块。保存恢复数据时，可以更改每个恢复文件中的恢复块数量。因此，恢复文件的所需数量可以通过其所需的恢复块最小化。在上面的示例中，您需要第二个恢复文件来恢复2个块，或者需要第一个和第三个恢复文件来恢复5个块。
+</p>
+
+</body>
+</html>

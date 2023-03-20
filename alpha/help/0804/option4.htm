@@ -1,0 +1,80 @@
+<html lang="zh">
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<link rel="stylesheet" href="style_panel.css">
+<title>设置 - 完成后的动作</title>
+</head>
+<body>
+
+<font size=5>完成后的动作</font>
+<hr>
+
+<h3>文件删除</h3>
+
+<dl><dt><b>
+修复后删除破损文件
+</b></dt><dd>&nbsp
+如果您想在完全修复所有文件后删除损坏的源文件和拆分文件，请勾选此项。当源文件起初就完好无损时，则不会删除拆分文件。如果未勾选此项，编号扩展名将附加到每个损坏文件的文件名中。此设置不会删除外部文件。
+</dd></dl>
+
+<dl><dt><b>
+修复后删除恢复文件
+</b></dt><dd>&nbsp
+如果您想在完全修复所有文件后删除恢复文件，请勾选此项。当源文件起初就完好无损，或者源文件修复失败时，则不会删除恢复文件。如果恢复文件像错误集一样无用，则不会删除它。如果指定的恢复文件不是标准扩展名，则忽略此设置。您可以在校验或修复后从文件列表上的右键单击菜单中手动删除文件。
+</dd></dl>
+
+<dl><dt><b>
+删除到回收站
+</b></dt><dd>&nbsp
+除非您本身非常小心谨慎，否则请务必重视此选项，因为它极其重要。勾选此项后，所有自动删除的文件都将被送到回收站。请注意，在像USB存储器等没有回收站的驱动器上，文件会被直接删除。
+</dd></dl>
+
+<hr>
+
+<h3>创建，校验修复完成后的动作</h3>
+<p>&nbsp
+批处理将在文件创建，校验或修复成功完成后启动。如果进程因错误而停止或手动取消，则不会启动。对于校验或修复，仅在所有源文件完成或修复后，批处理才会启动。
+</p>
+
+<dl><dt><b>
+运行批处理脚本
+</b></dt><dd>&nbsp
+如果要启动其他任务，请勾选此项。您需要在批处理文件上编写任务；创建“<tt>auto_c.cmd</tt>”或“<tt>auto_v.cmd</tt>”文件，并将其放在“<tt>save</tt>”文件夹中。您可以在<a href="option1.htm#folder_location">系统设置页面</a>打开“<tt>save</tt>”文件夹。“<tt>auto_c.cmd</tt>”在文件创建后启动，“<tt>auto_v.cmd</tt>”在文件校验或修复后启动。这些脚本从MultiPar获取一些参数。有关详细信息，请参阅<a href="batch.htm">有关批处理脚本的页面</a>。
+</dd></dl>
+
+<dl><dt><b>
+闪烁窗口并发出声音提示
+</b></dt><dd>&nbsp
+如果您想留意任务是否完成，请勾选此项。勾选后，在任务完成时，窗口会闪动并播放系统提示声音。
+</dd></dl>
+
+<dl><dt><b>
+自动退出
+</b></dt><dd>&nbsp
+如果要自动关闭MultiPar，请勾选此项。使用此选项不会等待批处理脚本结束后才关闭。
+</dd></dl>
+
+<dl><dt><b>
+打开源文件
+</b></dt><dd>&nbsp
+如果要打开经过校验的源文件，请选中此选项。多个源文件将忽略此项。
+</dd></dl>
+
+<dl><dt><b>
+（由7-Zip）解压缩存档文件
+</b></dt><dd>&nbsp
+电脑安装<a href="http://www.7-zip.org">7-Zip</a>了时，此选项才可用。如果源文件是压缩文件（ZIP, 7z, RAR, bz2, gz格式），勾选此项后将显示7-Zip的解压缩对话框。
+</dd></dl>
+
+<div id="left_area">
+<p><a href="index.htm">MultiPar使用指南</a></p>
+<a href="create.htm">创建窗口</a><br>
+<a href="preview.htm">预览窗口</a><br>
+<a href="creating.htm">正在创建窗口</a><br>
+<a href="verify.htm">校验窗口</a><br>
+<a href="recreate.htm">重建窗口</a><br>
+<a href="option.htm">设置窗口</a>
+</div>
+
+</body>
+</html>

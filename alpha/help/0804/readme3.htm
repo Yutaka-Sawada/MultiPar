@@ -1,0 +1,50 @@
+<html lang="zh">
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<link rel="stylesheet" href="style.css">
+<title>导言 - 安装</title>
+</head>
+<body>
+
+<h3>使用安装包安装或卸载</h3>
+<p>&nbsp
+双击安装文件（<tt>MultiPar131_setup.exe</tt>或类似名称文件），然后按照安装程序对话框进行操作。在版本升级时，如果要使用先前的设置，可以进行覆盖安装。在覆盖安装之前, 应取消勾选“将MultiPar整合到右键菜单”。在写入安装或卸载之后，您可能需要重新启动操作系统。“<tt>Program Files</tt>”或“<tt>Program Files (x86)</tt>”目录下，必须在右键菜单上选择“以管理员身份运行”，用管理员权限启动安装程序。
+</p>
+<p>&nbsp
+您可以通过Windows操作系统的控制面板卸载程序，或双击MultiPar安装文件夹中的<tt>unins000.exe</tt>。由于卸载程序不会删除设置文件或安装后新添加的文件，因此您可以自行删除它们。
+</p>
+<p>&nbsp
+使用安装包完成安装后，不要移动安装文件夹。否则，之后您将无法卸载程序。
+</p>
+
+<h3>使用安装包为多名用户安装</h3>
+<p>&nbsp
+在多名用户可以登录同一台电脑的情况下，系统管理员可以为每个人都安装MultiPar。使用管理权限进行安装，安装程序将为全部用户创建开始菜单图标，桌面图标和文件关联。当程序安装在“<tt>Program Files</tt>”目录下时，每个用户都能够进行个性化设置。当程序安装在另一个文件夹中时，所有用户会共享相同的设置。不论哪种情况下，用户创建图标和文件关联仅供其自身使用。
+</p>
+
+<hr>
+
+<h3>使用压缩包安装</h3>
+<p>&nbsp
+在文件夹中解压压缩文件（<tt>MultiPar131.zip</tt>或类似名称文件）。
+<tt>MultiPar.exe</tt>是MultiPar的启动程序。
+</p>
+<p>&nbsp
+您稍后可以在设置窗口中创建快捷图标或“发送到”链接。如果要将PAR文件扩展名“<tt>.par</tt>”或“<tt>.par2</tt>”与MultiPar关联，请先将它们与其他应用程序（如QuickPar）取消关联。
+</p>
+
+<h3>压缩版的卸载</h3>
+<p>&nbsp
+如果您已将PAR文件与MultiPar关联，请先解除关联。然后，删除安装文件夹（即您解压文件存放的文件夹）中的所有文件。如果MultiPar安装在“<tt>Program Files</tt>”目录下，设置数据会保存在“<tt>Application Data</tt>”目录下的MultiPar文件夹中，因此您需要删除该文件夹。
+</p>
+<p>&nbsp
+如果您在设置窗口中勾选了“将MultiPar整合到右键菜单”，必须在卸载前取消勾选。如果已经删除了<tt>MultiPar.exe</tt>，您可以手动卸载DLL。打开命令提示符并将目录更改为MultiPar的文件夹，然后输入“<tt>RegSvr32.exe /u MultiParShlExt64.dll</tt>”以删除shell扩展名。当操作系统或资源管理器正在使用“<tt>MultiParShlExt64.dll</tt>”时，您将无法删除它。在删除文件之前，您可以先注销再重新登录操作系统。
+</p>
+
+<h3>更改压缩版的安装文件夹</h3>
+<p>&nbsp
+请移动安装文件夹中的文件。如果已经将PAR文件与MultiPar关联，请先取消关联，然后再次关联。如果要在另一台电脑上使用同样的设置，请复制设置文件“<tt>MultiPar.ini</tt>”。如果将MultiPar移动到“<tt>Program Files</tt>”目录下，设置数据将保存在“<tt>Application Data</tt>”目录下的MultiPar文件夹中，因此您还需要将“<tt>MultiPar.ini</tt>”移动到该文件夹中。
+</p>
+
+</body>
+</html>

@@ -1,0 +1,46 @@
+<html lang="zh">
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<link rel="stylesheet" href="style_panel.css">
+<title>预览窗口</title>
+</head>
+<body>
+
+<font size=5>预览窗口</font><br>&nbsp
+在<a href="create.htm">创建窗口</a>点击“预览”，将打开此窗口。
+<hr>
+
+<p>&nbsp
+由于大多数用户很难预测恢复文件的大小，因此MultiPar提供预览功能。您可以看到在当前设置下将创建的恢复文件列表。您可以评估这些文件的效率。如果觉得满意，您可以直接点击“创建”来创建恢复文件。反之，您可以点击“<b>取消</b>”返回创建窗口。
+</p>
+
+<dl><dt><b>
+源分块使用率
+</b></dt><dd>&nbsp
+源分块使用比率是块分配的衡量方式。当文件大小不同于块大小的倍数时，文件的最后一个块中的提示变得多余。如果所有源块都被文件数据填充满，那么比率就是100%。当比率低于90%时，您可以减小块大小。
+</dd></dl>
+
+<dl><dt><b>
+恢复分块比率
+</b></dt><dd>&nbsp
+恢复分块比率是恢复文件结构的衡量方式。虽然恢复文件由许多数据包组成，但有些数据包不包含恢复数据。如果恢复块的数据包在恢复文件中占据大部，这个比率就会变高。当比率过低时，您可以减少源块的数量，或者限制<a href="option3.htm#packet_repetition">数据包的重复</a>。
+</dd></dl>
+
+<dl><dt><b>
+恢复文件效率
+</b></dt><dd>&nbsp
+恢复文件效率是恢复能力的衡量方式。比如，当300MB的恢复文件的恢复效率为95%时，您将有可能恢复高达285MB数据。因为该数值只是一个假设的平均值，实际可能性取决于损坏的分布情况。当您以有限的大小保存恢复文件时，恢复效率很重要。
+</dd></dl>
+
+<div id="left_area">
+<p><a href="index.htm">MultiPar使用指南</a></p>
+<a href="create.htm">创建窗口</a><br>
+<a href="preview.htm">预览窗口</a><br>
+<a href="creating.htm">正在创建窗口</a><br>
+<a href="verify.htm">校验窗口</a><br>
+<a href="recreate.htm">重建窗口</a><br>
+<a href="option.htm">设置窗口</a>
+</div>
+
+</body>
+</html>

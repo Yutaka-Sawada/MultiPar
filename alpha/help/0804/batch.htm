@@ -1,0 +1,782 @@
+<html lang="zh">
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<link rel="stylesheet" href="style.css">
+<style type="text/css">
+<!--
+textarea{width:100%;}
+-->
+</style>
+<title>批处理脚本</title>
+</head>
+<body>
+
+<font size=5>批处理脚本示例</font>
+<hr>
+
+<p>&nbsp
+由于MultiPar是PAR客户端和GUI的集成，因此可以在命令提示符中使用PAR客户端。请阅读命令行手册以了解命令和设置的详细信息。它可以通过批处理文件（或命令脚本）实现。
+</p>
+<p>&nbsp
+下面是适用于Windows 7的一些批处理文件示例。将整行复制并粘贴到一个txt文件中。修改PAR2文件的设置，设置好<tt>par2j.exe</tt>的路径。请写绝对路径，如：<br>
+<code>SET par2_path = "C:\某一目录\MultiPar\par2j.exe"</code><br>
+阅读手册（<tt>Command_***.txt</tt>）以了解设置的详细信息。阅读Windows操作系统的帮助以了解命令提示符的用法。
+</p>
+<p>&nbsp
+将示例脚本保存为“<tt>batch.bat</tt>”或“<tt>batch.cmd</tt>”文件。要指定文件或文件夹的路径，请将它们拖放到批处理文件中。将批处理文件的快捷图标添加到“发送到”菜单后，可以通过选择文件然右键单击并点击“发送到”来调用批处理文件。
+</p>
+<p>&nbsp
+如果要确认脚本运行的结果，请在脚本文件的末尾添加“<code>PAUSE</code>”。如果要查看每个命令行的解析情况，请移除脚本文件中顶部的“<code>@ECHO OFF</code>”，或者在您有疑惑的那行前面添加“<code>ECHO</code>”。这些可以帮助您理解批处理脚本是如何运行的。
+</p>
+<p>&nbsp
+If you want to switch flow by the result, you may use a special environment variable "<code>ERRORLEVEL</code>". 
+"<code>if ERRORLEVEL number task~</code>" means that the task will start when ERRORLEVEL is greater than or equal to the number. 
+"<code>if not ERRORLEVEL number task~</code>" means that the task will start when ERRORLEVEL is less than the number. 
+It's possible to refer the value by using "<code>%ERRORLEVEL%</code>". 
+The code is such like "<code>set err = %ERRORLEVEL%</code>". 
+When you want to refer ERRORLEVEL in "for ~ do ~" loop, 
+you must set a local variable as "<code>setlocal enabledelayedexpansion</code>" and use "<code>!ERRORLEVEL!</code>".
+</p>
+
+<hr>
+
+<h3>索引</h3>
+<table width="100%">
+<tr><td><a href="#C1">在每个被选定的文件夹中创建单独的PAR2文件集（用GUI）</a><td>
+<tr><td><a href="#C2">在被选定的文件夹下的每个子文件夹中创建单独的PAR2文件集（用GUI）</a><td>
+<tr><td><a href="#C3">在被选定的文件夹中对每个文件创建一个PAR2文件</a><td>
+<tr><td><a href="#C4">从被选的多个文件中将每四个文件视为一个集合创建PAR2文件集</a><td>
+<tr><td><a href="#C5">创建PAR2恢复数据并且将其附加到各自的原始ZIP/7-Zip压缩文件</a><td>
+<tr><td><hr width="95%"></td>
+<tr><td><a href="#V1">用GUI校验或修复在被选文件夹中的单独的PAR2文件集</a><td>
+<tr><td><a href="#V2">Create, Verify or Repair individual PAR2 set in each subfolder under a selected folder with GUI</a><td>
+<tr><td><hr width="95%"></td>
+
+<tr><td><a href="#A1">对被选文件中的每个文件分别添加MD5校验和（仅限于NTFS）</a><td>
+<tr><td><a href="#A2">对被选文件夹中的每个文件使用MD5校验和独立进行校验（仅限于NTFS）</a><td>
+
+<tr><td><hr width="95%"></td>
+<tr><td><a href="#N1">播放提示音</a><td>
+<tr><td><hr width="95%"></td>
+<tr><td><a href="#B1">使用GUI创建文件后的批处理脚本</a><td>
+<tr><td><a href="#B2">使用GUI校验或修复后的批处理脚本</a><td>
+</table>
+
+<hr>
+
+<a name="C1"></a>
+<h3>在每个被选定的文件夹中创建单独的PAR2文件集（用GUI）</h3>
+<p>
+<table border=1 cellspacing=0 cellpadding=2 width="100%">
+<tr><td nowrap>命令<td>"批处理文件的路径" "文件夹1的路径" "文件夹2的路径" "文件夹3的路径" ...
+<tr><td>输入<td>指定一些文件夹
+<tr><td>行为<td>此示例在每个选定文件夹中创建单独的PAR2集。例如，当您提供7个文件夹时，一共会创建7个PAR2集。本方法也可以打开用于设置的GUI。
+</table>
+</p>
+
+<textarea cols=64 rows=23 readonly wrap=off>
+@ECHO OFF
+SETLOCAL
+
+SET par2_path="path of par2j.exe"
+
+:GetFilePath
+REM check input path
+IF "%~1"=="" GOTO End
+IF NOT EXIST "%~1" GOTO NextFile
+
+REM run PAR2 client
+ECHO create for %1
+%par2_path% c /sm2048 /rr20 /rd1 /rf3 "%~1\%~n1.par2" *
+
+IF ERRORLEVEL 1 GOTO End
+
+:NextFile
+SHIFT
+GOTO GetFilePath
+
+:End
+ENDLOCAL</textarea>
+
+<p>&nbsp
+如果要使用MultiPar GUI（用户界面）进行设置，您应调用<tt>MultiPar.exe</tt>而不是<tt>par2j.exe</tt>。当一个GUI关闭时，下一个GUI将打开下一个文件夹。您可以在“完成后的动作”中设置选项“创建完成后自动退出”。
+</p>
+
+<textarea cols=64 rows=21 readonly wrap=off>
+@ECHO OFF
+SETLOCAL
+
+SET multipar_path="path of MultiPar.exe"
+
+:GetFilePath
+REM check input path
+IF "%~1"=="" GOTO End
+IF NOT EXIST "%~1" GOTO NextFile
+
+REM open MultiPar GUI
+ECHO create for %1
+%multipar_path% /create %1
+
+:NextFile
+SHIFT
+GOTO GetFilePath
+
+:End
+ENDLOCAL</textarea>
+
+<p>&nbsp
+如果您不想等待每次创建完成，可以在脚本中使用“<code>START</code>”命令。由于每个文件夹对应的所有GUI都会打开，因此您可以随时启动任意一个创建任务。
+</p>
+
+<textarea cols=64 rows=21 readonly wrap=off>
+@ECHO OFF
+SETLOCAL
+
+SET multipar_path="path of MultiPar.exe"
+
+:GetFilePath
+REM check input path
+IF "%~1"=="" GOTO End
+IF NOT EXIST "%~1" GOTO NextFile
+
+REM open MultiPar GUI
+ECHO create for %1
+START "" %multipar_path% /create %1
+
+:NextFile
+SHIFT
+GOTO GetFilePath
+
+:End
+ENDLOCAL</textarea>
+
+<hr>
+
+<a name="C2"></a>
+<h3>在被选定的文件夹下的每个子文件夹中创建单独的PAR2文件集（用GUI）</h3>
+<p>
+<table border=1 cellspacing=0 cellpadding=2 width="100%">
+<tr><td nowrap>命令<td>"批处理文件的路径" "文件夹的路径"
+<tr><td>输入<td>指定一个文件夹
+<tr><td>行为<td>此示例在所选文件夹下的每个子文件夹中创建单独的PAR2集。例如，当有7个子文件夹时，总共创建了7个PAR2。
+</table>
+</p>
+
+<textarea cols=64 rows=33 readonly wrap=off>
+@ECHO OFF
+SETLOCAL
+
+REM check input path
+IF "%~1"=="" GOTO End
+IF NOT EXIST "%~1" (
+ECHO The path does not exist.
+GOTO End
+)
+
+REM set options for PAR2 client
+SET par2_path="path of par2j.exe"
+
+REM recursive search of subfolders
+PUSHD %1
+FOR /D /R %%G IN (*.*) DO CALL :ProcEach "%%G"
+POPD
+
+GOTO End
+
+REM run PAR2 client
+:ProcEach
+ECHO create for %1
+%par2_path% c /fo /sm2048 /rr20 /rd1 /rf3 "%~1\%~n1.par2" *
+
+GOTO :EOF
+
+:End
+ENDLOCAL</textarea>
+
+<p>&nbsp
+请不要在命令行中删除项<code>/fo</code>。通过此项，PAR2文件仅包含每个子文件夹中的文件。
+</p>
+
+<p>&nbsp
+您应调用<tt>MultiPar.exe</tt>而不是<tt>par2j.exe</tt>。当一个GUI关闭时，下一个GUI将打开下一个文件夹。您可以在“完成后的动作”中设置选项“创建完成后自动退出”。
+<!--
+您必须在“命令行行为”中勾选“不搜索子文件夹”选项，然后每个PAR2文件集会忽略其他子文件夹中的文件。
+-->
+You may check "Always use folder name for base filename" option in "Client behavior", then each PAR2 set is named by the folder.
+</p>
+
+<textarea cols=64 rows=33 readonly wrap=off>
+@ECHO OFF
+SETLOCAL
+
+REM check input path
+IF "%~1"=="" GOTO End
+IF NOT EXIST "%~1" (
+ECHO The path does not exist.
+GOTO End
+)
+
+SET multipar_path="path of MultiPar.exe"
+
+REM recursive search of subfolders
+PUSHD %1
+ECHO "%1"
+FOR /D /R %%G IN (*.*) DO CALL :ProcEach "%%G"
+POPD
+
+GOTO End
+
+REM open MultiPar GUI
+:ProcEach
+ECHO create for %1
+%multipar_path% /create %1
+
+GOTO :EOF
+
+:End
+ENDLOCAL</textarea>
+
+<hr>
+
+<a name="C3"></a>
+<h3>在被选定的文件夹中对每个文件创建一个PAR2文件</h3>
+<p>
+<table border=1 cellspacing=0 cellpadding=2 width="100%">
+<tr><td nowrap>命令<td>"批处理文件的路径" "文件夹路径"
+<tr><td>输入<td>指定一个文件夹
+<tr><td>行为<td>此示例为所选文件夹中的每个文件创建一个PAR2文件。如果文件夹中有子文件夹，也会搜索子文件夹中的文件。不是像上一个示例一样为子文件夹中的所有文件创建PAR2文件，而是为子文件夹中的每个文件创建一个PAR2文件。例如，当文件夹中有7个文件时，总共会创建7个PAR2文件。
+</table>
+</p>
+
+<textarea cols=64 rows=33 readonly wrap=off>
+@ECHO OFF
+SETLOCAL
+
+REM check input path
+IF "%~1"=="" GOTO End
+IF NOT EXIST "%~1" (
+ECHO The path does not exist.
+GOTO End
+)
+
+REM set options for PAR2 client
+SET par2_path="path of par2j.exe"
+
+REM recursive search of files
+PUSHD %1
+FOR /R %%G IN (*.*) DO CALL :ProcEach "%%G"
+POPD
+
+GOTO End
+
+REM run PAR2 client
+:ProcEach
+ECHO create for %1
+%par2_path% c /fo /sm2048 /rr10 /ri /in /lr32767 "%~1.par2" %1
+
+GOTO :EOF
+
+:End
+ENDLOCAL</textarea>
+
+<p>&nbsp
+不要在命令行中删除项<code>/in</code>。通过此项，不会创建索引文件。
+</p>
+
+<hr>
+
+<a name="C4"></a>
+<h3>从被选的多个文件中将每四个文件视为一个集合创建PAR2文件集</h3>
+<p>
+<table border=1 cellspacing=0 cellpadding=2 width="100%">
+<tr><td nowrap>命令<td>"批处理文件的路径" "文件1的路径" "文件2的路径" "文件3的路径" "文件4的路径" "文件5的路径" ...
+<tr><td>输入<td>指定多个文件
+<tr><td>行为<td>此示例在多个选定文件以每4个文件一组对其创建单独的PAR2集。例如，当您提供11个文件时，总共设置了3个PAR2。(11 = 4 + 4 + 3)
+</table>
+</p>
+
+<textarea cols=64 rows=27 readonly wrap=off>
+@ECHO OFF
+SETLOCAL
+
+REM set options for PAR2 client
+SET par2_path="path of par2j.exe"
+
+SET /a N=1
+
+:GetFilePath
+REM check input path
+IF "%~1"=="" GOTO End
+IF NOT EXIST "%~1" GOTO End
+
+REM run PAR2 client
+ECHO create for "%~d1%~p1par_set%N%"
+%par2_path% c /sm2048 /rr20 /rd1 /rf3 "%~d1%~p1par_set%N%.par2" %1 %2 %3 %4
+
+SET /a N=N+1
+
+SHIFT
+SHIFT
+SHIFT
+SHIFT
+GOTO GetFilePath
+
+:End
+ENDLOCAL</textarea>
+
+<p>&nbsp
+您可以修改此示例以接受更多文件，最多9个。请注意每个步骤的源文件数和“<code>SHIFT</code>”。
+</p>
+
+<hr>
+
+<a name="C5"></a>
+<h3>创建PAR2恢复数据并且将其附加到各自的原始ZIP/7-Zip压缩文件</h3>
+<p>
+<table border=1 cellspacing=0 cellpadding=2 width="100%">
+<tr><td nowrap>命令<td>"批处理文件的路径" "压缩文件1的路径" "压缩文件2的路径" "压缩文件3的路径" ...
+<tr><td>输入<td>指定一些ZIP/7-Zip压缩文件
+<tr><td>行为<td>此示例创建PAR2恢复数据并将其附加到每个原始ZIP/7-Zip压缩文件。虽然ZIP/7-Zip压缩没有恢复记录功能，但是parchive可以提供这项功能。例如，当您提供7个压缩文件时，将总共创建7个具有恢复记录的压缩文件。
+</table>
+</p>
+
+<textarea cols=64 rows=36 readonly wrap=off>
+@ECHO OFF
+SETLOCAL
+
+REM set options for PAR2 client
+SET par2_path="path of par2j.exe"
+
+:GetFilePath
+REM check input path
+IF "%~1"=="" GOTO End
+IF NOT EXIST "%~1" GOTO End
+
+REM check format
+IF /i "%~x1" NEQ ".zip" (
+IF /i "%~x1" NEQ ".7z" (
+GOTO NextFile
+)
+)
+
+REM ignore already appended file
+%par2_path% l %1
+IF NOT ERRORLEVEL 1 GOTO NextFile
+
+REM run PAR2 client
+ECHO append to %1
+%par2_path% c /fo /sm2048 /rr10 /ri /in /lr32767 /lp4 "%~1.par2" %1
+
+REM join 2 files
+COPY /b "%~1"+"%~1.vol_1.par2" /v "%~1"
+DEL "%~1.vol_1.par2"
+
+:NextFile
+SHIFT
+GOTO GetFilePath
+
+:End
+ENDLOCAL</textarea>
+
+<p>&nbsp
+请不要在命令行中删除项<code>/ri</code>和<code>/in</code>。通过此项，不会创建索引文件，并且文件名具有固定的卷号。对原始压缩文件附加恢复数据时，应当先放置原始压缩文件，然后在最后添加恢复数据，这一顺序非常重要。从ZIP/7-Zip压缩的性质来看，附加的PAR2恢复数据对文件的提取或解压缩没有影响。如果要单独保留PAR2文件，请注释“<code>DEL</code>”命令行。
+</p>
+<p>&nbsp
+要校验压缩文件，只需将其拖放到MultiPar快捷方式图标上即可。（或者右键单击发送到或右键菜单扩展也可以。）在MultiPar用户界面上，当压缩文件的原始部分完整时，带有PAR2恢复数据的压缩文件会显示为“附加”状态。如果修复了存档，则压缩文件将返回到原始状态（删除附加的PAR2恢复数据）。如果要保留PAR2恢复数据，则需要在设置中不勾选“修复后删除破损文件”选项。然后通过在文件名后添加“<tt>.1</tt>”来重命名恢复数据。
+</p>
+
+<hr>
+
+<a name="V1"></a>
+<h3>用GUI校验或修复在被选文件夹中的单独的PAR2文件集</h3>
+<p>
+<table border=1 cellspacing=0 cellpadding=2 width="100%">
+<tr><td nowrap>命令<td>"批处理文件的路径" "文件夹1的路径" "文件夹2的路径" "文件夹3的路径" ...
+<tr><td>输入<td>指定一些文件夹
+<tr><td>行为<td>此示例调用MultiPar GUI校验或修复被选文件夹中的单独的PAR2文件集。例如，当您提供7个文件夹时，GUI将逐个打开7次。可以通过GUI进行修复。当一个GUI关闭时，会打开下一个PAR2文件的GUI。
+</table>
+</p>
+
+<textarea cols=64 rows=21 readonly wrap=off>
+@ECHO OFF
+SETLOCAL
+
+SET multipar_path="path of MultiPar.exe"
+
+:GetFilePath
+REM check input path
+IF "%~1"=="" GOTO End
+IF NOT EXIST "%~1" GOTO NextFile
+
+REM open MultiPar GUI
+ECHO verify for %1
+%multipar_path% /verify "%~1\%~n1.par2"
+
+:NextFile
+SHIFT
+GOTO GetFilePath
+
+:End
+ENDLOCAL</textarea>
+
+<p>&nbsp
+关键在于设置PAR文件时要基于文件夹名称。如果在创建时将prefix/suffix设置为文件名，则需要在校验时设置相同的名称。
+</p>
+
+<hr>
+
+<a name="V2"></a>
+<h3>Create, Verify or Repair individual PAR2 set in each subfolder under a selected folder with GUI</h3>
+<p>
+<table border=1 cellspacing=0 cellpadding=2 width="100%">
+<tr><td>command<td>"path of batch file" "path of a folder"
+<tr><td>input<td>specify a folder
+<tr><td>action<td>This sample calls MultiPar GUI for individual PAR2 set in each subfolder under the selected folder. 
+When PAR2 files don't exist, it creates PAR2 set for the subfolder. 
+When PAR2 files exist, it verifys files in the subfolder. 
+For example, when there are 7 subfolders, total 7 PAR2 set are made. 
+Next time you specify the folder, MultiPar verifies the 7 subfolders one by one.
+</table>
+</p>
+
+<textarea cols=64 rows=38 readonly wrap=off>
+@ECHO OFF
+SETLOCAL
+
+REM check input path
+IF "%~1"=="" GOTO End
+IF NOT EXIST "%~1" (
+ECHO The path does not exist.
+GOTO End
+)
+
+SET multipar_path="path of MultiPar.exe"
+
+REM recursive search of subfolders
+PUSHD %1
+ECHO "%1"
+FOR /D /R %%G IN (*.*) DO CALL :ProcEach "%%G"
+POPD
+
+GOTO End
+
+REM open MultiPar GUI
+:ProcEach
+IF EXIST "%~1\%~n1.par2" (
+ECHO verify for %1
+%multipar_path% /verify "%~1\%~n1.par2"
+) else (
+ECHO create for %1
+%multipar_path% /create %1
+)
+
+GOTO :EOF
+
+:End
+ENDLOCAL</textarea>
+
+<p>&nbsp
+The key is setting the PAR filename to be based on the folder name. 
+You must check "Always use folder name for base filename" option in "Client behavior", then each PAR2 set is named by the folder.
+</p>
+
+<p>&nbsp
+When a GUI is closed, next GUI is opened with next folder. 
+You may set an option in "Automated tasks" to close GUI automatically after creation. 
+If you want to skip complete files at verification, you may set option to close GUI automatically after verification, too.
+</p>
+
+<hr>
+
+<a name="A1"></a>
+<h3>对被选文件中的每个文件分别添加MD5校验和（仅限于NTFS）</h3>
+<p>
+<table border=1 cellspacing=0 cellpadding=2 width="100%">
+<tr><td nowrap>命令<td>"批处理脚本的路径" "文件夹的路径"
+<tr><td>输入<td>指定一个文件夹
+<tr><td>行为<td>此示例将MD5校验和独立添加到选定文件夹中的每个文件中。如果文件夹中有子文件夹，则也会搜索子文件夹中的文件。该方法使用了“备用数据流”，仅适用于NTFS。校验和数据保存在备用流“原始文件名<tt>:digest.md5</tt>”中，但在Windows资源管理器中不可见。
+</table>
+</p>
+
+<textarea cols=64 rows=38 readonly wrap=off>
+@ECHO OFF
+SETLOCAL
+
+REM check input path
+IF "%~1"=="" GOTO End
+IF NOT EXIST "%~1" (
+ECHO The path does not exist.
+GOTO End
+)
+
+REM set options for SFV/MD5 client
+SET client_path="path of sfv_md5.exe"
+
+REM recursive search of files
+PUSHD %1
+FOR /R %%G IN (*.*) DO CALL :ProcEach "%%G"
+POPD
+
+ECHO Finished to add checksums into alternate stream.
+PAUSE
+GOTO End
+
+REM run SFV/MD5 client
+:ProcEach
+ECHO create for %1
+%client_path% c "%~1:digest.md5" %1
+
+IF ERRORLEVEL 1 (
+ECHO Stop at this point.
+PAUSE
+EXIT
+)
+
+GOTO :EOF
+
+:End
+ENDLOCAL</textarea>
+
+<p>&nbsp
+有一些事项需要注意。一些二进制/文本编辑器似乎在重写时会自动删除备用数据流。如果您修改了文件，则需要再次将校验和重新添加到新文件中。即使原始文件数据未更改，添加校验和也会更新文件的修改时间。用户需要使用特殊工具来查看/删除/复制流，因为在Windows资源管理器无法访问这些数据。虽然备用流在NTFS驱动器之间复制/移动时会保留，但复制/移动到其他文件系统上时将会被删除。例如，您无法在CD/DVD上备份备用流数据。
+</p>
+
+<hr>
+
+<a name="A2"></a>
+<h3>对被选文件夹中的每个文件使用MD5校验和独立进行校验（仅限于NTFS）</h3>
+<p>
+<table border=1 cellspacing=0 cellpadding=2 width="100%">
+<tr><td nowrap>命令<td>"批处理文件的路径" "文件夹的路径"
+<tr><td>输入<td>指定一个文件夹
+<tr><td>行为<td>此示例使用被选文件夹中的MD5校验和独立校验每个文件。如果文件夹中有子文件夹，也会搜索子文件夹中的文件。
+该方法使用了“备用数据流”，仅适用于NTFS。校验和数据必须保存在备用流“原始文件名<tt>:digest.md5</tt>”中。
+</table>
+</p>
+
+<textarea cols=64 rows=43 readonly wrap=off>
+@ECHO OFF
+SETLOCAL
+
+REM check input path
+IF "%~1"=="" GOTO End
+IF NOT EXIST "%~1" (
+ECHO The path does not exist.
+GOTO End
+)
+
+REM set options for SFV/MD5 client
+SET client_path="path of sfv_md5.exe"
+
+REM recursive search of files
+PUSHD %1
+FOR /R %%G IN (*.*) DO CALL :ProcEach "%%G"
+POPD
+
+ECHO Finished to verify files by checksums in alternate stream.
+PAUSE
+GOTO End
+
+REM run SFV/MD5 client
+:ProcEach
+ECHO verify for %1
+%client_path% v "%~1:digest.md5"
+
+IF ERRORLEVEL 4 (
+ECHO This file is broken.
+PAUSE
+GOTO :EOF
+)
+IF ERRORLEVEL 1 (
+ECHO Stop at this point.
+PAUSE
+EXIT
+)
+
+GOTO :EOF
+
+:End
+ENDLOCAL</textarea>
+
+<hr>
+
+<a name="N1"></a>
+<h3>播放提示音</h3>
+<p>&nbsp
+此示例使用Media Player播放声音。在运行脚本时，能够通知用户进程结束。能够播放Media Player支持的任何文件格式。
+</p>
+
+<textarea cols=64 rows=13 readonly wrap=off>
+@ECHO OFF
+SETLOCAL
+
+REM set path of sound file
+SET SNDPATH=%systemroot%\Media\ringout.wav
+
+REM set playing time by mil seconds
+SET HTA_MAX_TIME=5000
+
+REM call HTA application (JavaScript and Media Player plag-in)
+mshta.exe "about:playing... &lt;OBJECT CLASSID='CLSID:22D6F312-B0F6-11D0-94AB-0080C74C7E95' WIDTH=100 HEIGHT=100&gt;&lt;param name='src' value='%SNDPATH%'&gt;&lt;param name='PlayCount' value='1'&gt;&lt;param name='autostart' value='true'&gt;&lt;/OBJECT>&lt;script&gt;window.resizeTo(10,10);setTimeout(function(){window.close()},%HTA_MAX_TIME%);&lt;/script&gt;"
+
+ENDLOCAL</textarea>
+
+<hr>
+
+<a name="B1"></a>
+<h3>使用GUI创建文件后的批处理脚本</h3>
+<p>&nbsp
+MultiPar GUI可以在创建任务完成后启动脚本。脚本文件必须是用户“<tt>save</tt>”文件夹中的“<tt>auto_c.cmd</tt>”。用户可以在这个文件中编写任何脚本。该脚本从GUI获取两个参数，如下所示：<br>
+<code>%1</code> = 恢复文件的路径<br>
+<code>%2</code> = 源文件的基本目录路径
+</p>
+<p>&nbsp
+此示例脚本将已创建的PAR2恢复文件移动到另一个文件夹中。
+</p>
+
+<textarea cols=64 rows=35 readonly wrap=off>
+@ECHO OFF
+TITLE After creation
+SETLOCAL
+
+REM List up parameters
+ECHO Path of this batch file =
+ECHO %0
+ECHO.
+
+ECHO Path of a recovery file =
+ECHO %1
+ECHO.
+
+ECHO Path of base directory of source files =
+ECHO %2
+ECHO.
+
+REM check the extension for .par2
+IF /i "%~x1" NEQ ".par2" (
+ECHO The recovery file format isn't PAR2.
+GOTO End
+)
+
+REM insert * between filename and extension
+SET search_path="%~d1%~p1%~n1*%~x1"
+
+REM move all created recovery files into another folder
+SET destination_folder="C:/Sample/"
+
+ECHO Moving %search_path%
+move %search_path% %destination_folder%
+ECHO Above files were gone to %destination_folder%
+
+:End
+ENDLOCAL</textarea>
+
+<hr>
+
+<a name="B2"></a>
+<h3>使用GUI校验或修复后的批处理脚本</h3>
+<p>&nbsp
+MultiPar GUI可以在文件校验或修复完成后启动脚本。脚本文件必须是用户“<tt>save</tt>”文件夹中的“<tt>auto_v.cmd</tt>”。用户可以在这个文件中编写任何脚本。该脚本从GUI获取三个参数，如下所示：<br>
+<code>%1</code> = 恢复文件的路径<br>
+<code>%2</code> = 源文件的基本目录路径<br>
+<code>%3</code> = 使用过的客户端的退出代码 (参考命令行手册)
+</p>
+<p>&nbsp
+此示例脚本为仅在完成后才会打开ZIP或7-Zip存档。要使用此脚本，首先需要为压缩文件创建一些恢复文件。那时，关键是将基本文件名设置为与源文件相同：<br>
+源文件的名称 = <tt>something.zip</tt><br>
+恢复文件的名称 = <tt>something.zip.par2, something.zip.vol0+4.par2, something.zip.vol4+8.par2</tt><br>
+因此，当您打开索引文件“<tt>something.zip.par2</tt>”时，没有最后的扩展名的文件名将成为源文件的名称。
+</p>
+
+<textarea cols=64 rows=55 readonly wrap=off>
+@ECHO OFF
+TITLE After verification
+SETLOCAL
+
+REM List up parameters
+ECHO Path of this batch file =
+ECHO %0
+ECHO.
+
+ECHO Path of a recovery file =
+ECHO %1
+ECHO.
+
+ECHO Path of base directory of source files =
+ECHO %2
+ECHO.
+
+ECHO Status of source files = %3
+ECHO.
+
+REM check the source file is complete
+IF NOT %3==0 (
+IF NOT %3==16 (
+ECHO The file is broken.
+GOTO End
+)
+)
+
+REM remove last extension from path
+SET new_path="%~d1%~p1%~n1"
+ECHO Target file = %new_path%
+
+IF EXIST %new_path% (CALL :OpenFile %new_path%) ELSE ECHO The file does not exist.
+
+GOTO End
+
+:OpenFile
+REM check the format and open the supported file
+IF /i "%~x1" EQU ".zip" (
+ECHO Open the ZIP archive
+%1
+GOTO :EOF
+)
+
+IF /i "%~x1" EQU ".7z" (
+ECHO Open the 7-Zip archive
+%1
+GOTO :EOF
+)
+
+ECHO The file format isn't supported.
+GOTO :EOF
+
+:End
+ENDLOCAL</textarea>
+
+<p>&nbsp
+此示例脚本为将日志文件（<tt>MultiPar.ini</tt>）移动到PAR2文件的目录。如果已有旧日志文件，则会在现有文件之后附加新日志。要使用此脚本，您需要启用日志。MultiPar设置 -> [命令行行为] -> 勾选“记录命令行输出内容”。
+</p>
+
+<textarea cols=64 rows=26 readonly wrap=off>
+@ECHO OFF
+TITLE Move log file
+SETLOCAL
+
+SET old_path="%~d0%~p0MultiPar.log"
+SET new_path="%~1.log"
+
+ECHO Path of original log file =
+ECHO %old_path%
+ECHO Path of moved log file =
+ECHO %new_path%
+ECHO.
+
+ECHO Copying %old_path% to %new_path%.
+COPY /B %new_path% + %old_path% %new_path%
+
+IF %ERRORLEVEL% == 0 (
+REM If copy ok, delete original log file.
+DEL %old_path%
+) ELSE (
+REM If copy fail, move log file.
+ECHO Moving %old_path% to %new_path%.
+MOVE %old_path% %new_path%
+)
+
+ENDLOCAL</textarea>
+
+</body>
+</html>
+
