@@ -13,12 +13,182 @@ gui_path = "../MultiPar.exe"
 
 # Set options for par2j
 # Because /fe option is set to exclude .PAR2 files by default, no need to set here.
+# Don't use /ss, /sn, /sr, or /sm here.
 cmd_option = "/rr10 /rd2"
 
+# How to set slices initially (either /ss, /sn, or /sr)
+init_slice_option = "/sr10"
+
+# Optimization settings. Refer "each_folder.py" for detail.
+slice_size_multiplier = 4096
+max_slice_count = 20000
+max_slice_rate = 170
+min_slice_count = 100
+min_slice_rate = 30
+min_efficiency_improvement = 0.3
 
 # Initialize global variables
 current_dir = "./"
 sub_proc = None
+
+
+# Read "Efficiency rate"
+def read_efficiency(output_text):
+    # Find from the last
+    line_start = output_text.rfind("Efficiency rate\t\t:")
+    if line_start != -1:
+        line_start += 19
+        line_end = output_text.find("%\n", line_start)
+        return float(output_text[line_start:line_end])
+    else:
+        return -1
+
+
+# Read "Input File Slice count"
+def read_slice_count(output_text):
+    # Find from the top
+    line_start = output_text.find("Input File Slice count\t:")
+    if line_start != -1:
+        line_start += 25
+        line_end = output_text.find("\n", line_start)
+        return int(output_text[line_start:line_end])
+    else:
+        return -1
+
+
+# Read "Input File Slice size"
+def read_slice_size(output_text):
+    # Find from the top
+    line_start = output_text.find("Input File Slice size\t:")
+    if line_start != -1:
+        line_start += 24
+        line_end = output_text.find("\n", line_start)
+        return int(output_text[line_start:line_end])
+    else:
+        return -1
+
+
+# Search setting of good efficiency
+def test_efficiency(par_path, source_path):
+    min_size = 0
+    max_size = 0
+    best_count = 0
+    best_size = 0
+    best_efficiency = 0
+    best_efficiency_at_initial_count = 0
+    best_count_at_max_count = 0
+    best_size_at_max_count = 0
+    best_efficiency_at_max_count = 0
+
+    # First time to get initial value
+    cmd = "\"" + client_path + "\" t /uo /fe\"**.par2\" " + init_slice_option + " /sm" + str(slice_size_multiplier) + " " + cmd_option + " \"" + par_path + "\" \"" + source_path + "\""
+    res = subprocess.run(cmd, shell=True, capture_output=True, encoding='utf8')
+    if res.returncode != 0:
+        return 0
+    efficiency_rate = read_efficiency(res.stdout)
+    if efficiency_rate < 0:
+        return 0
+    initial_count = read_slice_count(res.stdout)
+    if initial_count <= 0:
+        return 0
+    initial_size = read_slice_size(res.stdout)
+    best_efficiency_at_initial_count = efficiency_rate
+    #print("initial_size =", initial_size, ", initial_count =", initial_count, ", efficiency =", efficiency_rate)
+
+    # Get min and max of slice count and size to be used at searching
+    # maximum slice count is co-related to minimum slice size
+    if max_slice_rate != 0:
+        if initial_count > max_slice_count:
+            if (initial_count * max_slice_rate / 100) > 32768:
+                max_count = 32768
+            else:
+                max_count = int(initial_count * max_slice_rate / 100)
+        else:
+            if (initial_count * max_slice_rate / 100) > max_slice_count:
+                max_count = max_slice_count
+            else:
+                max_count = int(initial_count * max_slice_rate / 100)
+    else:
+        max_count = 32768
+    cmd = "\"" + client_path + "\" t /uo /fe\"**.par2\" /sn" + str(max_count) + " /sm" + str(slice_size_multiplier) + " " + cmd_option + " \"" + par_path + "\" \"" + source_path + "\""
+    res = subprocess.run(cmd, shell=True, capture_output=True, encoding='utf8')
+    if res.returncode != 0:
+        return 0
+    efficiency_rate = read_efficiency(res.stdout)
+    if efficiency_rate < 0:
+        return 0
+    best_count_at_max_count = read_slice_count(res.stdout)
+    best_size_at_max_count = read_slice_size(res.stdout)
+    best_efficiency_at_max_count = efficiency_rate
+    max_count = read_slice_count(res.stdout)
+    min_size = read_slice_size(res.stdout)
+    #print("max_count =", max_count, ", min_size =", min_size, ", efficiency =", best_efficiency_at_max_count)
+
+    # Minimum slice count is co-related to maximum slice size
+    if min_slice_rate > 0 and (initial_count * min_slice_rate / 100) > min_slice_count:
+        min_count = int(initial_count * min_slice_rate / 100)
+    else:
+        min_count = min_slice_count
+    cmd = "\"" + client_path + "\" t /uo /fe\"**.par2\" /sn" + str(min_count) + " /sm" + str(slice_size_multiplier) + " " + cmd_option + " \"" + par_path + "\" \"" + source_path + "\""
+    res = subprocess.run(cmd, shell=True, capture_output=True, encoding='utf8')
+    if res.returncode != 0:
+        return 0
+    efficiency_rate = read_efficiency(res.stdout)
+    if efficiency_rate < 0:
+        return 0
+    min_count = read_slice_count(res.stdout)
+    max_size = read_slice_size(res.stdout)
+    best_count = read_slice_count(res.stdout)
+    best_size = read_slice_size(res.stdout)
+    best_efficiency = efficiency_rate
+    #print("min_count =", min_count, ", max_size =", max_size, ", efficiency =", best_efficiency)
+
+    # If the calculated maximum slice count is too small, no need to search (QUITE UNLIKELY to happen)
+    if max_slice_rate > 0 and (initial_count * max_slice_rate / 100) <= min_slice_count:
+        cmd = "\"" + client_path + "\" t /uo /fe\"**.par2\" /sn" + str(min_slice_count) + " /sm" + str(slice_size_multiplier) + " " + cmd_option + " \"" + par_path + "\" \"" + source_path + "\""
+        res = subprocess.run(cmd, shell=True, capture_output=True, encoding='utf8')
+        if res.returncode != 0:
+            return 0
+        efficiency_rate = read_efficiency(res.stdout)
+        if efficiency_rate < 0:
+            return 0
+        best_count = read_slice_count(res.stdout)
+        best_size = read_slice_size(res.stdout)
+        best_efficiency = efficiency_rate
+        #print("initial_count too small, best_count =", best_count, ", best_size =", best_size, ", best_efficiency =", best_efficiency)
+        # Return slice size to archive the best efficiency
+        return best_size
+    else:
+        # Try every (step) slice count between min_count and max_count
+        step_slice_count_int = int((min_count + 1) * 8 / 7)
+        while step_slice_count_int < max_count:
+            #print(f"Testing slice count: (around) {step_slice_count_int}, from {(step_slice_count_int - int(step_slice_count_int / 8))} to {int(step_slice_count_int * 17 / 16)}")
+            cmd = "\"" + client_path + "\" t /uo /fe\"**.par2\" /sn" + str(step_slice_count_int) + " /sm" + str(slice_size_multiplier) + " " + cmd_option + " \"" + par_path + "\" \"" + source_path + "\""
+            res = subprocess.run(cmd, shell=True, capture_output=True, encoding='utf8')
+            if res.returncode != 0:
+                break
+            efficiency_rate = read_efficiency(res.stdout)
+            if efficiency_rate < 0:
+                break
+            if efficiency_rate > best_efficiency + min_efficiency_improvement:
+                best_count = read_slice_count(res.stdout)
+                best_size = read_slice_size(res.stdout)
+                best_efficiency = efficiency_rate
+            # Next count should be more than 17/16 of the input count. (Range to +6.25% was checked already.)
+            step_slice_count_int = int((int(step_slice_count_int * 17 / 16) + 1) * 8 / 7)
+        # Evaluate slice count searched with initial_count
+        if initial_count < best_count and best_efficiency_at_initial_count > best_efficiency - min_efficiency_improvement:
+            best_count = initial_count
+            best_size = initial_size
+            best_efficiency = best_efficiency_at_initial_count
+        # Evaluate slice count searched with max_count.
+        if best_efficiency_at_max_count > best_efficiency + min_efficiency_improvement:
+            best_count = best_count_at_max_count
+            best_size = best_size_at_max_count
+            best_efficiency = best_efficiency_at_max_count
+        #print("best_count =", best_count, "best_size =", best_size, ", best_efficiency =", best_efficiency)
+
+    return best_size
 
 
 # Return zero for empty folder
@@ -207,7 +377,7 @@ def add_argv_item():
         button_remove.config(state=tk.NORMAL)
 
 
-# Verify the first PAR set
+# Cretae the first PAR set
 def queue_run():
     global sub_proc
 
@@ -241,9 +411,15 @@ def queue_run():
         par_path = item_path + ".par2"
     label_status.config(text= "Creating \"" + base_name + "\"")
 
+    # Test setting for good efficiency
+    slice_size = test_efficiency(par_path, source_path)
+    if slice_size == 0:
+        label_status.config(text= "Failed to test options.")
+        return
+
     # Set command-line
     # Cover path by " for possible space   
-    cmd = "\"" + client_path + "\" c /fe\"**.par2\" " + cmd_option + " \"" + par_path + "\" \"" + source_path + "\""
+    cmd = "\"" + client_path + "\" c /fe\"**.par2\" /ss" + str(slice_size) + " " + cmd_option + " \"" + par_path + "\" \"" + source_path + "\""
     # If you want to see creating result only, use "t" command instead of "c".
     #print(cmd)
 
