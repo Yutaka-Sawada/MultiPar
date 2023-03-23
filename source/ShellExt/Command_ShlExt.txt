@@ -1,6 +1,6 @@
-[ MultiParShlExt.dll - version 1.2.9.8 or later ]
+[ MultiParShlExt.dll - version 1.3.2.8 or later ]
 
-* How to install manually
+* How to install DLL manually
 
  Open "Command Prompt" and change directory to MultiPar's folder,
 then type following either command.
@@ -18,20 +18,21 @@ regsvr32.exe /u MultiParShlExt.dll
 regsvr32.exe /u MultiParShlExt64.dll
 
 
-* How to change setting in MultiPar.ini
+* How to change items on context menu by adding option in "MultiPar.ini".
 
  You can put a key for Shell Extension DLL,
 which key name is "ShellExtension" under [Option] section.
-The default value is 0, when the key does not exist.
+The default value is 0, when the key doesn't exist.
 
  The value consists in multiple bit.
 Currently each bit means following;
  1: put separator above the menu
  2: put separator below the menu
  4: put separator between sub-menus
- 8: remove sub-menu for Verify
+ 8: remove additional sub-menus (show single sub-menu)
 16: remove icon of the menu
-32: disable menu for archiver
+32: disable sub-menu for archiver
+64: disable sub-menus (show top menu only)
 
  You add each setting value, and write the total value.
 When you set both 1 and 2, the menu title is put independently.
@@ -50,7 +51,7 @@ The example key is like below;
 ShellExtension=11
 
 
-* Format of language specific text in MultiParShlExt.ini
+* Format of language specific text in "MultiParShlExt.ini"
 
  Set Language ID (0x????) to section name.
 When there is no section for the specified language in MultiPar.ini,

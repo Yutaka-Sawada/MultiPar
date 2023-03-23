@@ -1,4 +1,4 @@
-﻿// Copyright : 2021-12-02 Yutaka Sawada
+﻿// Copyright : 2023-03-23 Yutaka Sawada
 // License : The MIT license
 
 // ShellExt.cpp : DLL アプリケーション用のエントリ ポイントを定義します。
@@ -20,21 +20,27 @@
 
 #pragma comment(lib, "uxtheme.lib")
 
+
+// 定義
+#define MAX_LEN		1024	// ファイル名の最大文字数 (末尾のNULL文字も含む)
+//#define DEBUG_OUTPUT		// デバッグ出力するかどうか
+
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 // クラスファクトリの作成 (IClassFactoryインターフェイスを継承する)
 class CShellExtClassFactory : public IClassFactory
 {
-protected:
+private:
 	// 参照カウント
-	volatile long	m_cRef;
+	long m_cRef;
+
 public:
 	// コンストラクタ・デストラクタ
 	CShellExtClassFactory();
 	~CShellExtClassFactory();
 
 	//IUnknown インターフェイスのメソッド
-	STDMETHODIMP			QueryInterface(REFIID, LPVOID FAR *);
+	STDMETHODIMP			QueryInterface(REFIID, void **);
 	STDMETHODIMP_(ULONG)	AddRef();
 	STDMETHODIMP_(ULONG)	Release();
 
@@ -43,15 +49,11 @@ public:
 	STDMETHODIMP			LockServer(BOOL);
 };
 
-// ポインタ型を宣言
-typedef CShellExtClassFactory *LPCSHELLEXTCLASSFACTORY;
-
-
 class CShellExtension :	public IShellExtInit,
 						public IContextMenu
 {
-protected:
-	volatile long	m_cRef;		// オブジェクトの参照カウント
+private:
+	long			m_cRef;		// オブジェクトの参照カウント
 	LPDATAOBJECT	m_pDataObj;	// エクスプローラから受け取るデータオブジェクト
 	int single_file;
 	int CheckData(void);		// 選択したファイルの検査
@@ -59,11 +61,12 @@ protected:
 	int DoCommand7zip(void);
 
 public:
+	// コンストラクタ・デストラクタ
 	CShellExtension();
 	~CShellExtension();
 
 	// IUnknown インターフェイスのメソッド
-	STDMETHODIMP			QueryInterface(REFIID, LPVOID FAR *);
+	STDMETHODIMP			QueryInterface(REFIID, void **);
 	STDMETHODIMP_(ULONG)	AddRef();
 	STDMETHODIMP_(ULONG)	Release();
 
@@ -86,13 +89,81 @@ static const GUID CLSID_ShellExt =
 
 HINSTANCE g_inst = NULL;
 HBITMAP g_bmp, g_bmp2;
-volatile long g_cRefDll = 0;
+long g_cRefDll = 0;
 
 #define TOTAL_LENGTH 256
 #define MIN_LENGTH 2
 
 // 動作設定 (MultiPar.ini から読み込む)
 int menu_behavior;
+
+#ifdef DEBUG_OUTPUT
+// デバッグ用の作業領域
+wchar_t debug_buf[MAX_LEN];
+HANDLE hDebug = NULL;
+
+// ファイルを開いて末尾に移動する
+BOOL open_debug_file(void)
+{
+	DWORD len = GetModuleFileName(g_inst, debug_buf, MAX_LEN);
+	if ((len > 0) && (len < MAX_LEN)){
+		while (len > 0){
+			len--;
+			if (debug_buf[len] == '\\'){
+				len++;
+				break;
+			}
+		}
+		debug_buf[len] = 0;	// ファイル名を消す
+		wcscat(debug_buf, L"debug.txt");
+		// ファイルを開いて末尾に移動する
+		hDebug = CreateFile(debug_buf, GENERIC_WRITE, FILE_SHARE_READ, NULL, OPEN_ALWAYS, 0, NULL);
+		if (hDebug != INVALID_HANDLE_VALUE){
+			len = SetFilePointer(hDebug, 0, NULL, FILE_END);
+			if (len == 0){
+				// BOMを書き込む
+				debug_buf[0] = 0xFEFF;
+				debug_buf[1] = 0;
+				DWORD write_size;
+				if (!WriteFile(hDebug, debug_buf, 2, &write_size, NULL)){
+					CloseHandle(hDebug);
+					hDebug = NULL;
+				}
+			}
+			return TRUE;
+		}
+	}
+	hDebug = NULL;
+	return FALSE;
+}
+#endif
+
+// 管理者権限で動いてるか調べる Administrator privileges
+// http://umezawa.dyndns.info/wordpress/?p=5191
+static BOOL check_admin(void)
+{
+	HANDLE hToken;
+	TOKEN_ELEVATION elevation;
+	DWORD cb;
+
+	if (OpenProcessToken(GetCurrentProcess(), GENERIC_READ, &hToken)){
+		if (GetTokenInformation(hToken, TokenElevation, &elevation, sizeof(elevation), &cb)){
+			if (elevation.TokenIsElevated){	// Run as Administrator
+				TOKEN_ELEVATION_TYPE elevtype;
+				if (GetTokenInformation(hToken, TokenElevationType, &elevtype, sizeof(elevtype), &cb)){
+					if (elevtype == TokenElevationTypeDefault){
+						// User is administrator and UAC (User Account Control) is disabled.
+						CloseHandle(hToken);
+						return TRUE;
+					}
+				}
+			}
+		}
+		CloseHandle(hToken);
+	}
+
+	return FALSE;
+}
 
 // 7-Zip のパスが正しいか確認してキーを閉じる
 static int check_path_7zip(HKEY hKey, wchar_t *buf)
@@ -126,20 +197,20 @@ static void get_path_7zip(wchar_t *buf)
 	HKEY hKey;
 
 	buf[0] = 0;	// 正常に取得できた場合は、ここに値が入る
-	ret = RegOpenKeyExA(HKEY_CURRENT_USER, "Software\\7-Zip", 0, KEY_READ, &hKey);
+	ret = RegOpenKeyEx(HKEY_CURRENT_USER, L"Software\\7-Zip", 0, KEY_READ, &hKey);
 	if (ret == ERROR_SUCCESS)
 		ret = check_path_7zip(hKey, buf);
 
 	if (ret != ERROR_SUCCESS){
 		// 関連付けやインストール時の選択肢によっては HKLM に値が記録される？32-bit 版の 7-Zip
-		ret = RegOpenKeyExA(HKEY_LOCAL_MACHINE, "Software\\7-Zip", 0, KEY_READ, &hKey);
+		ret = RegOpenKeyEx(HKEY_LOCAL_MACHINE, L"Software\\7-Zip", 0, KEY_READ, &hKey);
 		if (ret == ERROR_SUCCESS)
 			ret = check_path_7zip(hKey, buf);
 	}
 
 	if (ret != ERROR_SUCCESS){
 		// 64-bit 版の 7-Zip のキーは 32-bit 用のレジストリには書き込まれてない。
-		ret = RegOpenKeyExA(HKEY_LOCAL_MACHINE, "Software\\7-Zip", 0, KEY_READ | KEY_WOW64_64KEY, &hKey);
+		ret = RegOpenKeyEx(HKEY_LOCAL_MACHINE, L"Software\\7-Zip", 0, KEY_READ | KEY_WOW64_64KEY, &hKey);
 		if (ret == ERROR_SUCCESS)
 			check_path_7zip(hKey, buf);
 	}
@@ -362,7 +433,8 @@ static int load_setting(void)
 	rv = GetModuleFileName(g_inst, path, MAX_PATH);
 	if ((rv == 0) || (rv >= MAX_PATH))
 		return 1;
-	for (rv--; rv > 0; rv--){
+	while (rv > 0){
+		rv--;
 		if (path[rv] == '\\'){
 			path[rv] = 0;
 			break;
@@ -484,10 +556,11 @@ static int load_setting(void)
 
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-extern "C" int APIENTRY DllMain(HINSTANCE hInstance, DWORD dwReason, LPVOID lpReserved)
+extern "C" BOOL APIENTRY DllMain(HINSTANCE hInstance, DWORD dwReason, LPVOID lpReserved)
 {
 	if (dwReason == DLL_PROCESS_ATTACH){
 		g_inst = hInstance;
+		DisableThreadLibraryCalls(hInstance);
 		g_bmp = NULL;
 		g_bmp2 = NULL;
 		menu_behavior = -1;	// 設定はまだ読み込まれてない
@@ -501,37 +574,72 @@ extern "C" int APIENTRY DllMain(HINSTANCE hInstance, DWORD dwReason, LPVOID lpRe
 			g_bmp2 = NULL;
 		}
 	}
-	return 1;
+	return TRUE;
 }
 
 STDAPI DllCanUnloadNow(void)
 {
+#ifdef DEBUG_OUTPUT
+	if ((hDebug != NULL) && (g_cRefDll == 0)){
+		SYSTEMTIME st;
+		GetLocalTime(&st);
+		wsprintf(debug_buf, L"DllCanUnloadNow = %04d/%02d/%02d %02d:%02d:%02d\r\n",
+				st.wYear, st.wMonth, st.wDay,
+				st.wHour, st.wMinute, st.wSecond);
+		DWORD write_size;
+		WriteFile(hDebug, debug_buf, (DWORD)wcslen(debug_buf) * 2, &write_size, NULL);
+		CloseHandle(hDebug);
+		hDebug = NULL;
+	}
+#endif
+
 	//参照カウントが 0 ならS_OK
 	return (g_cRefDll == 0 ? S_OK : S_FALSE);
 }
-
 
 STDAPI DllGetClassObject(REFCLSID rclsid, REFIID riid, LPVOID *ppvOut)
 {
 	*ppvOut = NULL;
 
+#ifdef DEBUG_OUTPUT
+	if (open_debug_file()){
+		SYSTEMTIME st;
+		GetLocalTime(&st);
+		wsprintf(debug_buf, L"DllGetClassObject = %04d/%02d/%02d %02d:%02d:%02d\r\n",
+				st.wYear, st.wMonth, st.wDay,
+				st.wHour, st.wMinute, st.wSecond);
+		DWORD write_size;
+		if (!WriteFile(hDebug, debug_buf, (DWORD)wcslen(debug_buf) * 2, &write_size, NULL)){
+			CloseHandle(hDebug);
+			hDebug = NULL;
+		}
+	}
+#endif
+
 	if (IsEqualIID(rclsid, CLSID_ShellExt)){
 		// クラスファクトリの作成。
 		CShellExtClassFactory *pcf = new CShellExtClassFactory;
-		return pcf->QueryInterface(riid, ppvOut);
+		if (pcf){
+			HRESULT hr = pcf->QueryInterface(riid, ppvOut);
+			pcf->Release();
+			return hr;
+		} else {
+			return E_OUTOFMEMORY;
+		}
 	}
 	//失敗時はCLASS_E_CLASSNOTAVAILABLEを返す
 	return CLASS_E_CLASSNOTAVAILABLE;
 }
 
 // レジストリ登録 regsvr32.exe ShellExt.dll
+// https://github.com/MicrosoftDocs/win32/blob/docs/desktop-src/shell/reg-shell-exts.md
 STDAPI DllRegisterServer(void)
 {
 	wchar_t CLSID_str[] = L"{333EFDA5-A74E-4df4-A225-92A7AF81F29A}";
 	wchar_t ext_name[] = L"MultiPar Shell Extension";
 	wchar_t path[MAX_PATH], buf[128];
 	unsigned int len;
-	HKEY hKey = NULL;
+	HKEY hBaseKey, hKey = NULL;
 
 /*{	// for debug
 	len = load_setting();
@@ -545,14 +653,21 @@ STDAPI DllRegisterServer(void)
 	if ((len == 0) || (len >= MAX_PATH))
 		return E_FAIL;
 
+	// 管理者権限で動いてる場合は参照先を変える
+	if (check_admin()){
+		hBaseKey = HKEY_LOCAL_MACHINE;
+	} else {
+		hBaseKey = HKEY_CURRENT_USER;
+	}
+
 	// CLSID に COM オブジェクトを登録する
 	wsprintf(buf, L"Software\\Classes\\CLSID\\%s", CLSID_str);
-	if (RegCreateKeyEx(HKEY_CURRENT_USER, buf, 0, NULL, 0, KEY_SET_VALUE, NULL, &hKey, NULL) != ERROR_SUCCESS)
+	if (RegCreateKeyEx(hBaseKey, buf, 0, NULL, 0, KEY_SET_VALUE, NULL, &hKey, NULL) != ERROR_SUCCESS)
 		goto error_end;
 	RegCloseKey(hKey);
 	hKey = NULL;
 	wsprintf(buf, L"Software\\Classes\\CLSID\\%s\\InprocServer32", CLSID_str);
-	if (RegCreateKeyEx(HKEY_CURRENT_USER, buf, 0, NULL, 0, KEY_SET_VALUE, NULL, &hKey, NULL) != ERROR_SUCCESS)
+	if (RegCreateKeyEx(hBaseKey, buf, 0, NULL, 0, KEY_SET_VALUE, NULL, &hKey, NULL) != ERROR_SUCCESS)
 		goto error_end;
 	if (RegSetValueEx(hKey, NULL, 0, REG_SZ, (const BYTE*)path, (len+1)*2) != ERROR_SUCCESS)
 		goto error_end;
@@ -565,7 +680,7 @@ STDAPI DllRegisterServer(void)
 
 	// 全てのファイルとフォルダに Shell Extension を追加する
 	wsprintf(buf, L"Software\\Classes\\*\\shellex\\ContextMenuHandlers\\%s", ext_name);
-	if (RegCreateKeyEx(HKEY_CURRENT_USER, buf, 0, NULL, 0, KEY_SET_VALUE, NULL, &hKey, NULL) != ERROR_SUCCESS)
+	if (RegCreateKeyEx(hBaseKey, buf, 0, NULL, 0, KEY_SET_VALUE, NULL, &hKey, NULL) != ERROR_SUCCESS)
 		goto error_end;
 	len = lstrlen(CLSID_str);
 	if (RegSetValueEx(hKey, NULL, 0, REG_SZ, (const BYTE*)CLSID_str, (len+1)*2) != ERROR_SUCCESS)
@@ -573,7 +688,7 @@ STDAPI DllRegisterServer(void)
 	RegCloseKey(hKey);
 	hKey = NULL;
 	wsprintf(buf, L"Software\\Classes\\Directory\\shellex\\ContextMenuHandlers\\%s", ext_name);
-	if (RegCreateKeyEx(HKEY_CURRENT_USER, buf, 0, NULL, 0, KEY_SET_VALUE, NULL, &hKey, NULL) != ERROR_SUCCESS)
+	if (RegCreateKeyEx(hBaseKey, buf, 0, NULL, 0, KEY_SET_VALUE, NULL, &hKey, NULL) != ERROR_SUCCESS)
 		goto error_end;
 	if (RegSetValueEx(hKey, NULL, 0, REG_SZ, (const BYTE*)CLSID_str, (len+1)*2) != ERROR_SUCCESS)
 		goto error_end;
@@ -581,12 +696,15 @@ STDAPI DllRegisterServer(void)
 	hKey = NULL;
 
 	// 許可を登録する
-	if (RegOpenKeyEx(HKEY_CURRENT_USER, L"Software\\Microsoft\\Windows\\CurrentVersion\\Shell Extensions\\Approved", 0, KEY_WRITE, &hKey) == ERROR_SUCCESS){
+	if (RegOpenKeyEx(hBaseKey, L"Software\\Microsoft\\Windows\\CurrentVersion\\Shell Extensions\\Approved", 0, KEY_WRITE, &hKey) == ERROR_SUCCESS){
 		len = lstrlen(ext_name);
 		RegSetValueEx(hKey, CLSID_str, 0, REG_SZ, (const BYTE*)ext_name, (len+1)*2);	// 登録できなくてもエラーにしない
 		RegCloseKey(hKey);
 	}
 	hKey = NULL;
+
+	// 更新を通知する
+	SHChangeNotify(SHCNE_ASSOCCHANGED, SHCNF_IDLIST, NULL, NULL);
 
 	return S_OK;
 error_end:
@@ -602,187 +720,143 @@ STDAPI DllUnregisterServer(void)
 	wchar_t ext_name[] = L"MultiPar Shell Extension";
 	wchar_t buf[128];
 	unsigned long err = 0, empty, len, ret;
-	HKEY hKey;
+	HKEY hBaseKey, hKey;
 	FILETIME ft;
+
+	// 管理者権限で動いてる場合は参照先を変える
+	if (check_admin()){
+		hBaseKey = HKEY_LOCAL_MACHINE;
+	} else {
+		hBaseKey = HKEY_CURRENT_USER;
+	}
 
 	// CLSID の COM オブジェクトを削除する
 	wsprintf(buf, L"Software\\Classes\\CLSID\\%s\\InprocServer32", CLSID_str);
-	ret = RegDeleteKey(HKEY_CURRENT_USER, buf);
+	ret = RegDeleteKey(hBaseKey, buf);
 	if ((ret != ERROR_SUCCESS) && (ret != ERROR_FILE_NOT_FOUND))
 		err++;
 	wsprintf(buf, L"Software\\Classes\\CLSID\\%s", CLSID_str);
-	ret = RegDeleteKey(HKEY_CURRENT_USER, buf);
+	ret = RegDeleteKey(hBaseKey, buf);
 	if ((ret != ERROR_SUCCESS) && (ret != ERROR_FILE_NOT_FOUND))
 		err++;
 
 	// 全てのファイルとフォルダの Shell Extension を削除する
 	wsprintf(buf, L"Software\\Classes\\*\\shellex\\ContextMenuHandlers\\%s", ext_name);
-	ret = RegDeleteKey(HKEY_CURRENT_USER, buf);
+	ret = RegDeleteKey(hBaseKey, buf);
 	if ((ret != ERROR_SUCCESS) && (ret != ERROR_FILE_NOT_FOUND))
 		err++;
 	wsprintf(buf, L"Software\\Classes\\Directory\\shellex\\ContextMenuHandlers\\%s", ext_name);
-	ret = RegDeleteKey(HKEY_CURRENT_USER, buf);
+	ret = RegDeleteKey(hBaseKey, buf);
 	if ((ret != ERROR_SUCCESS) && (ret != ERROR_FILE_NOT_FOUND))
 		err++;
 
 	// 空のエントリーを削除する
 	empty = 1;
-	if (RegOpenKeyEx(HKEY_CURRENT_USER, L"Software\\Classes\\*\\shellex\\ContextMenuHandlers", 0, KEY_READ, &hKey) == ERROR_SUCCESS){
+	if (RegOpenKeyEx(hBaseKey, L"Software\\Classes\\*\\shellex\\ContextMenuHandlers", 0, KEY_READ, &hKey) == ERROR_SUCCESS){
 		// ContextMenuHandlers 内に他のデータが無ければ項目自体を削除する。
-		len = sizeof(buf) / 2;
+		len = _countof(buf);
 		if (RegEnumKeyEx(hKey, 0, buf, &len, NULL, NULL, NULL, &ft) != ERROR_NO_MORE_ITEMS){
 			empty = 0;
 		} else {
-			len = sizeof(buf) / 2;
+			len = _countof(buf);
 			if (RegEnumValue(hKey, 0, buf, &len, NULL, NULL, NULL, NULL) != ERROR_NO_MORE_ITEMS)
 				empty = 0;
 		}
 		RegCloseKey(hKey);
-		if (empty && (RegDeleteKey(HKEY_CURRENT_USER, L"Software\\Classes\\*\\shellex\\ContextMenuHandlers") != ERROR_SUCCESS))
+		if (empty && (RegDeleteKey(hBaseKey, L"Software\\Classes\\*\\shellex\\ContextMenuHandlers") != ERROR_SUCCESS))
 			err++;
 	}
 	if (empty){
-		if (RegOpenKeyEx(HKEY_CURRENT_USER, L"Software\\Classes\\*\\shellex", 0, KEY_READ, &hKey) == ERROR_SUCCESS){
+		if (RegOpenKeyEx(hBaseKey, L"Software\\Classes\\*\\shellex", 0, KEY_READ, &hKey) == ERROR_SUCCESS){
 			// shellex 内に他のデータが無ければ項目自体を削除する。
-			len = sizeof(buf) / 2;
+			len = _countof(buf);
 			if (RegEnumKeyEx(hKey, 0, buf, &len, NULL, NULL, NULL, &ft) != ERROR_NO_MORE_ITEMS){
 				empty = 0;
 			} else {
-				len = sizeof(buf) / 2;
+				len = _countof(buf);
 				if (RegEnumValue(hKey, 0, buf, &len, NULL, NULL, NULL, NULL) != ERROR_NO_MORE_ITEMS)
 					empty = 0;
 			}
 			RegCloseKey(hKey);
-			if (empty && (RegDeleteKey(HKEY_CURRENT_USER, L"Software\\Classes\\*\\shellex") != ERROR_SUCCESS))
+			if (empty && (RegDeleteKey(hBaseKey, L"Software\\Classes\\*\\shellex") != ERROR_SUCCESS))
 				err++;
 		}
 		if (empty){
-			if (RegOpenKeyEx(HKEY_CURRENT_USER, L"Software\\Classes\\*", 0, KEY_READ, &hKey) == ERROR_SUCCESS){
+			if (RegOpenKeyEx(hBaseKey, L"Software\\Classes\\*", 0, KEY_READ, &hKey) == ERROR_SUCCESS){
 				// * 内に他のデータが無ければ項目自体を削除する。
-				len = sizeof(buf) / 2;
+				len = _countof(buf);
 				if (RegEnumKeyEx(hKey, 0, buf, &len, NULL, NULL, NULL, &ft) != ERROR_NO_MORE_ITEMS){
 					empty = 0;
 				} else {
-					len = sizeof(buf) / 2;
+					len = _countof(buf);
 					if (RegEnumValue(hKey, 0, buf, &len, NULL, NULL, NULL, NULL) != ERROR_NO_MORE_ITEMS)
 						empty = 0;
 				}
 				RegCloseKey(hKey);
-				if (empty && (RegDeleteKey(HKEY_CURRENT_USER, L"Software\\Classes\\*") != ERROR_SUCCESS))
+				if (empty && (RegDeleteKey(hBaseKey, L"Software\\Classes\\*") != ERROR_SUCCESS))
 					err++;
 			}
 		}
 	}
 	empty = 1;
-	if (RegOpenKeyEx(HKEY_CURRENT_USER, L"Software\\Classes\\Directory\\shellex\\ContextMenuHandlers", 0, KEY_READ, &hKey) == ERROR_SUCCESS){
+	if (RegOpenKeyEx(hBaseKey, L"Software\\Classes\\Directory\\shellex\\ContextMenuHandlers", 0, KEY_READ, &hKey) == ERROR_SUCCESS){
 		// ContextMenuHandlers 内に他のデータが無ければ項目自体を削除する。
-		len = sizeof(buf) / 2;
+		len = _countof(buf);
 		if (RegEnumKeyEx(hKey, 0, buf, &len, NULL, NULL, NULL, &ft) != ERROR_NO_MORE_ITEMS){
 			empty = 0;
 		} else {
-			len = sizeof(buf) / 2;
+			len = _countof(buf);
 			if (RegEnumValue(hKey, 0, buf, &len, NULL, NULL, NULL, NULL) != ERROR_NO_MORE_ITEMS)
 				empty = 0;
 		}
 		RegCloseKey(hKey);
-		if (empty && (RegDeleteKey(HKEY_CURRENT_USER, L"Software\\Classes\\Directory\\shellex\\ContextMenuHandlers") != ERROR_SUCCESS))
+		if (empty && (RegDeleteKey(hBaseKey, L"Software\\Classes\\Directory\\shellex\\ContextMenuHandlers") != ERROR_SUCCESS))
 			err++;
 	}
 	if (empty){
-		if (RegOpenKeyEx(HKEY_CURRENT_USER, L"Software\\Classes\\Directory\\shellex", 0, KEY_READ, &hKey) == ERROR_SUCCESS){
+		if (RegOpenKeyEx(hBaseKey, L"Software\\Classes\\Directory\\shellex", 0, KEY_READ, &hKey) == ERROR_SUCCESS){
 			// shellex 内に他のデータが無ければ項目自体を削除する。
-			len = sizeof(buf) / 2;
+			len = _countof(buf);
 			if (RegEnumKeyEx(hKey, 0, buf, &len, NULL, NULL, NULL, &ft) != ERROR_NO_MORE_ITEMS){
 				empty = 0;
 			} else {
-				len = sizeof(buf) / 2;
+				len = _countof(buf);
 				if (RegEnumValue(hKey, 0, buf, &len, NULL, NULL, NULL, NULL) != ERROR_NO_MORE_ITEMS)
 					empty = 0;
 			}
 			RegCloseKey(hKey);
-			if (empty && (RegDeleteKey(HKEY_CURRENT_USER, L"Software\\Classes\\Directory\\shellex") != ERROR_SUCCESS))
+			if (empty && (RegDeleteKey(hBaseKey, L"Software\\Classes\\Directory\\shellex") != ERROR_SUCCESS))
 				err++;
 		}
 		if (empty){
-			if (RegOpenKeyEx(HKEY_CURRENT_USER, L"Software\\Classes\\Directory", 0, KEY_READ, &hKey) == ERROR_SUCCESS){
-				// * 内に他のデータが無ければ項目自体を削除する。
-				len = sizeof(buf) / 2;
+			if (RegOpenKeyEx(hBaseKey, L"Software\\Classes\\Directory", 0, KEY_READ, &hKey) == ERROR_SUCCESS){
+				// Directory 内に他のデータが無ければ項目自体を削除する。
+				len = _countof(buf);
 				if (RegEnumKeyEx(hKey, 0, buf, &len, NULL, NULL, NULL, &ft) != ERROR_NO_MORE_ITEMS){
 					empty = 0;
 				} else {
-					len = sizeof(buf) / 2;
+					len = _countof(buf);
 					if (RegEnumValue(hKey, 0, buf, &len, NULL, NULL, NULL, NULL) != ERROR_NO_MORE_ITEMS)
 						empty = 0;
 				}
 				RegCloseKey(hKey);
-				if (empty && (RegDeleteKey(HKEY_CURRENT_USER, L"Software\\Classes\\Directory") != ERROR_SUCCESS))
+				if (empty && (RegDeleteKey(hBaseKey, L"Software\\Classes\\Directory") != ERROR_SUCCESS))
 					err++;
 			}
 		}
 	}
 
 	// 許可を削除する
-	if (RegOpenKeyEx(HKEY_CURRENT_USER, L"Software\\Microsoft\\Windows\\CurrentVersion\\Shell Extensions\\Approved", 0, KEY_WRITE, &hKey) == ERROR_SUCCESS){
+	if (RegOpenKeyEx(hBaseKey, L"Software\\Microsoft\\Windows\\CurrentVersion\\Shell Extensions\\Approved", 0, KEY_WRITE, &hKey) == ERROR_SUCCESS){
 		ret = RegDeleteValue(hKey, CLSID_str);
 		if ((ret != ERROR_SUCCESS) && (ret != ERROR_FILE_NOT_FOUND))	// 項目自体が存在しない場合はエラーにしない
 			err++;
 		RegCloseKey(hKey);
 	}
 
-	// バージョン 1.1.8.6 までは HKEY_LOCAL_MACHINE に書き込んでたので、存在すれば削除する。
-	// 存在しなくて削除できなくてもエラーにしない
-/*
-	// CLSID の COM オブジェクトを削除する
-	wsprintf(buf, L"Software\\Classes\\CLSID\\%s\\InprocServer32", CLSID_str);
-	if (RegOpenKeyEx(HKEY_LOCAL_MACHINE, buf, 0, KEY_QUERY_VALUE, &hKey) == ERROR_SUCCESS){
-		RegCloseKey(hKey);
-		if (RegDeleteKey(HKEY_LOCAL_MACHINE, buf) != ERROR_SUCCESS)
-			err++;
-		wsprintf(buf, L"Software\\Classes\\CLSID\\%s", CLSID_str);
-		if (RegDeleteKey(HKEY_LOCAL_MACHINE, buf) != ERROR_SUCCESS)
-			err++;
-	}
-
-	// 全てのファイルとフォルダの Shell Extension を削除する
-	wsprintf(buf, L"Software\\Classes\\*\\shellex\\ContextMenuHandlers\\%s", ext_name);
-	if (RegOpenKeyEx(HKEY_LOCAL_MACHINE, buf, 0, KEY_QUERY_VALUE, &hKey) == ERROR_SUCCESS){
-		RegCloseKey(hKey);
-		if (RegDeleteKey(HKEY_LOCAL_MACHINE, buf) != ERROR_SUCCESS)
-			err++;
-	}
-	wsprintf(buf, L"Software\\Classes\\Directory\\shellex\\ContextMenuHandlers\\%s", ext_name);
-	if (RegOpenKeyEx(HKEY_LOCAL_MACHINE, buf, 0, KEY_QUERY_VALUE, &hKey) == ERROR_SUCCESS){
-		RegCloseKey(hKey);
-		if (RegDeleteKey(HKEY_LOCAL_MACHINE, buf) != ERROR_SUCCESS)
-			err++;
-	}
-
-	// 許可を削除する
-	if (RegOpenKeyEx(HKEY_LOCAL_MACHINE, L"Software\\Microsoft\\Windows\\CurrentVersion\\Shell Extensions\\Approved", 0, KEY_QUERY_VALUE, &hKey) == ERROR_SUCCESS){
-		empty = REG_SZ;
-		if (RegQueryValueEx(hKey, CLSID_str, NULL, &empty, NULL, NULL) == ERROR_SUCCESS){
-			RegCloseKey(hKey);
-			if (RegOpenKeyEx(HKEY_LOCAL_MACHINE, L"Software\\Microsoft\\Windows\\CurrentVersion\\Shell Extensions\\Approved", 0, KEY_SET_VALUE, &hKey) == ERROR_SUCCESS){
-				if (RegDeleteValue(hKey, CLSID_str) != ERROR_SUCCESS)
-					err++;
-				RegCloseKey(hKey);
-			} else {
-				err++;
-			}
-		} else {
-			RegCloseKey(hKey);
-		}
-	}
-*/
-/*
-	// バージョン 1.1.4.0 では Directory ではなく Folder を使ってたので存在してればついでに削除する
-	wsprintf(buf, L"Software\\Classes\\Folder\\shellex\\ContextMenuHandlers\\%s", ext_name);
-	if (RegOpenKeyEx(HKEY_LOCAL_MACHINE, buf, 0, KEY_QUERY_VALUE, &hKey) == ERROR_SUCCESS){
-		RegCloseKey(hKey);
-		if (RegDeleteKey(HKEY_LOCAL_MACHINE, buf) != ERROR_SUCCESS)
-			err++;
-	}
-*/
+	// 更新を通知する
+	// https://github.com/MicrosoftDocs/win32/blob/docs/desktop-src/shell/reg-shell-exts.md
+	SHChangeNotify(SHCNE_ASSOCCHANGED, SHCNF_IDLIST, NULL, NULL);
 
 	if (err == 0)
 		return S_OK;
@@ -793,80 +867,85 @@ STDAPI DllUnregisterServer(void)
 
 CShellExtClassFactory::CShellExtClassFactory()
 {
-	m_cRef = 0L;
-
-	InterlockedIncrement(&g_cRefDll);
+	m_cRef = 1;
+    InterlockedIncrement(&g_cRefDll);
 }
 
 CShellExtClassFactory::~CShellExtClassFactory()
 {
-	InterlockedDecrement(&g_cRefDll);
+    InterlockedDecrement(&g_cRefDll);
 }
 
-STDMETHODIMP CShellExtClassFactory::QueryInterface(REFIID riid, LPVOID FAR *ppv)
+STDMETHODIMP CShellExtClassFactory::QueryInterface(REFIID riid, void **ppvObject)
 {
-	*ppv = NULL;
+	*ppvObject = NULL;
 
 	// Any interface on this object is the object pointer
 	if (IsEqualIID(riid, IID_IUnknown) || IsEqualIID(riid, IID_IClassFactory)){
-		*ppv = (LPCLASSFACTORY)this;
-
-		AddRef();
-
-		return NOERROR;
+		*ppvObject = (LPCLASSFACTORY)this;
+	} else {
+		return E_NOINTERFACE;
 	}
 
-	return E_NOINTERFACE;
+	AddRef();
+
+	return S_OK;
 }
 
 STDMETHODIMP_(ULONG) CShellExtClassFactory::AddRef()
 {
-	InterlockedIncrement(&m_cRef);
-	return m_cRef;
+	return InterlockedIncrement(&m_cRef);
 }
 
 STDMETHODIMP_(ULONG) CShellExtClassFactory::Release()
 {
-	ULONG theRef = InterlockedDecrement(&m_cRef);
-	if (theRef == 0L){
+	ULONG cRef = InterlockedDecrement(&m_cRef);
+	if (cRef == 0){
 		delete this;
 	}
-	return theRef;	// ローカル変数を使っているのは delete 後でも値を返せるように
+	return cRef;
 }
 
 // IClassFactory::CreateInstance()
 STDMETHODIMP CShellExtClassFactory::CreateInstance(
-	LPUNKNOWN pUnkOuter, REFIID riid, LPVOID *ppvObj)
+	LPUNKNOWN pUnkOuter, REFIID riid, LPVOID *ppvObject)
 {
-	*ppvObj = NULL;
+	*ppvObject = NULL;
 
 	// 集合をサポートしないので却下(?)。SDKサンプルより
 	if (pUnkOuter)
 		return CLASS_E_NOAGGREGATION;
 
 	// シェル拡張オブジェクトを作成する。
-	// そのあとシェルはppvObjのIID_IShellExtInitを引数に
+	// そのあとシェルはppvObjectのIID_IShellExtInitを引数に
 	// QueryInterfaceメソッドを呼び出し、初期化します
 	CShellExtension *pShellExt = new CShellExtension();
-
-	if (NULL == pShellExt)
+	if (pShellExt == NULL)
 		return E_OUTOFMEMORY;
+
 	// 目的のインターフェイスのポインタを取得
-	return pShellExt->QueryInterface(riid, ppvObj);
+	HRESULT hr = pShellExt->QueryInterface(riid, ppvObject);
+	pShellExt->Release();
+
+	return hr;
 }
 
 // IClassFactory::LockServer()
 STDMETHODIMP CShellExtClassFactory::LockServer(BOOL fLock)
 {
-	// ただ返るだけ...
-	return NOERROR;
+	if (fLock){
+		InterlockedIncrement(&g_cRefDll);
+	} else {
+		InterlockedDecrement(&g_cRefDll);
+	}
+	return S_OK;
 }
 
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 CShellExtension::CShellExtension()
 {
-	m_cRef = 0L;
+	m_cRef = 1;
 	m_pDataObj = NULL;
 
 	InterlockedIncrement(&g_cRefDll);
@@ -880,41 +959,40 @@ CShellExtension::~CShellExtension()
 	InterlockedDecrement(&g_cRefDll);
 }
 
-STDMETHODIMP CShellExtension::QueryInterface(REFIID riid, LPVOID FAR *ppv)
+STDMETHODIMP CShellExtension::QueryInterface(REFIID riid, void **ppvObject)
 {
-	*ppv = NULL;
+	*ppvObject = NULL;
 
-	if (IsEqualIID(riid, IID_IShellExtInit) || IsEqualIID(riid, IID_IUnknown)){
-		*ppv = (LPSHELLEXTINIT)this;
-	}
-	else if (IsEqualIID(riid, IID_IContextMenu)){
-		*ppv = (LPCONTEXTMENU)this;
-	}
-
-	if (*ppv){
-		AddRef();
-
-		return NOERROR;
+	if (IsEqualIID(riid, IID_IUnknown) || IsEqualIID(riid, IID_IContextMenu)){
+		*ppvObject = (LPCONTEXTMENU)this;
+	} else if (IsEqualIID(riid, IID_IShellExtInit)){
+		*ppvObject = (LPSHELLEXTINIT)this;
+	} else {
+		return E_NOINTERFACE;
 	}
 
-	return E_NOINTERFACE;
+	AddRef();
+
+	return S_OK;
 }
 
 STDMETHODIMP_(ULONG) CShellExtension::AddRef()
 {
-	InterlockedIncrement(&m_cRef);
-	return m_cRef;
+	return InterlockedIncrement(&m_cRef);
 }
 
 STDMETHODIMP_(ULONG) CShellExtension::Release()
 {
-	ULONG theRef = InterlockedDecrement(&m_cRef);
-	if (theRef == 0L){
+	ULONG cRef = InterlockedDecrement(&m_cRef);
+	if (cRef == 0){
 		delete this;
 	}
-	return theRef;	// ローカル変数を使っているのは delete 後でも値を返せるように
+	return cRef;	// ローカル変数を使っているのは delete 後でも値を返せるように
 }
 
+
+// Initializing Shell Extension Handlers
+// https://github.com/MicrosoftDocs/win32/blob/docs/desktop-src/shell/int-shell-exts.md
 STDMETHODIMP CShellExtension::Initialize(
 	LPCITEMIDLIST pIDFolder, LPDATAOBJECT pDataObj, HKEY hRegKey)
 {
@@ -929,7 +1007,7 @@ STDMETHODIMP CShellExtension::Initialize(
 		return CheckData();
 	}
 
-	return NOERROR;
+	return E_INVALIDARG;
 }
 
 STDMETHODIMP CShellExtension::QueryContextMenu(
@@ -939,12 +1017,20 @@ STDMETHODIMP CShellExtension::QueryContextMenu(
 	if (uFlags & (CMF_DEFAULTONLY | CMF_VERBSONLY | CMF_NOVERBS))
 		return MAKE_HRESULT(SEVERITY_SUCCESS, 0, 0);
 
-	UINT idCmdMax;
+#ifdef DEBUG_OUTPUT
+	if (hDebug){
+		wsprintf(debug_buf, L"QueryContextMenu\r\nindexMenu = %u\r\nidCmdFirst = %u\r\nidCmdLast  = %u\r\nuFlags = 0x%X\r\n", indexMenu, idCmdFirst, idCmdLast, uFlags & 0xFFFF);
+		DWORD write_size;
+		if (!WriteFile(hDebug, debug_buf, (DWORD)wcslen(debug_buf) * 2, &write_size, NULL)){
+			CloseHandle(hDebug);
+			hDebug = NULL;
+		}
+	}
+#endif
+
+	UINT idCmdMax = 0;
 	HMENU hSubmenu = NULL;
 	MENUITEMINFO mii;
-
-	//wsprintf(menu_item + 128, L"First %d, Last %d", idCmdFirst, idCmdLast);
-	//MessageBox(NULL, NULL, menu_item + 128, MB_OK);
 
 	if ((menu_behavior < 0) && (load_setting() != 0)){	// 読み込むのは一回だけ
 	//if (load_setting() != 0){	// read setting everytime for debug
@@ -954,12 +1040,12 @@ STDMETHODIMP CShellExtension::QueryContextMenu(
 		if ((menu_behavior & 8) == 0){
 			offset_v = offset_c + (int)wcslen(menu_item + offset_c) + 1;
 			wcscpy(menu_item + offset_v, L"Verify Recovery File");
+			if ((menu_behavior & 32) == 0){
+				offset_a = offset_v + (int)wcslen(menu_item + offset_v) + 1;
+				wcscpy(menu_item + offset_a, L"Archive and Create Recovery Files");
+			}
 		} else {
 			offset_a = offset_v;
-		}
-		if ((menu_behavior & 32) == 0){
-			offset_a = offset_v + (int)wcslen(menu_item + offset_v) + 1;
-			wcscpy(menu_item + offset_a, L"Archive and Create Recovery Files");
 		}
 	}
 
@@ -982,55 +1068,56 @@ STDMETHODIMP CShellExtension::QueryContextMenu(
 
 	// 右クリック・メニューに項目を追加する
 	// ID = 0: Create or Verify
-	// ID = 1: Create
-	// ID = 2: Verify
-	// ID = 3: Archive and Create (and Append)
+	// ID = 1: Verify
+	// ID = 2: Archive and Create (and Append)
 	ZeroMemory(&mii, sizeof(MENUITEMINFO));
 	mii.cbSize = sizeof(MENUITEMINFO);
-	if (idCmdLast - idCmdFirst >= 2){	// サブ・メニューを追加できるか
-		hSubmenu = CreatePopupMenu();
-		if (idCmdLast - idCmdFirst < 4)
+	if (idCmdLast - idCmdFirst >= 1){	// サブ・メニューを追加できるか
+		if ((menu_behavior & 64) == 0)
+			hSubmenu = CreatePopupMenu();
+		if (idCmdLast - idCmdFirst < 3){
 			menu_behavior |= 32;
+			if (idCmdLast - idCmdFirst < 2)
+				menu_behavior |= 8;
+		}
 	}
 	if (hSubmenu == NULL){	// 選択肢無しでトップ・メニューだけにする
 		mii.fMask = MIIM_ID | MIIM_STRING;
+		mii.wID = idCmdFirst;
 	} else {
-		mii.fMask = MIIM_ID | MIIM_STRING | MIIM_SUBMENU;
+		mii.fMask = MIIM_STRING | MIIM_SUBMENU;
 		mii.hSubMenu = hSubmenu;
 	}
-	mii.wID = idCmdFirst;
 	mii.dwTypeData = menu_item;
 	if (((menu_behavior & 16) == 0) && (g_bmp != NULL)){	// メニューにアイコンを付ける
 		mii.fMask |= MIIM_BITMAP;
 		mii.hbmpItem = g_bmp;
 	}
-	idCmdMax = 0;
 	if (hSubmenu != NULL){	// サブ・メニューを作る
-		InsertMenu(hSubmenu, -1, MF_STRING | MF_BYPOSITION, idCmdFirst + 1, menu_item + offset_c);
-		idCmdMax = 1;
-		if ((menu_behavior & 32) == 0){
+		InsertMenu(hSubmenu, -1, MF_STRING | MF_BYPOSITION, idCmdFirst, menu_item + offset_c);
+		if ((menu_behavior & (8 | 32)) == 0){
 			if (menu_behavior & 4)
 				InsertMenu(hSubmenu, -1, MF_SEPARATOR | MF_BYPOSITION, 0, NULL);
 			if ((menu_behavior & 16) || (g_bmp2 == NULL)){	// アイコンを表示しないなら
-				InsertMenu(hSubmenu, -1, MF_STRING | MF_BYPOSITION, idCmdFirst + 3, menu_item + offset_a);
+				InsertMenu(hSubmenu, -1, MF_STRING | MF_BYPOSITION, idCmdFirst + 2, menu_item + offset_a);
 			} else {
 				MENUITEMINFO mii2;
 				ZeroMemory(&mii2, sizeof(MENUITEMINFO));
 				mii2.cbSize = sizeof(MENUITEMINFO);
 				mii2.fMask = MIIM_ID | MIIM_STRING | MIIM_BITMAP;
-				mii2.wID = idCmdFirst + 3;
+				mii2.wID = idCmdFirst + 2;
 				mii2.dwTypeData = menu_item + offset_a;
 				mii2.hbmpItem = g_bmp2;
 				InsertMenuItem(hSubmenu, -1, TRUE, &mii2);
 			}
-			idCmdMax = 3;
+			idCmdMax = 2;
 		}
 		if ((single_file) && ((menu_behavior & 8) == 0)){
 			if (menu_behavior & 4)
 				InsertMenu(hSubmenu, -1, MF_SEPARATOR | MF_BYPOSITION, 0, NULL);
-			InsertMenu(hSubmenu, -1, MF_STRING | MF_BYPOSITION, idCmdFirst + 2, menu_item + offset_v);
-			if (idCmdMax < 2)
-				idCmdMax = 2;
+			InsertMenu(hSubmenu, -1, MF_STRING | MF_BYPOSITION, idCmdFirst + 1, menu_item + offset_v);
+			if (idCmdMax < 1)
+				idCmdMax = 1;
 		}
 	}
 	InsertMenuItem(hMenu, indexMenu++, TRUE, &mii);
@@ -1039,6 +1126,16 @@ STDMETHODIMP CShellExtension::QueryContextMenu(
 		InsertMenu(hMenu, indexMenu++, MF_SEPARATOR | MF_BYPOSITION, 0, NULL);
 
 	// Microsoft のページによって説明が異なる・・・でも、サンプル・コードは最大 offset +1 を返す
+#ifdef DEBUG_OUTPUT
+	if (hDebug){
+		wsprintf(debug_buf, L"menu_behavior = %d\r\nidCmdMax = %u\r\n", menu_behavior, idCmdMax);
+		DWORD write_size;
+		if (!WriteFile(hDebug, debug_buf, (DWORD)wcslen(debug_buf) * 2, &write_size, NULL)){
+			CloseHandle(hDebug);
+			hDebug = NULL;
+		}
+	}
+#endif
 
 	// How to Implement the IContextMenu Interface
 	// https://docs.microsoft.com/en-us/windows/win32/shell/how-to-implement-the-icontextmenu-interface
@@ -1062,9 +1159,9 @@ STDMETHODIMP CShellExtension::InvokeCommand(LPCMINVOKECOMMANDINFO lpcmi)
 		//wsprintf(menu_item + 128, L"ID = %d", idCmd);
 		//MessageBox(lpcmi->hwnd, NULL, menu_item + 128, MB_OK);
 
-		if (idCmd <= 2)
+		if (idCmd <= 1)
 			return DoCommand(idCmd);
-		if (idCmd == 3)
+		if (idCmd == 2)
 			return DoCommand7zip();
 	}
 	return E_INVALIDARG;
@@ -1074,19 +1171,19 @@ STDMETHODIMP CShellExtension::InvokeCommand(LPCMINVOKECOMMANDINFO lpcmi)
 STDMETHODIMP CShellExtension::GetCommandString(
 	UINT_PTR idCmd, UINT uFlags, UINT FAR *reserved, LPSTR pszName, UINT cchMax)
 {
-	if ((idCmd < 1) || (idCmd > 3))	// コマンド番号が範囲外
+	if (idCmd > 2)	// コマンド番号が範囲外
 		return E_FAIL;
 
 	if (uFlags == GCS_VALIDATEW){
 		return S_OK;
 	} else if (uFlags == GCS_VERBW){
 		int offset;
-		if (idCmd == 1){	// Create
-			offset = offset_c;
-		} else if (idCmd == 2){	// Verify
+		if (idCmd == 1){	// Verify
 			offset = offset_v;
-		} else if (idCmd == 3){	// Archive
+		} if (idCmd == 2){	// Archive
 			offset = offset_a;
+		} else {	// Create or Verify
+			offset = offset_c;
 		}
 		lstrcpyn((LPWSTR)pszName, menu_item + offset, cchMax);
 	} else {
@@ -1099,6 +1196,7 @@ STDMETHODIMP CShellExtension::GetCommandString(
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 // 取得データを検査する
+// S_OK 以外を返すとメニューを表示しない
 int CShellExtension::CheckData(void){
 	// 以下のコードでまず、HDROPを得る
 	FORMATETC fmt = { CF_HDROP, NULL, DVASPECT_CONTENT, -1, TYMED_HGLOBAL };
@@ -1116,6 +1214,17 @@ int CShellExtension::CheckData(void){
 	// ファイル数チェック
 	UINT uNumFiles = DragQueryFile(hDrop, 0xFFFFFFFF, NULL, 0);
 
+#ifdef DEBUG_OUTPUT
+	if (hDebug){
+		wsprintf(debug_buf, L"uNumFiles = %u\r\n", uNumFiles);
+		DWORD write_size;
+		if (!WriteFile(hDebug, debug_buf, (DWORD)wcslen(debug_buf) * 2, &write_size, NULL)){
+			CloseHandle(hDebug);
+			hDebug = NULL;
+		}
+	}
+#endif
+
 	// ファイルが0個なら帰る(一応チェック)
 	if (uNumFiles == 0){
 		GlobalUnlock(stg.hGlobal);
@@ -1123,12 +1232,42 @@ int CShellExtension::CheckData(void){
 		return E_INVALIDARG;
 	}
 
+#ifdef DEBUG_OUTPUT
+	if (hDebug){
+		// 最初のファイルのパスを記録する
+		UINT req = DragQueryFile(hDrop, 0, NULL, 0);
+		wsprintf(debug_buf, L"first_path_length = %u\r\nfirst_path =\r\n", req);
+		DWORD write_size;
+		if (!WriteFile(hDebug, debug_buf, (DWORD)wcslen(debug_buf) * 2, &write_size, NULL)){
+			CloseHandle(hDebug);
+			hDebug = NULL;
+		}
+
+		// 文字数を多めに確保しておくこと
+		if ((hDebug != NULL) && (req < _countof(debug_buf))){
+			if (DragQueryFile(hDrop, 0, debug_buf, _countof(debug_buf)) > 0){
+				if (!WriteFile(hDebug, debug_buf, (DWORD)wcslen(debug_buf) * 2, &write_size, NULL)){
+					CloseHandle(hDebug);
+					hDebug = NULL;
+				}
+			}
+		}
+		if (hDebug){
+			wcscpy(debug_buf, L"\r\n");
+			if (!WriteFile(hDebug, debug_buf, (DWORD)wcslen(debug_buf) * 2, &write_size, NULL)){
+				CloseHandle(hDebug);
+				hDebug = NULL;
+			}
+		}
+	}
+#endif
+
 	single_file = 0;
 	if (uNumFiles == 1){	// ファイルが一個なら
 		wchar_t buf[MAX_PATH + 32];
 		unsigned int attr;
 
-		if (DragQueryFile(hDrop, 0, buf, sizeof(buf)/2) == 0){
+		if (DragQueryFile(hDrop, 0, buf, _countof(buf)) == 0){
 			GlobalUnlock(stg.hGlobal);
 			ReleaseStgMedium(&stg);
 			return E_INVALIDARG;
@@ -1144,7 +1283,18 @@ int CShellExtension::CheckData(void){
 	GlobalUnlock(stg.hGlobal);
 	ReleaseStgMedium(&stg);
 
-	return NOERROR;
+#ifdef DEBUG_OUTPUT
+	if (hDebug){
+		wsprintf(debug_buf, L"single_file = %d\r\n", single_file);
+		DWORD write_size;
+		if (!WriteFile(hDebug, debug_buf, (DWORD)wcslen(debug_buf) * 2, &write_size, NULL)){
+			CloseHandle(hDebug);
+			hDebug = NULL;
+		}
+	}
+#endif
+
+	return S_OK;
 }
 
 int CShellExtension::DoCommand(UINT idCmd){
@@ -1179,18 +1329,18 @@ int CShellExtension::DoCommand(UINT idCmd){
 	uNumFiles = DragQueryFile(hDrop, 0xFFFFFFFF, NULL, 0);	// ファイル数
 
 	// 検査なら
-	if ((idCmd == 2) || ((idCmd == 0) && (uNumFiles == 1))){
+	if ((idCmd == 1) || ((idCmd == 0) && (uNumFiles == 1))){
 		wchar_t argvs[MAX_PATH + 16];
 
 		// コマンドラインを作る
-		if (idCmd == 2){
+		if (idCmd == 1){
 			wcscpy(argvs, L"/verify ");
 		} else {
 			argvs[0] = 0;
 		}
 
 		// 選択されたファイル名の取得
-		if (DragQueryFile(hDrop, 0, buf, sizeof(buf)/2) == 0){
+		if (DragQueryFile(hDrop, 0, buf, _countof(buf)) == 0){
 			GlobalUnlock(stg.hGlobal);
 			ReleaseStgMedium(&stg);
 			return E_INVALIDARG;
@@ -1269,7 +1419,7 @@ int CShellExtension::DoCommand(UINT idCmd){
 		// ファイルごとに記録する
 		for (i = 0; i < uNumFiles; i++){
 			// 選択されたファイル名の取得
-			if (DragQueryFile(hDrop, i, buf, sizeof(buf)/2) == 0){
+			if (DragQueryFile(hDrop, i, buf, _countof(buf)) == 0){
 				GlobalUnlock(stg.hGlobal);
 				ReleaseStgMedium(&stg);
 				CloseHandle(hFile);
@@ -1316,7 +1466,7 @@ int CShellExtension::DoCommand(UINT idCmd){
 		// ファイルごとに記録する
 		for (i = 0; i < uNumFiles; i++){
 			// 選択されたファイル名の取得
-			if (DragQueryFile(hDrop, i, buf, sizeof(buf)/2) == 0){
+			if (DragQueryFile(hDrop, i, buf, _countof(buf)) == 0){
 				GlobalUnlock(stg.hGlobal);
 				ReleaseStgMedium(&stg);
 				return E_INVALIDARG;
@@ -1410,7 +1560,7 @@ int CShellExtension::DoCommand7zip(void){
 	//wcscat(argvs, L" a -ad -saa -- ");
 	wcscat(argvs, L" /archive:7zip ");	// MultiPar 用のコマンドに置き換える
 	// 選択された最初のファイル名
-	if (DragQueryFile(hDrop, 0, buf, sizeof(buf)/2) == 0){
+	if (DragQueryFile(hDrop, 0, buf, _countof(buf)) == 0){
 		GlobalUnlock(stg.hGlobal);
 		ReleaseStgMedium(&stg);
 		return E_INVALIDARG;
@@ -1497,7 +1647,7 @@ int CShellExtension::DoCommand7zip(void){
 		// ファイルごとに記録する
 		for (i = 0; i < uNumFiles; i++){
 			// 選択されたファイル名の取得
-			if (DragQueryFile(hDrop, i, buf, sizeof(buf)/2) == 0){
+			if (DragQueryFile(hDrop, i, buf, _countof(buf)) == 0){
 				GlobalUnlock(stg.hGlobal);
 				ReleaseStgMedium(&stg);
 				CloseHandle(hFile);
@@ -1530,7 +1680,7 @@ int CShellExtension::DoCommand7zip(void){
 		// ファイルごとに記録する
 		for (i = 0; i < uNumFiles; i++){
 			// 選択されたファイル名の取得
-			if (DragQueryFile(hDrop, i, buf, sizeof(buf)/2) == 0){
+			if (DragQueryFile(hDrop, i, buf, _countof(buf)) == 0){
 				GlobalUnlock(stg.hGlobal);
 				ReleaseStgMedium(&stg);
 				return E_INVALIDARG;
