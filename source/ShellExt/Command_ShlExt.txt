@@ -22,7 +22,7 @@ regsvr32.exe /u MultiParShlExt64.dll
 
  You can put a key for Shell Extension DLL,
 which key name is "ShellExtension" under [Option] section.
-You need to restart Windows Explorer for refresh, when you changed the value.
+You need to restart Windows Explorer for refresh, after you changed the value.
 The default value is 0, when the key doesn't exist.
 
  The value consists in multiple bit.
