@@ -1,4 +1,4 @@
-﻿// Copyright : 2023-03-23 Yutaka Sawada
+﻿// Copyright : 2023-03-24 Yutaka Sawada
 // License : The MIT license
 
 // ShellExt.cpp : DLL アプリケーション用のエントリ ポイントを定義します。
@@ -469,11 +469,26 @@ static int load_setting(void)
 	if (rv != 2)
 		wcscpy(path2, path);	// DLL が存在するディレクトリを使う
 	wcscat(path2, L"\\MultiPar.ini");
-	//MessageBox(NULL, path2, L"MultiPar.ini path", MB_OK);
+#ifdef DEBUG_OUTPUT
+	if (hDebug){
+		wsprintf(debug_buf, L"MultiPar.ini path = %s\r\n", path2);
+		DWORD write_size;
+		if (!WriteFile(hDebug, debug_buf, (DWORD)wcslen(debug_buf) * 2, &write_size, NULL)){
+			CloseHandle(hDebug);
+			hDebug = NULL;
+		}
+	}
+#endif
 
 	// 動作設定を読み込む
 	menu_behavior = GetPrivateProfileInt(L"Option", L"ShellExtension", 0, path2);
 	lang_id = GetPrivateProfileInt(L"Option", L"Language", -1, path2);
+
+	if (menu_behavior & 64){	// サブ・メニューを全て表示しない
+		menu_behavior |= (8 | 32);
+	} else if (menu_behavior & 8){	// サブ・メニューを作成だけにする
+		menu_behavior |= 32;
+	}
 
 	if ((menu_behavior & 16) == 0){	// メニューにアイコンを付ける
 		if (load_menu_icon() != 0)
@@ -640,14 +655,6 @@ STDAPI DllRegisterServer(void)
 	wchar_t path[MAX_PATH], buf[128];
 	unsigned int len;
 	HKEY hBaseKey, hKey = NULL;
-
-/*{	// for debug
-	len = load_setting();
-	wsprintf(buf, L"return value = %d", len);
-	MessageBox(NULL, buf, NULL, 0);
-
-	return E_FAIL;
-}*/
 
 	len = GetModuleFileName(g_inst, path, MAX_PATH);
 	if ((len == 0) || (len >= MAX_PATH))
@@ -1095,7 +1102,7 @@ STDMETHODIMP CShellExtension::QueryContextMenu(
 	}
 	if (hSubmenu != NULL){	// サブ・メニューを作る
 		InsertMenu(hSubmenu, -1, MF_STRING | MF_BYPOSITION, idCmdFirst, menu_item + offset_c);
-		if ((menu_behavior & (8 | 32)) == 0){
+		if ((menu_behavior & 32) == 0){
 			if (menu_behavior & 4)
 				InsertMenu(hSubmenu, -1, MF_SEPARATOR | MF_BYPOSITION, 0, NULL);
 			if ((menu_behavior & 16) || (g_bmp2 == NULL)){	// アイコンを表示しないなら
@@ -1236,7 +1243,7 @@ int CShellExtension::CheckData(void){
 	if (hDebug){
 		// 最初のファイルのパスを記録する
 		UINT req = DragQueryFile(hDrop, 0, NULL, 0);
-		wsprintf(debug_buf, L"first_path_length = %u\r\nfirst_path =\r\n", req);
+		wsprintf(debug_buf, L"First path length = %u\r\nFirst path = ", req);
 		DWORD write_size;
 		if (!WriteFile(hDebug, debug_buf, (DWORD)wcslen(debug_buf) * 2, &write_size, NULL)){
 			CloseHandle(hDebug);
