@@ -2,11 +2,12 @@ Release note of v1.3.2 tree
 
  I tried to decrease probability of false positive at Malware detection.
 
-[ Changes from 1.3.2.7 to 1.3.2.8 ] (2023/03/23)
+[ Changes from 1.3.2.7 to 1.3.2.8 ] (2023/04/24)
 
 GUI update
  Change
   It won't erase Zone.Identifier flag of MultiPar.exe automatically.
+  It shows confirm dialog before close, when it's creating or repairing.
 
  Improvement
   It will show error, when calling PAR client doesn't exist.
