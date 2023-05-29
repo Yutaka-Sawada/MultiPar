@@ -2,7 +2,7 @@ Release note of v1.3.2 tree
 
  I tried to decrease probability of false positive at Malware detection.
 
-[ Changes from 1.3.2.7 to 1.3.2.8 ] (2023/04/24)
+[ Changes from 1.3.2.7 to 1.3.2.8 ] (2023/05/29)
 
 GUI update
  Change
@@ -18,6 +18,7 @@ GUI update
 PAR2 client update
  Bug fix
   It will show correct efficiency for over than TB size files.
+  GPU function works with MMX, when all SSE2, SSSE3, AVX2 are disabled.
 
 All clients update
  Change
