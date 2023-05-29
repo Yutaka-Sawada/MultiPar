@@ -1,5 +1,5 @@
 ﻿// reedsolomon.c
-// Copyright : 2022-10-08 Yutaka Sawada
+// Copyright : 2023-05-29 Yutaka Sawada
 // License : GPL
 
 #ifndef _UNICODE
@@ -27,6 +27,16 @@
 #include "rs_decode.h"
 #include "reedsolomon.h"
 
+
+// GPU を使う最小データサイズ (MB 単位)
+// GPU の起動には時間がかかるので、データが小さすぎると逆に遅くなる
+#define GPU_DATA_LIMIT 512
+
+// GPU を使う最小ブロックサイズとブロック数
+// CPU と GPU で処理を割り振る為には、ある程度のブロック数を必要とする
+#define GPU_BLOCK_SIZE_LIMIT 65536
+#define GPU_SOURCE_COUNT_LIMIT 256
+#define GPU_PARITY_COUNT_LIMIT 32
 
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
@@ -554,8 +564,9 @@ unsigned int time_total = GetTickCount();
 #endif
 	// HDD なら 1-pass & Read some 方式を使う
 	// メモリー不足や SSD なら、Read all 方式でブロックを断片化させる
-	if ((OpenCL_method != 0) && (block_size >= 65536) && (source_num >= 256) && (parity_num >= 32) &&
-			((source_num + parity_num) * (__int64)block_size > 1048576 * 512)){
+	if ((OpenCL_method != 0) && (block_size >= GPU_BLOCK_SIZE_LIMIT) &&
+			(source_num >= GPU_SOURCE_COUNT_LIMIT) && (parity_num >= GPU_PARITY_COUNT_LIMIT) &&
+			((source_num + parity_num) * (__int64)block_size > 1048576 * GPU_DATA_LIMIT)){
 		// ブロック数が多いなら、ブロックごとにスレッドを割り当てる (GPU を使う)
 		err = -4;	// 2-pass & GPU read all
 	} else {
@@ -636,8 +647,9 @@ unsigned int time_total = GetTickCount();
 	if (err == 0){
 #endif
 	// メモリーが足りてる場合だけ 1-pass方式を使う
-	if ((OpenCL_method != 0) && (block_size >= 65536) && (source_num >= 256) && (parity_num >= 32) &&
-			((source_num + parity_num) * (__int64)block_size > 1048576 * 512)){
+	if ((OpenCL_method != 0) && (block_size >= GPU_BLOCK_SIZE_LIMIT) &&
+			(source_num >= GPU_SOURCE_COUNT_LIMIT) && (parity_num >= GPU_PARITY_COUNT_LIMIT) &&
+			((source_num + parity_num) * (__int64)block_size > 1048576 * GPU_DATA_LIMIT)){
 		err = -5;	// 1-pass & GPU read some
 	} else {
 		err = -3;	// 1-pass & Read some
@@ -764,8 +776,9 @@ time_matrix = GetTickCount() - time_matrix;
 	err = 0;	// IO method : 0=Auto, -2=Read all, -3=Read some, -4=GPU all, -5=GPU some
 	if (err == 0){
 #endif
-	if ((OpenCL_method != 0) && (block_size >= 65536) && (source_num >= 256) && (block_lost >= 32) &&
-			((source_num + block_lost) * (__int64)block_size > 1048576 * 512)){
+	if ((OpenCL_method != 0) && (block_size >= GPU_BLOCK_SIZE_LIMIT) &&
+			(source_num >= GPU_SOURCE_COUNT_LIMIT) && (block_lost >= GPU_PARITY_COUNT_LIMIT) &&
+			((source_num + block_lost) * (__int64)block_size > 1048576 * GPU_DATA_LIMIT)){
 		// ブロック数が多いなら、ブロックごとにスレッドを割り当てる (GPU を使う)
 		if (memory_use & 16){
 			err = -4;	// SSD なら Read all 方式でブロックが断片化しても速い

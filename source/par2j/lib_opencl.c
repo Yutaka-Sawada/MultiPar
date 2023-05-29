@@ -1,5 +1,5 @@
 ﻿// lib_opencl.c
-// Copyright : 2022-01-15 Yutaka Sawada
+// Copyright : 2023-05-29 Yutaka Sawada
 // License : GPL
 
 #ifndef _WIN32_WINNT
@@ -317,7 +317,7 @@ int init_OpenCL(int unit_size, int *src_max, int *chunk_size)
 
 #ifdef DEBUG_OUTPUT
 			printf("MAX_COMPUTE_UNITS = %d\n", num_groups);
-			printf("MAX_WORK_GROUP_SIZE = %d\n", data_size);
+			printf("MAX_WORK_GROUP_SIZE = %zd\n", data_size);
 			printf("HOST_UNIFIED_MEMORY = %d\n", param_value);
 #endif
 			// MAX_COMPUTE_UNITS * MAX_WORK_GROUP_SIZE で計算力を測る、外付けGPUなら値を倍にする
@@ -436,7 +436,7 @@ int init_OpenCL(int unit_size, int *src_max, int *chunk_size)
 //		printf("4 KB cache (16-bytes * 256 work items), use if\n");
 #endif
 	} else {
-		OpenCL_method = 0;	// MMX用のコードは遅いので、キャッシュ最適化する必要が無い
+		OpenCL_method = 1;	// MMX用のコードは遅いので、キャッシュ最適化する必要が無い
 	}
 
 	// work group 数が必要以上に多い場合は減らす
@@ -466,7 +466,7 @@ int init_OpenCL(int unit_size, int *src_max, int *chunk_size)
 
 #ifdef DEBUG_OUTPUT
 	data_size = (size_t)unit_size * count;
-	printf("src buf : %d KB (%d blocks), possible\n", data_size >> 10, count);
+	printf("src buf : %zd KB (%d blocks), possible\n", data_size >> 10, count);
 #endif
 
 	// 出力先は1ブロック分だけあればいい
@@ -476,7 +476,7 @@ int init_OpenCL(int unit_size, int *src_max, int *chunk_size)
 	if (ret != CL_SUCCESS)
 		return (ret << 8) | 13;
 #ifdef DEBUG_OUTPUT
-	printf("dst buf : %d KB (%d Bytes), OK\n", data_size >> 10, data_size);
+	printf("dst buf : %zd KB (%zd Bytes), OK\n", data_size >> 10, data_size);
 #endif
 
 	// factor は最大個数分 (src_max個)
@@ -485,7 +485,7 @@ int init_OpenCL(int unit_size, int *src_max, int *chunk_size)
 	if (ret != CL_SUCCESS)
 		return (ret << 8) | 14;
 #ifdef DEBUG_OUTPUT
-	printf("factor buf : %d Bytes (%d factors), OK\n", data_size, (*src_max));
+	printf("factor buf : %zd Bytes (%d factors), OK\n", data_size, (*src_max));
 #endif
 
 /*
@@ -539,25 +539,33 @@ int init_OpenCL(int unit_size, int *src_max, int *chunk_size)
 	// Referred to "Embedding OpenCL Kernel Files in the Application on Windows"
 	res = FindResource(NULL, L"#1", L"RT_STRING");	// find the resource
 	if (res == NULL){
-		//printf("cannot find resource\n");
+#ifdef DEBUG_OUTPUT
+		printf("cannot find resource\n");
+#endif
 		return err;
 	}
 	glob = LoadResource(NULL, res);	// load the resource.
 	if (glob == NULL){
-		//printf("cannot load resource\n");
+#ifdef DEBUG_OUTPUT
+		printf("cannot load resource\n");
+#endif
 		return err;
 	}
 	p_source = (char *)LockResource(glob);	// lock the resource to get a char*
-	if (res == NULL){
-		//printf("cannot lock resource\n");
+	if (p_source == NULL){
+#ifdef DEBUG_OUTPUT
+		printf("cannot lock resource\n");
+#endif
 		return err;
 	}
 	data_size = SizeofResource(NULL, res);
 	if (data_size == 0){
-		//printf("cannot get size of resource\n");
+#ifdef DEBUG_OUTPUT
+		printf("cannot get size of resource\n");
+#endif
 		return err;
 	}
-	//printf("Source code length = %d characters\n", data_size);
+	//printf("OpenCL source code length = %zd characters\n", data_size);
 
 	// プログラムを作成する
 	program = fn_clCreateProgramWithSource(OpenCL_context, 1, (char **)&p_source, &data_size, &ret);
@@ -593,7 +601,7 @@ int init_OpenCL(int unit_size, int *src_max, int *chunk_size)
 	ret = fn_clGetKernelWorkGroupInfo(OpenCL_kernel, NULL, CL_KERNEL_WORK_GROUP_SIZE, sizeof(size_t), &data_size, NULL);
 	if ((ret == CL_SUCCESS) && (data_size < 256)){	// 最低でも 256以上は必要
 #ifdef DEBUG_OUTPUT
-		printf("KERNEL_WORK_GROUP_SIZE = %d\n", data_size);
+		printf("KERNEL_WORK_GROUP_SIZE = %zd\n", data_size);
 #endif
 		return (ret << 8) | 23;
 	}
@@ -622,7 +630,7 @@ int init_OpenCL(int unit_size, int *src_max, int *chunk_size)
 
 #ifdef DEBUG_OUTPUT
 	// ワークアイテム数
-	printf("\nMax number of work items = %d (256 * %d)\n", OpenCL_group_num * 256, OpenCL_group_num);
+	printf("\nMax number of work items = %zd (256 * %zd)\n", OpenCL_group_num * 256, OpenCL_group_num);
 #endif
 
 	return 0;

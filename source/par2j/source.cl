@@ -14,7 +14,7 @@ void calc_table(__local uint *mtab, int id, int factor)
 	mtab[id + 256] = sum;
 }
 
-__kernel void method0(
+__kernel void method1(
 	__global uint *src,
 	__global uint *dst,
 	__global ushort *factors,
