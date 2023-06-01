@@ -1,5 +1,5 @@
 ﻿// lib_opencl.c
-// Copyright : 2023-05-29 Yutaka Sawada
+// Copyright : 2023-06-01 Yutaka Sawada
 // License : GPL
 
 #ifndef _WIN32_WINNT
@@ -774,7 +774,7 @@ int gpu_multiply_blocks(
 	unsigned char *buf,		// Products go here
 	int len)				// Byte length
 {
-	unsigned int *vram, *src, *dst;
+	unsigned __int64 *vram, *src, *dst;
 	size_t global_size, local_size;
 	cl_int ret;
 
@@ -801,14 +801,14 @@ int gpu_multiply_blocks(
 	if (ret != CL_SUCCESS)
 		return (ret << 8) | 12;
 
-	// 4バイトごとに XOR する (SSE2 で XOR しても速くならず)
+	// 8バイトごとに XOR する (SSE2 で XOR しても速くならず)
 	src = vram;
-	dst = (unsigned int *)buf;
+	dst = (unsigned __int64 *)buf;
 	while (len > 0){
 		*dst ^= *src;
 		dst++;
 		src++;
-		len -= 4;
+		len -= 8;
 	}
 
 	// ホスト側でデータを変更しなくても、clEnqueueMapBufferと対で呼び出さないといけない
