@@ -1,70 +1,73 @@
 # MultiPar
 
-### v1.3.2.7 is public
-
-&nbsp; This is a minor update version for Python script users. 
-There is no difference in basic feature. 
-If you don't use Python script, no need to update. 
-When there is no problem in this version, 
+### v1.3.2.8 is public
+&nbsp; This is a minor update version to fix some bugs in rare cases. 
+Most users don't see difference. 
+If there is no serious problem in this version, 
 next version will be the last of v1.3.2 tree.
 
-&nbsp; There are some Python script files in `tool` folder of MultiPar. 
-Users may edit them for thier usage. 
-As I'm learning Python language still, I may modify these samples later. 
-When a user request a new feature in MutliPar, 
-I may implement it as an independent tool. 
-Users would edit them for thier usage.
+&nbsp; I fixed a [problem of MultiPar shell extension](https://github.com/Yutaka-Sawada/MultiPar/issues/86), 
+when UAC (User Account Control on Windows Vista or later) is disabled. 
+Thanks whulkhulk and Slava46 for test and confirm. 
+If other users could not "Integrate MultiPar into Shell" ago, he may try this new version.
+
+&nbsp; I added a confirm dialog at closing MultiPar, when it's creating or repairing. 
+This change may reduce accidental loss of working data. 
+Though MultiPar inherits most usage and behavior of QuickPar, I would improve a bit.
+
+&nbsp; I fixed [small bugs in my OpenCL code for GPU](https://github.com/Yutaka-Sawada/MultiPar/issues/88). 
+Though I'm not sure the incident, it might not work rarely. 
+Because I don't use a graphics board on my PC, I didn't test myself. 
+Thanks apprehensivemom for test. 
+Even when you checked "Enable GPU acceleration", it may not use GPU for small data. 
+It's because starting GPU is slow. 
+If calculation finishes in a few seconds, using CPU only may be faster. 
+GPU may require at least a few minutes task to see speed difference. 
+As a note, I write its threshold below.
+
+Threshold to use GPU:
+- Data size must be larger than 512 MB.
+- Block size must be larger than 64 KB.
+- Number of source blocks must be more than 256.
+- Number of recovery blocks must be more than 32.
 
 
-[ Changes from 1.3.2.6 to 1.3.2.7 ]  
+[ Changes from 1.3.2.7 to 1.3.2.8 ]  
 
-Installer update  
-- Inno Setup was updated from v6.2.1 to v6.2.2.  
+GUI update
+- Change
+  - It won't erase Zone.Identifier flag of MultiPar.exe automatically.
+  - It shows confirm dialog before close, when it's creating or repairing.
 
-GUI update  
-- New  
-  - It's possible to start Python script as batch processing.  
+- Improvement
+  - It will show error, when calling PAR client doesn't exist.
 
-PAR2 client update  
-- New  
-  - It's possible to save verification result on JSON file.  
+- Bug fix
+  - When UAC is disabled, Shell Extesnion DLL uses HKEY_LOCAL_MACHINE.
+
+PAR2 client update
+- Bug fix
+  - It will show correct efficiency for over than TB size files.
+  - GPU function works with MMX, when all SSE2, SSSE3, AVX2 are disabled.
+
+All clients update
+- Change
+  - It will search hidden files, when Windows Explorer shows them.
 
 
 [ Hash value ]  
 
-MultiPar1327.zip  
-MD5: 72909EA45889CEC681E5F458E43F6666  
-SHA1: 278EB9128FEB8839792A6340DC29381E7966F655  
+MultiPar1328.zip  
+MD5: C7BD23C0D32C47555E344D9D88C149C2  
+SHA1: 467F85E53011B3BC1E67E6685B1787D32B6F2296  
 
-MultiPar1327_setup.exe  
-MD5: 85DFD7C9DF386F52420BD9FDE1A5A4DA  
-SHA1: E127588A243D8E80516D5DB60C9F92A213200E16  
+MultiPar1328_setup.exe  
+MD5: 4D7A3BA6B88D9F37A22C35C425DA5F4D  
+SHA1: 6BCCF834BC6038F1AC30F82B193A2B5F45FD7697  
 &nbsp; To install under "Program Files" or "Program Files (x86)" directory, 
 you must start the installer with administrative privileges by selecting 
-"Run as administrator" on right-click menu. 
+"Run as administrator" on right-click menu.
 
-
-[ Hash value of other source code packages ]  
 &nbsp; Old versions and source code packages are available at 
 [GitHub](https://github.com/Yutaka-Sawada/MultiPar/releases) or 
-[OneDrive](https://1drv.ms/u/s!AtGhNMUyvbWOaSo1n_R8awJ_hg0?e=4V0gXu).  
-
-MultiPar_par2j_1327.7z  
-MD5: 84B07B477714E64272828F2C1A246899  
-SHA1: 76B8DD02C24D39C473C119478D589BE7E1737E8A  
-
-MultiPar_par1j_1326.7z  
-MD5: 72C640381C56373CA56A73157A5AA026  
-SHA1: EEC159984A7A9C3E5BCCAB31090D33984331D412  
-
-MultiPar_sfv_md5_1326.7z  
-MD5: EAEA85745126E8393CFFFFC6C8A0AB8E  
-SHA1: C52A6F39566E04E42F03B347A0E5E97E2CE029BA  
-
-MultiPar_ShlExt_1326.7z  
-MD5: CD1A7DA095C61DF143E1630C487FDF67  
-SHA1: 10F5A2A2A081D735A504E88442587102107749CD  
-
-MultiPar_ResUI_1326.7z  
-MD5: 4E9BCF5F0078F45C93BA44C848A1CF28  
-SHA1: 1284A50274DB1EBB496FFA5313C49683975BA318  
+[OneDrive](https://1drv.ms/u/s!AtGhNMUyvbWOaSo1n_R8awJ_hg0).
