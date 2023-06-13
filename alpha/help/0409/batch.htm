@@ -60,8 +60,9 @@ you must set a local variable as "<code>setlocal enabledelayedexpansion</code>" 
 <tr><td><a href="#C1">Create individual PAR2 set in each selected folder (with GUI)</a><td>
 <tr><td><a href="#C2">Create individual PAR2 set in each subfolder under a selected folder (with GUI)</a><td>
 <tr><td><a href="#C3">Create one PAR2 file per each file in a selected folder</a><td>
-<tr><td><a href="#C4">Create individual PAR2 set per each set of 4 files from many selected files</a><td>
-<tr><td><a href="#C5">Create PAR2 recovery data and append it to each original ZIP / 7-Zip archive file</a><td>
+<tr><td><a href="#C4">Create individual PAR2 set per each RAR archive in a selected folder</a><td>
+<tr><td><a href="#C5">Create individual PAR2 set per each set of 4 files from many selected files</a><td>
+<tr><td><a href="#C6">Create PAR2 recovery data and append it to each original ZIP / 7-Zip archive file</a><td>
 <tr><td><hr width="95%"></td>
 <tr><td><a href="#V1">Verify and/or Repair individual PAR2 set in each selected folder with GUI</a><td>
 <tr><td><a href="#V2">Create, Verify or Repair individual PAR2 set in each subfolder under a selected folder with GUI</a><td>
@@ -91,7 +92,7 @@ It is possible to show GUI for setting, too.
 </table>
 </p>
 
-<textarea cols=64 rows=23 readonly wrap=off>
+<textarea cols=64 rows=22 readonly wrap=off>
 @ECHO OFF
 SETLOCAL
 
@@ -121,7 +122,7 @@ When a GUI is closed, next GUI is opened with next folder.
 You may set an option in "Automated tasks" to close GUI automatically after creation.
 </p>
 
-<textarea cols=64 rows=21 readonly wrap=off>
+<textarea cols=64 rows=20 readonly wrap=off>
 @ECHO OFF
 SETLOCAL
 
@@ -150,7 +151,7 @@ Because all MultiPar GUIs will open at once for each folder,
 you can start each creation anytime.
 </p>
 
-<textarea cols=64 rows=21 readonly wrap=off>
+<textarea cols=64 rows=20 readonly wrap=off>
 @ECHO OFF
 SETLOCAL
 
@@ -185,7 +186,7 @@ For example, when there are 7 subfolders, total 7 PAR2 set are made.
 </table>
 </p>
 
-<textarea cols=64 rows=33 readonly wrap=off>
+<textarea cols=64 rows=29 readonly wrap=off>
 @ECHO OFF
 SETLOCAL
 
@@ -229,7 +230,7 @@ You may check "Always use folder name for base filename" option in "Client behav
 then each PAR2 set is named by the folder.
 </p>
 
-<textarea cols=64 rows=33 readonly wrap=off>
+<textarea cols=64 rows=29 readonly wrap=off>
 @ECHO OFF
 SETLOCAL
 
@@ -276,7 +277,7 @@ For example, when there are 7 files in the folder, total 7 PAR2 files are made.
 </table>
 </p>
 
-<textarea cols=64 rows=33 readonly wrap=off>
+<textarea cols=64 rows=29 readonly wrap=off>
 @ECHO OFF
 SETLOCAL
 
@@ -315,6 +316,80 @@ By this option, index file isn't created.
 <hr>
 
 <a name="C4"></a>
+<h3>Create individual PAR2 set per each RAR archive in a selected folder</h3>
+<p>
+<table border=1 cellspacing=0 cellpadding=2 width="100%">
+<tr><td>Command<td>"path of batch file" "path of a folder"
+<tr><td>Input<td>specify a folder
+<tr><td>Action<td>This sample creates individual PAR2 set per each RAR archive file(s) in the selected folder. 
+If RAR archive is single file, PAR2 files are created for it. 
+If RAR archive is splitted into multiple files, PAR2 files are created for them. 
+When you don't select any folder, it will search RAR files in current directory (where the script exists normally).
+</table>
+</p>
+
+<textarea cols=64 rows=52 readonly wrap=off>
+@ECHO OFF
+SETLOCAL enabledelayedexpansion
+
+REM check input path
+IF "%~1"=="" GOTO Start
+IF NOT EXIST "%~1" (
+ECHO The path does not exist.
+GOTO End
+)
+PUSHD %1
+:Start
+
+REM set paramaters for PAR2 client
+SET par2_path="path of par2j.exe"
+SET REDUNDANCY_PERCENT=15
+SET PAR2_FILES=3
+
+REM search file of each single RAR archive
+FOR %%F in (*.rar) do (
+    REM check ".part" in splitted RAR files
+    ECHO "%%~nF" | find ".part" >NUL
+    if ERRORLEVEL==1 (
+        REM when filename doesn't include ".part", create PAR2 file for the RAR file.
+        ECHO Creating parity archives for %%F...
+        %par2_path% c /rr%REDUNDANCY_PERCENT% /rf%PAR2_FILES% /rd1 "%%~nF.par2" "%%F"
+        ECHO Parity archives created for %%F.
+        ECHO.
+    )
+)
+
+REM search the first file of each splitted RAR archive
+FOR %%F in ("*.part1.rar" "*.part01.rar" "*.part001.rar") do (
+    call :SUB_CREATE "%%~nF"
+)
+
+POPD
+ECHO Parity archive creation complete.
+PAUSE
+
+GOTO End
+
+REM sub-routine to create PAR files for multiple input files
+:SUB_CREATE
+ECHO Creating parity archives for multiple %~n1...
+%par2_path% c /rr%REDUNDANCY_PERCENT% /rf%PAR2_FILES% /rd1 "%~n1.par2" "%~n1.part*.rar"
+ECHO Parity archives created for multiple %~n1.
+ECHO.
+
+GOTO :EOF
+
+:End
+ENDLOCAL</textarea>
+
+<p>&nbsp
+The script calls <code>Find.exe</code> and for certain Windows versions, 
+you may have to add <code>C:\Windows\System32</code> to Windows System Path if not already present.
+</p>
+
+<hr>
+
+<a name="C5"></a>
 <h3>Create individual PAR2 set per each set of 4 files from many selected files</h3>
 <p>
 <table border=1 cellspacing=0 cellpadding=2 width="100%">
@@ -361,7 +436,7 @@ Be careful about the number of source files and "<code>SHIFT</code>" per each st
 
 <hr>
 
-<a name="C5"></a>
+<a name="C6"></a>
 <h3>Create PAR2 recovery data and append it to each original ZIP / 7-Zip archive file</h3>
 <p>
 <table border=1 cellspacing=0 cellpadding=2 width="100%">
@@ -449,7 +524,7 @@ When a GUI is closed, next GUI is opened with next PAR2 set.
 </table>
 </p>
 
-<textarea cols=64 rows=21 readonly wrap=off>
+<textarea cols=64 rows=20 readonly wrap=off>
 @ECHO OFF
 SETLOCAL
 
@@ -492,7 +567,7 @@ Next time you specify the folder, MultiPar verifies the 7 subfolders one by one.
 </table>
 </p>
 
-<textarea cols=64 rows=38 readonly wrap=off>
+<textarea cols=64 rows=34 readonly wrap=off>
 @ECHO OFF
 SETLOCAL
 
@@ -555,7 +630,7 @@ but it's invisible by Windows Explorer.
 </table>
 </p>
 
-<textarea cols=64 rows=38 readonly wrap=off>
+<textarea cols=64 rows=37 readonly wrap=off>
 @ECHO OFF
 SETLOCAL
 
@@ -619,7 +694,7 @@ Checksum data must have been saved in an alternate stream "<tt>original filename
 </table>
 </p>
 
-<textarea cols=64 rows=43 readonly wrap=off>
+<textarea cols=64 rows=42 readonly wrap=off>
 @ECHO OFF
 SETLOCAL
 
