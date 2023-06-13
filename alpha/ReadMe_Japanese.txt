@@ -1,220 +1,220 @@
+﻿
+修復用データを作ってファイルの破損や消失に備える
 
-�C���p�f�[�^������ăt�@�C���̔j��������ɔ�����
-
-MultiPar (�}���`�p�[)
-
-/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
-
-[ �ȒP�ȉ�� ]
-
-�@�����̃t�@�C�����烊�J�o���E�t�@�C�����쐬���āA
-�����̃t�@�C���̈ꕔ���j��������������Ă��A
-�c���ꂽ�t�@�C���ƃ��J�o���E�t�@�C�����g���ďC���E��������ׂ̃\�t�g�ł��B
-��ʓI�ȃt�@�C�������\�t�g�Ƃ͈قȂ�A
-���炩���߃��J�o���E�t�@�C��������Ă������ƂŁA
-�t�@�C���̔j��������ɔ�����̂������ł��B
-
-�@CD �� DVD ���Ă��ۂɁA�������ރf�[�^�̃��J�o���E�t�@�C����
-����āA����������ɏĂ��Ă����΁A���Ȃǂŕ����I�ɓǂ߂Ȃ��Ȃ��Ă��A
-���J�o���E�t�@�C�����g���ĕ������邱�Ƃ��ł��܂��B
-�C�O�ł́A�l�b�g���[�N�o�R�ŕ����t�@�C����]������ۂɁA
-�ꕔ�̃t�@�C���Ŏ��s���Ă��đ��M���邱�ƂȂ��A
-���J�o���E�t�@�C�����g���Č���������₤�Ƃ����p�r�������悤�ł��B
-
-�@Parchive �Ƃ������J�o���E�t�@�C���`���ɂ͕W���\�t�g�Ƃ���
-Peter Clements ����́u QuickPar �v�Ƃ����̂�����܂��B
-�������AQuickPar �͉��N���O�ɊJ�������f����Ă��āA
-���{��̃t�@�C������t�H���_���������Ƃ��ł��܂���B
-�����ŁA�Ȃ�ׂ������悤�Ȏg������œ��{�ꂪ�g����ގ��\�t�g�Ƃ��āA
-�ނ̋��𓾂āA���̃A�v���P�[�V�������J�����܂����B
-
-�@QuickPar �̓o�O�񍐂���P�_�̗v�]�������Ă����f����Ȃ����߁A
-PAR 2.0 �Ńt�@�C�����C���ł���\���� MultiPar �̕��������ł��B
-���{��̃t�@�C�������g������AQuickPar �ł͏C���ł��Ȃ��������ɂ́A
-���� MultiPar ���g���Ă݂Ă��������B
-
+MultiPar (マルチパー)
 
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-[ ������d�l�Ȃ� ]
+[ 簡単な解説 ]
 
-�@MultiPar �� PAR 1.0 �� PAR 2.0 �̗����ɑΉ����Ă܂��B
-Parity Archive �� Parity Volume Set �d�l�̏ڍׂɂ��Ă�
-�u http://parchive.sourceforge.net/ �v���Q�Ƃ��Ă��������B
-MultiPar �̓��j�R�[�h (UTF-8 �܂��� UTF-16) �Ńt�@�C�����������̂ŁA
-���{�ꂾ���łȂ����̌���̃t�@�C������������ƌ����E�C�����邱�Ƃ��ł��܂��B
+　複数のファイルからリカバリ・ファイルを作成して、
+それらのファイルの一部が破損したり消失しても、
+残されたファイルとリカバリ・ファイルを使って修復・復元する為のソフトです。
+一般的なファイル復旧ソフトとは異なり、
+あらかじめリカバリ・ファイルを作っておくことで、
+ファイルの破損や消失に備えるのが特徴です。
 
-�@MultiPar �� PAR 2.0 �ł̓t�@�C�������łȂ��t�H���_���������Ƃ��ł��܂��B
-�������AQuickPar �̓T�u�E�f�B���N�g���𐳂����F�����Ȃ��̂ŁA
-MultiPar �Ńf�B���N�g���\�����܂ރp���e�B���ɂ��쐬���Ă��A
-���܂������ł��Ȃ����Ƃɒ��ӂ��Ă��������B
-par2cmdline �� MultiPar �Ɠ��������j�R�[�h�ƃf�B���N�g���\����F������̂ő��v�ł��B
-MultiPar �̓p���e�B���ɂɃR�����g��t���邱�Ƃ��ł��܂����A
-QuickPar �ȂǑ��� PAR �N���C�A���g�̓R�����g�@�\�ɑΉ����ĂȂ��悤�ł��B
+　CD や DVD を焼く際に、書き込むデータのリカバリ・ファイルを
+作って、それも同時に焼いておけば、傷などで部分的に読めなくなっても、
+リカバリ・ファイルを使って復元することができます。
+海外では、ネットワーク経由で複数ファイルを転送する際に、
+一部のファイルで失敗しても再送信することなく、
+リカバリ・ファイルを使って欠落部分を補うという用途が多いようです。
 
-[ ����� ]
+　Parchive というリカバリ・ファイル形式には標準ソフトとして
+Peter Clements さんの「 QuickPar 」というのがあります。
+しかし、QuickPar は何年も前に開発が中断されていて、
+日本語のファイル名やフォルダを扱うことができません。
+そこで、なるべく同じような使い勝手で日本語が使える類似ソフトとして、
+彼の許可を得て、このアプリケーションを開発しました。
 
-�@Windows Vista ������ȍ~ (Windows 7, 8, 10) �̃p�\�R�����K�v�ł��B
+　QuickPar はバグ報告や改善点の要望があっても反映されないため、
+PAR 2.0 でファイルを修復できる可能性は MultiPar の方が高いです。
+日本語のファイル名を使う時や、QuickPar では修復できなかった時には、
+ぜひ MultiPar を使ってみてください。
 
 
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-[ �s��⌇�ׂȂ� ]
+[ 特徴や仕様など ]
 
-�@����m�F�͂���Ȃ�ɂ��Ă�̂ł����A�s������邩������܂���B
-����ɖ�肪�������ꍇ�́A���̏󋵂�Ǐ�Ȃǂ�񍐂��Ă��炦��ƁA
-����̃o�[�W�����E�A�b�v�ŏC������悤�w�͂��܂��B
-�V�����@�\��ǉ����ė~�����Ƃ��A�ǂ������P���ė~�����Ƃ������v�]���󂯕t���܂��B
+　MultiPar は PAR 1.0 と PAR 2.0 の両方に対応してます。
+Parity Archive と Parity Volume Set 仕様の詳細については
+「 http://parchive.sourceforge.net/ 」を参照してください。
+MultiPar はユニコード (UTF-8 または UTF-16) でファイル名を扱うので、
+日本語だけでなく他の言語のファイル名もきちんと検査・修復することができます。
 
-�@���Ȃ݂ɁA������g�����������肵�đ��Q�����������Ƃ��Ă����Q�����͂ł��܂���B
-�l�ŊJ�����Ă邩��ł͂Ȃ��A����Ƃ̃}�C�N���\�t�g�̉����~������\�t�g�ł�
-�u���̃\�t�g���g���ĉ����N���Ă��ӔC�͎��Ȃ��v�݂����Ȃ��Ƃ��������菑���Ă���܂��B
-�@���I�ȗ��t��������̂��ǂ����͂��Ă����A�p�\�R���E�\�t�g�Ƃ����̂͂����������ł��B
-�����܂��A���[�U�[�������Ă鎞�Ɏ��ȐӔC�ŉ�������Ƃ����̂����Șb�Ȃ̂ŁA
-�������_�������Ƃ���Q����菜���菕���͂ł��������܂��B
+　MultiPar の PAR 2.0 ではファイルだけでなくフォルダを扱うこともできます。
+ただし、QuickPar はサブ・ディレクトリを正しく認識しないので、
+MultiPar でディレクトリ構造を含むパリティ書庫を作成しても、
+うまく検査できないことに注意してください。
+par2cmdline は MultiPar と同じくユニコードとディレクトリ構造を認識するので大丈夫です。
+MultiPar はパリティ書庫にコメントを付けることができますが、
+QuickPar など他の PAR クライアントはコメント機能に対応してないようです。
 
+[ 動作環境 ]
 
-[ ���R�k���� ]
-
-�@Parity Archive (�p���e�B����) ���̂ɂ́A
-���̘R�k��Ӑ}�I�ȉ�₂�h���悤�Ȏd�g�݂͂���܂���B
-Parity �Ƃ́u�������l�������v�Ƃ����Ӗ��Ȃ̂ŁA
-�p���e�B���ɂɂ̓\�[�X�E�t�@�C���Ɠ������l��������̂Ƃ��Ĉ����Ă��������B
-�@�����ނ̃t�@�C�����Í�������Ȃ�A�Í���������Ń��J�o���E�t�@�C�����쐬���Ă��������B
-�܂��A�o���̊m���łȂ����J�o���E�t�@�C�����g���ďC�����邱�Ƃ́A
-���e���肩�łȂ��t�@�C����u���̂Ɠ������Ƃł��B
-�O�����玝�����񂾎��s�t�@�C����h�L�������g���E�B���X�Ɋ������Ă邩������Ȃ��A
-�̂Ɠ����悤�ɁA�O�����玝�����񂾃��J�o���E�t�@�C���ŏC�������t�@�C����
-�E�B���X�Ɋ���������ꂽ���̂ɂȂ��Ă邩������܂���B
-�܂�A��₂��ꂽ�p���e�B���ɂ��g���ăt�@�C�����C�����悤�Ƃ���ƁA
-�{���Ӑ}�����悤�ɂ͏C�����ꂸ�A��₂��ꂽ�f�[�^�ɂȂ�܂��B
-
-
-[ PAR 3.0 �d�l�͒�ĔłŖ����� ]
-
-�@MultiPar �ł� Parchive �d�l�̎����o�[�W�����Ăł��� PAR 3.0 ��
-�����I�Ɏg����悤�ɂȂ��Ă��܂��B
-�������APAR 3.0 �d�l�͂܂��ڍׂ��������̉������i�K�ŁA
-MultiPar �͂��̎���i���g���ĐV�d�l�̐��\��̊��ł���ɂ����܂���B
-PAR 3.0 �d�l�̃t�H�[�}�b�g�͍ו��������I�ōŏI�łƂ̌݊����͕ۏ؂���܂���B
-�܂�AMultiPar �Ŏ���i�� PAR3 ���J�o���E�t�@�C����������Ă��A
-���̃��J�o���E�t�@�C���������̃o�[�W�����ł��g����Ƃ͌���܂���B
-���l�ɁA���̐l�������o�[�W�������g���Ă�Ƃ͌���Ȃ��̂ŁA
-����i�� PAR3 ���J�o���E�t�@�C���͑��l�ɑ���Ȃ��ł��������B
+　Windows Vista かそれ以降 (Windows 7, 8, 10) のパソコンが必要です。
 
 
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-[ �C���X�g�[���[�ł̃C���X�g�[���ƃA���C���X�g�[�� ]
+[ 不具合や欠陥など ]
 
-�@�C���X�g�[���[ ( MultiPar131_setup.exe �݂����Ȗ��O ) ���_�u���E�N���b�N����ƁA
-�C���X�g�[����ʂ��\�������̂ŁA���̎w���ɏ]���Ă��������B
-�o�[�W�����E�A�b�v���ɁA�ݒ荀�ڂ����̂܂܎g���������͏㏑���C���X�g�[�����Ă������ł��B
-�㏑���C���X�g�[������O�ɁA�uMultiPar ���V�F���ɓ�������v�̃`�F�b�N���O���Ă��������B
-�㏑���C���X�g�[����A���C���X�g�[����� OS �̍ċN�������߂��邩������܂���B
-�uProgram Files�v��uProgram Files (x86)�v���ɃC���X�g�[������ɂ́A
-�E�N���b�N�E���j���[�́u�Ǘ��҂Ƃ��Ď��s�v��I���
-�Ǘ��Ҍ����ŃC���X�g�[���[���J�n����K�v������܂��B
+　動作確認はそれなりにしてるのですが、不具合があるかもしれません。
+動作に問題があった場合は、その状況や症状などを報告してもらえると、
+今後のバージョン・アップで修正するよう努力します。
+新しい機能を追加して欲しいとか、どこを改善して欲しいといった要望も受け付けます。
 
-�@�A���C���X�g�[���� Windows OS �̃R���g���[���E�p�l������s�����A
-MultiPar ���C���X�g�[�������t�H���_���� unins000.exe ���_�u���E�N���b�N���Ă��������B
-�A���C���X�g�[���[�͐ݒ�t�@�C����ォ��u���ꂽ�t�@�C�����폜���Ȃ��̂ŁA
-�����g�����Ƃ��Ȃ��Ȃ玩���ō폜���Ă��������B
-
-�@�C���X�g�[���[�ł��g�����ꍇ�́A�C���X�g�[�������t�H���_�𓮂����Ȃ��ł��������B
-�����Ȃ��ƁA��ŃA���C���X�g�[���Ɏ��s���邱�ƂɂȂ�܂��B
-
-[ �C���X�g�[���[�łɂ�镡�����[�U�[�����̃C���X�g�[�� ]
-
-�@�����̃��[�U�[���p�\�R���Ƀ��O�I������Ȃ�A
-�Ǘ��҂͑S�������� MultiPar ���C���X�g�[�����邱�Ƃ��ł��܂��B
-�Ǘ��Ҍ����ŃC���X�g�[������΁A�C���X�g�[���[��������X�^�[�g�E���j���[�̃A�C�R���A
-�f�X�N�g�b�v�̃A�C�R���A�����ăt�@�C���̊֘A�t���͑S�Ẵ��[�U�[�����p�ł��܂��B
-�uProgram Files�v���ɃC���X�g�[�������ꍇ�A���ꂼ��̃��[�U�[���ʂɐݒ��ێ����܂��B
-���̑��̃t�H���_�ɃC���X�g�[�������ꍇ�A�S�Ẵ��[�U�[�������ݒ�����L���܂��B
-������̏ꍇ���A���[�U�[��������A�C�R����֘A�t���͂��̃��[�U�[���������p�ł��܂��B
+　ちなみに、誤った使い方をしたりして損害が発生したとしても損害賠償はできません。
+個人で開発してるからではなく、大手企業のマイクロソフトの何万円もするソフトでも
+「このソフトを使って何が起きても責任は取らない」みたいなことがしっかり書いてあります。
+法律的な裏付けがあるのかどうかはさておき、パソコン・ソフトというのはそういう物です。
+ただまあ、ユーザーが困ってる時に自己責任で解決しろというのも酷な話なので、
+私も問題点が何かとか障害を取り除く手助けはできる限りやります。
 
 
-[ �A�[�J�C�u�ł̃C���X�g�[�� ]
+[ 情報漏洩や改竄 ]
 
-�@�z�z����Ă鈳�k�t�@�C�� ( MultiPar131.zip �݂����Ȗ��O ) ���𓀂��Ăł����t�@�C����
-�ǂ����K���ȃt�H���_�ɑS�ē���Ă��������B
-���̒��� MultiPar.exe �Ƃ����̂� MultiPar �̎��s�t�@�C���ł��B
-������_�u���E�N���b�N����� MultiPar ���N�����܂��B
+　Parity Archive (パリティ書庫) 自体には、
+情報の漏洩や意図的な改竄を防ぐような仕組みはありません。
+Parity とは「同じ価値を持つ物」という意味なので、
+パリティ書庫にはソース・ファイルと同じ価値があるものとして扱ってください。
+機密書類のファイルを暗号化するなら、暗号化した後でリカバリ・ファイルを作成してください。
+また、出所の確かでないリカバリ・ファイルを使って修復することは、
+内容が定かでないファイルを置くのと同じことです。
+外部から持ち込んだ実行ファイルやドキュメントがウィルスに感染してるかもしれない、
+のと同じように、外部から持ち込んだリカバリ・ファイルで修復したファイルは
+ウィルスに感染させられたものになってるかもしれません。
+つまり、改竄されたパリティ書庫を使ってファイルを修復しようとすると、
+本来意図したようには修復されず、改竄されたデータになります。
 
-�@MultiPar �̐ݒ�_�C�A���O����A�V���[�g�J�b�g���������A
-���J�o���E�t�@�C�����֘A�t��������ł��܂��B
-�������A�u.par�v��u.par2�v�Ƃ����g���q�̃t�@�C���� MultiPar �Ɋ֘A�t������ꍇ�́A
-��ɑ��̃A�v���P�[�V�����ł̊֘A�t�����������Ă���ɂ��Ă��������B
-�Ⴆ�΁A���� QuickPar �Ɋ֘A�t������Ă�̂Ȃ�AQuickPar �̐ݒ�ŉ������Ă����܂��B
 
-[ �A�[�J�C�u�ł̃A���C���X�g�[�� ]
+[ PAR 3.0 仕様は提案版で未完成 ]
 
-�@MultiPar.exe �Ȃǂ���ꂽ�t�H���_���ƍ폜���Ă��������B
-�ݒ�t�@�C���������t�H���_���ɍ����̂œ����ɍ폜���Ă��܂��܂���B
-�������A�uProgram Files�v���̃t�H���_�ɃC���X�g�[�����Ă������ꍇ�́A
-�ݒ�t�@�C���́uApplication Data�v���̃t�H���_�ɍ����̂ŁA������폜���Ă��������B
-���J�o���E�t�@�C���� MultiPar �Ɋ֘A�t�����Ă�ꍇ�́A
-�A���C���X�g�[���̑O�Ɋ֘A�t�����������Ă����Ă��������B
-
-�@MultiPar ���V�F���ɓ���������Ԃł� MultiParShlExt64.dll �Ƃ����t�@�C�����폜�ł��܂���B
-�K����ɐݒ��ʂŃ`�F�b�N���O���Ă��������B
-���� MultiPar.exe ���폜���Ă��܂��Ă�ꍇ�́A
-���ƂŃV�F���g�����A���C���X�g�[�����邱�Ƃ��ł��܂��B
-�u�R�}���h �v�����v�g�v���J���� MultiParShlExt64.dll �����݂���f�B���N�g���Ɉړ����Ă���A
-�uRegSvr32.exe /u MultiParShlExt64.dll�v�Ɠ��͂���Ή�������܂��B
-�G�N�X�v���[���[���N�����Ă�ꍇ�̓t�@�C�����폜����O�Ɉ�U���Ă��������B
-����ł����߂Ȃ��U���O�I�t���āA�ēx���O�I�����Ă���폜���Ă��������B 
-
-[ �A�[�J�C�u�ł̃C���X�g�[����̕ύX ]
-
-�@�C���X�g�[�������t�H���_�̏ꏊ��ς��������́A
-�t�H���_���ƕʂ̏ꏊ�ɃR�s�[���邩�ړ����Ă��������B
-�p���e�B���ɂ��֘A�t�������Ă��ꍇ�́A�V�����C���X�g�[���ʒu�𔽉f������ׂɁA
-�֘A�t������U�������Ă�����x�ݒ肵�Ȃ����Ă��������B
-
-�@�ݒ�t�@�C���ȂǕK�v�ȃt�@�C���͑S�ē����t�H���_���ɍ����̂ŁA
-�t�H���_���ƃ����[�o�u���E�f�B�X�N�� USB�������[�ɕۑ����Ă����āA
-���̂܂ܕʂ̃p�\�R���Ŏg�����Ƃ��\�ł��B
-���� MultiPar ���C���X�g�[������Ă�ʂ̃p�\�R���ł������ݒ�Ŏg�������ꍇ�́A
-�ݒ�t�@�C�� (MultiPar.ini) ���R�s�[����Γ����ݒ�œ��삵�܂��B
+　MultiPar では Parchive 仕様の次期バージョン案である PAR 3.0 を
+実験的に使えるようになっています。
+しかし、PAR 3.0 仕様はまだ詳細を検討中の下書き段階で、
+MultiPar はその試作品を使って新仕様の性能を体感できるにすぎません。
+PAR 3.0 仕様のフォーマットは細部が流動的で最終版との互換性は保証されません。
+つまり、MultiPar で試作品の PAR3 リカバリ・ファイルを今作っても、
+そのリカバリ・ファイルを将来のバージョンでも使えるとは限りません。
+同様に、他の人が同じバージョンを使ってるとは限らないので、
+試作品の PAR3 リカバリ・ファイルは他人に送らないでください。
 
 
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-[ ���C�Z���X ]
+[ インストーラー版のインストールとアンインストール ]
 
-�@MultiPar �̓R���\�[���E�A�v���P�[�V�����Ƃ�����Ăяo�� GUI �A�v���P�[�V�����Ƃ���
-��i�K�\���ɂȂ��Ă�̂ŁA�@�\�g����o�[�W�����E�A�b�v���e�Ղł��B
-PAR �p�R���\�[���E�A�v���P�[�V���� (par1j.exe �� par2j.exe) �� GPL �ɏ������܂��B
-���̑��̃R���\�[���E�A�v���P�[�V������
-GUI �A�v���P�[�V���� (MultiPar.exe) �͕��ʂ̃t���[�\�t�g�ł��B
-MultiPar �����̂܂܎g�������Ȃ�A���ꂼ��̃��C�Z���X�̈Ⴂ���C�ɂ��Ȃ��Ă����ł��B
-�\�[�X�E�R�[�h��GitHub�ɒu���Ă܂��B
+　インストーラー ( MultiPar131_setup.exe みたいな名前 ) をダブル・クリックすると、
+インストール画面が表示されるので、その指示に従ってください。
+バージョン・アップ時に、設定項目をそのまま使いたい時は上書きインストールしてもいいです。
+上書きインストールする前に、「MultiPar をシェルに統合する」のチェックを外してください。
+上書きインストールやアンインストール後に OS の再起動を求められるかもしれません。
+「Program Files」や「Program Files (x86)」内にインストールするには、
+右クリック・メニューの「管理者として実行」を選んで
+管理者権限でインストーラーを開始する必要があります。
+
+　アンインストールは Windows OS のコントロール・パネルから行うか、
+MultiPar をインストールしたフォルダ内の unins000.exe をダブル・クリックしてください。
+アンインストーラーは設定ファイルや後から置かれたファイルを削除しないので、
+もう使うことがないなら自分で削除してください。
+
+　インストーラー版を使った場合は、インストールしたフォルダを動かさないでください。
+さもないと、後でアンインストールに失敗することになります。
+
+[ インストーラー版による複数ユーザー向けのインストール ]
+
+　複数のユーザーがパソコンにログオンするなら、
+管理者は全員向けに MultiPar をインストールすることができます。
+管理者権限でインストールすれば、インストーラーが作ったスタート・メニューのアイコン、
+デスクトップのアイコン、そしてファイルの関連付けは全てのユーザーが利用できます。
+「Program Files」内にインストールした場合、それぞれのユーザーが個別に設定を保持します。
+その他のフォルダにインストールした場合、全てのユーザーが同じ設定を共有します。
+いずれの場合も、ユーザーが作ったアイコンや関連付けはそのユーザーだけが利用できます。
+
+
+[ アーカイブ版のインストール ]
+
+　配布されてる圧縮ファイル ( MultiPar131.zip みたいな名前 ) を解凍してできたファイルを
+どこか適当なフォルダに全て入れてください。
+その中の MultiPar.exe というのが MultiPar の実行ファイルです。
+それをダブル・クリックすると MultiPar が起動します。
+
+　MultiPar の設定ダイアログから、ショートカットを作ったり、
+リカバリ・ファイルを関連付けしたりできます。
+ただし、「.par」や「.par2」という拡張子のファイルを MultiPar に関連付けする場合は、
+先に他のアプリケーションでの関連付けを解除してからにしてください。
+例えば、既に QuickPar に関連付けされてるのなら、QuickPar の設定で解除しておきます。
+
+[ アーカイブ版のアンインストール ]
+
+　MultiPar.exe などを入れたフォルダごと削除してください。
+設定ファイルも同じフォルダ内に作られるので同時に削除してかまいません。
+ただし、「Program Files」内のフォルダにインストールしてあった場合は、
+設定ファイルは「Application Data」内のフォルダに作られるので、それも削除してください。
+リカバリ・ファイルを MultiPar に関連付けしてる場合は、
+アンインストールの前に関連付けを解除しておいてください。
+
+　MultiPar をシェルに統合した状態では MultiParShlExt64.dll というファイルを削除できません。
+必ず先に設定画面でチェックを外してください。
+既に MultiPar.exe を削除してしまってる場合は、
+手作業でシェル拡張をアンインストールすることもできます。
+「コマンド プロンプト」を開いて MultiParShlExt64.dll が存在するディレクトリに移動してから、
+「RegSvr32.exe /u MultiParShlExt64.dll」と入力すれば解除されます。
+エクスプローラーを起動してる場合はファイルを削除する前に一旦閉じてください。
+それでもだめなら一旦ログオフして、再度ログオンしてから削除してください。 
+
+[ アーカイブ版のインストール先の変更 ]
+
+　インストールしたフォルダの場所を変えたい時は、
+フォルダごと別の場所にコピーするか移動してください。
+パリティ書庫を関連付けをしてた場合は、新しいインストール位置を反映させる為に、
+関連付けを一旦解除してもう一度設定しなおしてください。
+
+　設定ファイルなど必要なファイルは全て同じフォルダ内に作られるので、
+フォルダごとリムーバブル・ディスクや USBメモリーに保存しておいて、
+そのまま別のパソコンで使うことも可能です。
+既に MultiPar がインストールされてる別のパソコンでも同じ設定で使いたい場合は、
+設定ファイル (MultiPar.ini) をコピーすれば同じ設定で動作します。
+
+
+/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+
+[ ライセンス ]
+
+　MultiPar はコンソール・アプリケーションとそれを呼び出す GUI アプリケーションという
+二段階構成になってるので、機能拡張やバージョン・アップが容易です。
+PAR 用コンソール・アプリケーション (par1j.exe と par2j.exe) は GPL に準拠します。
+その他のコンソール・アプリケーションや
+GUI アプリケーション (MultiPar.exe) は普通のフリーソフトです。
+MultiPar をそのまま使うだけなら、それぞれのライセンスの違いを気にしなくていいです。
+ソース・コードはGitHubに置いてます。
 (URL: "https://github.com/Yutaka-Sawada/MultiPar")
 
 
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-[ �A���� ]
+[ 連絡先 ]
 
-�@��{�I�Ƀ��[�U�[�E�T�|�[�g�̓��[���ōs���܂����A
-GitHub��issue�y�[�W�ɏ�������ł������ł��B
+　基本的にユーザー・サポートはメールで行いますが、
+GitHubのissueページに書き込んでもいいです。
 (URL: "https://github.com/Yutaka-Sawada/MultiPar/issues")
 
-���O�� �V�c �L �ł��B
-���[���E�A�h���X�� tenfon (at mark) outlook.jp �ł��B
-�̂̃��[���E�A�h���X�� ten_fon (at mark) mail.goo.ne.jp �ł������A
-2014�N3���ɃT�[�r�X�I�������̂ŁA�������ɂ͑���Ȃ��悤�ɂ��Ă��������B
-���f���[�����ۂ̕\�L�Ȃ̂ŁA���ۂ̃��[���ł� (at mark) �� @ �Ɋ����Ă��������B
+名前は 澤田 豊 です。
+メール・アドレスは tenfon (at mark) outlook.jp です。
+昔のメール・アドレスは ten_fon (at mark) mail.goo.ne.jp でしたが、
+2014年3月にサービス終了したので、そっちには送らないようにしてください。
+迷惑メール拒否の表記なので、実際のメールでは (at mark) を @ に換えてください。
 
 
-[ �����N ]
+[ リンク ]
 
-�@�x�N�^�[�̍�҃y�[�W�ł͊O���l������ MultiPar ���Љ�Ă��܂��B
+　ベクターの作者ページでは外国人向けに MultiPar を紹介しています。
 (URL: "https://hp.vector.co.jp/authors/VA021385/")
-�x�N�^�[�̐����ȃ_�E�����[�h�E�y�[�W�͕ʂɂ���܂��B
+ベクターの正式なダウンロード・ページは別にあります。
 (URL: "https://www.vector.co.jp/soft/dl/winnt/util/se460801.html")
-���{�l�����Ƀ����N���ڂ���ۂ́A�x�N�^�[�̍�i�Љ�y�[�W�ɂ��Ă��������B
+日本人向けにリンクを載せる際は、ベクターの作品紹介ページにしてください。
 (URL: "https://www.vector.co.jp/soft/winnt/util/se460801.html")
 
