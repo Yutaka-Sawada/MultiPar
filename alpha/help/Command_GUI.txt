@@ -1,4 +1,4 @@
-[ MultiPar GUI - version 1.3.2.6 or later ]
+[ MultiPar GUI - version 1.3.2.9 or later ]
 
 Usage: MultiPar.exe [command] [/base path] [/list path] [files]
 
@@ -99,6 +99,13 @@ write a line of "RecoveryFileLimit=1" under "[Option]" section.
 It's same as an option:
 "Variable (limited to size of largest data file)" on QuickPar.
 
+ If you want to enable "Most Resent Used List",
+write this line "MRUMax=5" under "[Path]" section.
+You may change the number of items after "MRUMax=".
+Because of alphabet, "MRUMax=26" is the maximum.
+If you write "MRUMax=0" or remove the line,
+"Most Resent Used List" is disabled.
+
 
 Example of lines on "MultiPar.ini";
 
@@ -107,4 +114,5 @@ FontName=Arial
 RedundancyMax=10
 Sort=8
 RecoveryFileLimit=1
-
+[Path]
+MRUMax=5
