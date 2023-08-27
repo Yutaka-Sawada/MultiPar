@@ -1,69 +1,57 @@
 # MultiPar
 
-### v1.3.2.8 is public
-&nbsp; This is a minor update version to fix some bugs in rare cases. 
-Most users don't see difference. 
-If there is no serious problem in this version, 
-next version will be the last of v1.3.2 tree.
+### v1.3.2.9 is public
+&nbsp; This is the final release of v1.3.2 tree. 
+Because I want to public this as a stable version, I didn't change contents so much. 
+PAR clients are same as previous version. 
+Including long term used applications may be good to avoid false positive at Malware detection.
 
-&nbsp; I fixed a [problem of MultiPar shell extension](https://github.com/Yutaka-Sawada/MultiPar/issues/86), 
-when UAC (User Account Control on Windows Vista or later) is disabled. 
-Thanks whulkhulk and Slava46 for test and confirm. 
-If other users could not "Integrate MultiPar into Shell" ago, he may try this new version.
+&nbsp; I fixed a [compatibility issue in calling 7-Zip](https://github.com/Yutaka-Sawada/MultiPar/issues/92), 
+which I didn't know the change. 
+Thanks Lyoko-Jeremie for bug report. 
+The incident happened, when a user selected many files.
 
-&nbsp; I added a confirm dialog at closing MultiPar, when it's creating or repairing. 
-This change may reduce accidental loss of working data. 
-Though MultiPar inherits most usage and behavior of QuickPar, I would improve a bit.
+&nbsp; I made a sample feature to Save & Restore different "base directories". 
+When you put PAR files in another folder from source files, it will set the previous directory automatically. 
+Because this feature was tested little, it's disabled by default at this time. 
+If you want to enable, add section `[Path]` on "MultiPar.ini". 
+Then set `MRUMax` value, which is the maximum number of stored directries. 
+You may set the value upto 26. It's disabled, when the value is 0. 
+These two lines are like below:
+```
+[Path]
+MRUMax=5
+```
 
-&nbsp; I fixed [small bugs in my OpenCL code for GPU](https://github.com/Yutaka-Sawada/MultiPar/issues/88). 
-Though I'm not sure the incident, it might not work rarely. 
-Because I don't use a graphics board on my PC, I didn't test myself. 
-Thanks apprehensivemom for test. 
-Even when you checked "Enable GPU acceleration", it may not use GPU for small data. 
-It's because starting GPU is slow. 
-If calculation finishes in a few seconds, using CPU only may be faster. 
-GPU may require at least a few minutes task to see speed difference. 
-As a note, I write its threshold below.
-
-Threshold to use GPU:
-- Data size must be larger than 512 MB.
-- Block size must be larger than 64 KB.
-- Number of source blocks must be more than 256.
-- Number of recovery blocks must be more than 32.
+&nbsp; While I made MultiPar as an utility tool, I didn't give priority to its speed. 
+If someone wants faster Parchive tool, I suggest to use ParPar tools instead of MultiPar. 
+They are "[High performance PAR2 create client for NodeJS](https://github.com/animetosho/ParPar)" or 
+"[speed focused par2cmdline fork](https://github.com/animetosho/par2cmdline-turbo)". 
+Though the speed depends on hardware environments and user's setting, it would be 50% ~ 100 % faster than my par2j. 
+Only when you have a very fast graphics borad, GPU enabled par2j may be faster. 
+I plan to improve speed of par2j in next v1.3.3 tree.
+Though it will become 20% ~ 30% faster than old par2j, ParPar would be faster mostly.
 
 
-[ Changes from 1.3.2.7 to 1.3.2.8 ]  
+[ Changes from 1.3.2.8 to 1.3.2.9 ]  
 
 GUI update
-- Change
-  - It won't erase Zone.Identifier flag of MultiPar.exe automatically.
-  - It shows confirm dialog before close, when it's creating or repairing.
-
-- Improvement
-  - It will show error, when calling PAR client doesn't exist.
+- New
+  - Verification may save different base directories in MultiPar.ini file.
 
 - Bug fix
-  - When UAC is disabled, Shell Extesnion DLL uses HKEY_LOCAL_MACHINE.
-
-PAR2 client update
-- Bug fix
-  - It will show correct efficiency for over than TB size files.
-  - GPU function works with MMX, when all SSE2, SSSE3, AVX2 are disabled.
-
-All clients update
-- Change
-  - It will search hidden files, when Windows Explorer shows them.
+  - Archiver's option was updated for recent 7-Zip versions.
 
 
 [ Hash value ]  
 
-MultiPar1328.zip  
-MD5: C7BD23C0D32C47555E344D9D88C149C2  
-SHA1: 467F85E53011B3BC1E67E6685B1787D32B6F2296  
+MultiPar132.zip  
+MD5: 305D86C8C7A0F5C1A23CEAFFBE4F02BF  
+SHA1: 464BB7AB7D14FD35D2AEF99042EEB8E556DA0417  
 
-MultiPar1328_setup.exe  
-MD5: 4D7A3BA6B88D9F37A22C35C425DA5F4D  
-SHA1: 6BCCF834BC6038F1AC30F82B193A2B5F45FD7697  
+MultiPar132_setup.exe  
+MD5: 18F9BE1FF1C6D668E3A3906C691CCB98  
+SHA1: 116C6B2A15FCFD9BB74F0EF9D6C8A4BF78299588  
 &nbsp; To install under "Program Files" or "Program Files (x86)" directory, 
 you must start the installer with administrative privileges by selecting 
 "Run as administrator" on right-click menu.
