@@ -1,5 +1,5 @@
 ﻿// par2_cmd.c
-// Copyright : 2023-03-18 Yutaka Sawada
+// Copyright : 2023-09-18 Yutaka Sawada
 // License : GPL
 
 #ifndef _UNICODE
@@ -86,7 +86,7 @@ static void print_environment(void)
 
 	printf("CPU thread\t: %d / %d\n", cpu_num & 0xFFFF, cpu_num >> 24);
 	cpu_num &= 0xFFFF;	// 利用するコア数だけにしておく
-	printf("CPU cache limit : %d KB, %d KB\n", (cpu_cache & 0x7FFF8000) >> 10, (cpu_cache & 0x00007FFF) << 7);
+	printf("CPU cache limit : %d KB, %d KB\n", (cpu_flag & 0xFFFF0000) >> 10, (cpu_cache & 0xFFFE0000) >> 10);
 #ifndef _WIN64	// 32-bit 版は MMX, SSE2, SSSE3 のどれかを表示する
 	printf("CPU extra\t:");
 	if (cpu_flag & 1){
@@ -1481,39 +1481,39 @@ ri= switch_set & 0x00040000
 					k = (k * 10) + (tmp_p[j] - '0');
 					j++;
 				}
-				if (k & 32){	// GPU を使う
+				if (k & 256){	// GPU を使う
 					OpenCL_method = 1;	// Faster GPU
-				} else if (k & 64){
+				} else if (k & 512){
 					OpenCL_method = -1;	// Slower GPU
 				}
-				if (k & 16)	// SSSE3 を使わない
-					cpu_flag &= 0xFFFFFFFE;
-				if (k & 128)	// CLMUL を使わない、SSSE3 の古いエンコーダーを使う
+				if (k & 1024)	// CLMUL を使わない、SSSE3 の古いエンコーダーを使う
 					cpu_flag = (cpu_flag & 0xFFFFFFF7) | 0x100;
-				if (k & 256)	// JIT(SSE2) を使わない
+				if (k & 2048)	// JIT(SSE2) を使わない
 					cpu_flag &= 0xFFFFFF7F;
-				if (k & 512)	// AVX2 を使わない
+				if (k & 4096)	// SSSE3 を使わない
+					cpu_flag &= 0xFFFFFFFE;
+				if (k & 8192)	// AVX2 を使わない
 					cpu_flag &= 0xFFFFFFEF;
-				if (k & 15){	// 使用するコア数を変更する
-					k &= 15;	// 1～15 の範囲
+				if (k & 255){	// 使用するコア数を変更する
+					k &= 255;	// 1～255 の範囲
 					// printf("\n lc# = %d , logical = %d, physical = %d \n", k, cpu_num >> 24, (cpu_num & 0x00FF0000) >> 16);
-					if (k == 12){	// 物理コア数の 1/4 にする
+					if (k == 251){	// 物理コア数の 1/4 にする
 						k = ((cpu_num & 0x00FF0000) >> 16) / 4;
-					} else if (k == 13){	// 物理コア数の半分にする
+					} else if (k == 252){	// 物理コア数の半分にする
 						k = ((cpu_num & 0x00FF0000) >> 16) / 2;
-					} else if (k == 14){	// 物理コア数の 3/4 にする
+					} else if (k == 253){	// 物理コア数の 3/4 にする
 						k = (((cpu_num & 0x00FF0000) >> 16) * 3) / 4;
-					} else if (k == 15){	// 物理コア数にする
-						k = (cpu_num & 0x00FF0000) >> 16;
-						if (k >= 6)
-							k--;	// 物理コア数が 6以上なら、1個減らす
-					} else if (k > (cpu_num >> 24)){
-						k = cpu_num >> 24;	// 論理コア数を超えないようにする
+					} else if (k == 254){	// 物理コア数より減らす
+						k = ((cpu_num & 0x00FF0000) >> 16) - 1;
+					} else if (k == 255){	// 物理コア数より増やす
+						k = ((cpu_num & 0x00FF0000) >> 16) + 1;
 					}
 					if (k > MAX_CPU){
 						k = MAX_CPU;
 					} else if (k < 1){
 						k = 1;
+					} else if (k > (cpu_num >> 24)){
+						k = cpu_num >> 24;	// 論理コア数を超えないようにする
 					}
 					cpu_num = (cpu_num & 0xFFFF0000) | k;	// 指定されたコア数を下位に配置する
 				}

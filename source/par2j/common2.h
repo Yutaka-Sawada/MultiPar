@@ -6,11 +6,11 @@ extern "C" {
 #endif
 
 #ifndef _WIN64	// 32-bit 版なら
-#define MAX_CPU			8			// 32-bit 版は少なくしておく
+#define MAX_CPU			16			// 32-bit 版は少なくしておく
 #define MAX_MEM_SIZE	0x7F000000	// 確保するメモリー領域の最大値 2032MB
 #define MAX_MEM_SIZE32	0x50000000	// 32-bit OS で確保するメモリー領域の最大値 1280MB
 #else
-#define MAX_CPU			16			// 最大 CPU/Core 個数 (スレッド本数)
+#define MAX_CPU			32			// 最大 CPU/Core 個数 (スレッド本数)
 #endif
 
 #define MAX_LEN			1024		// ファイル名の最大文字数 (末尾のNULL文字も含む)

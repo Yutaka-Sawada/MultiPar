@@ -80,6 +80,9 @@ void galois_align32_multiply(unsigned char *r1, unsigned char *r2, unsigned int 
 void galois_align32avx_multiply(unsigned char *r1, unsigned char *r2, unsigned int len, int factor);
 void galois_align256_multiply(unsigned char *r1, unsigned char *r2, unsigned int len, int factor);
 
+void galois_align32_multiply2(unsigned char *src1, unsigned char *src2, unsigned char *dst, unsigned int len, int factor1, int factor2);
+void galois_align32avx_multiply2(unsigned char *src1, unsigned char *src2, unsigned char *dst, unsigned int len, int factor1, int factor2);
+
 void galois_altmap_none(unsigned char *data, unsigned int bsize);
 
 // AVX2 と SSSE3 の ALTMAP は 32バイト単位で行う
@@ -125,6 +128,7 @@ int galois_create_table(void)
 	// CPU によって使う関数を変更する
 	sse_unit = 16;	// 16, 32, 64, 128 のどれでもいい (32のSSSE3は少し速い、GPUが識別するのに注意)
 	galois_align_multiply = galois_align16_multiply;
+	galois_align_multiply2 = NULL;
 	galois_altmap_change = galois_altmap_none;
 	galois_altmap_return = galois_altmap_none;
 	checksum16_altmap = checksum16;
@@ -135,6 +139,7 @@ int galois_create_table(void)
 		//printf("\nUse AVX2 & ALTMAP\n");
 		sse_unit = 32;	// 32, 64, 128 のどれでもいい
 		galois_align_multiply = galois_align32avx_multiply;
+		galois_align_multiply2 = galois_align32avx_multiply2;
 		galois_altmap_change = galois_altmap32_change;
 		galois_altmap_return = galois_altmap32_return;
 		checksum16_altmap = checksum16_altmap32;
@@ -144,6 +149,7 @@ int galois_create_table(void)
 			//printf("\nUse SSSE3 & ALTMAP\n");
 			sse_unit = 32;	// 32, 64, 128 のどれでもいい
 			galois_align_multiply = galois_align32_multiply;
+			galois_align_multiply2 = galois_align32_multiply2;
 			galois_altmap_change = galois_altmap32_change;
 			galois_altmap_return = galois_altmap32_return;
 			checksum16_altmap = checksum16_altmap32;
@@ -154,6 +160,7 @@ int galois_create_table(void)
 			//printf("\nUse JIT(SSE2) & ALTMAP\n");
 			sse_unit = 256;
 			galois_align_multiply = galois_align256_multiply;
+			galois_align_multiply2 = NULL;
 			galois_altmap_change = galois_altmap256_change;
 			galois_altmap_return = galois_altmap256_return;
 			checksum16_altmap = checksum16_altmap256;
@@ -777,19 +784,21 @@ lp32:
 #else	// 64-bit 版ではインライン・アセンブラを使えない
 // (__m128i *) で逐次ポインターをキャスト変換するよりも、
 // 先に __m128i* で定義しておいた方が、連続した領域へのアクセス最適化がうまくいく？
+// ほとんど変わらない気がする（むしろ遅い？）・・・コンパイラ次第なのかも
 
 // tables for split four combined multiplication
-static void create_eight_table(unsigned char *mtab, int factor){
+static void create_eight_table(unsigned char *mtab, int factor)
+{
 	int count = 4;
 	__m128i *tbl;
-	__m128i xmm0, xmm1, xmm2, xmm3, xmm7;
+	__m128i xmm0, xmm1, xmm2, xmm3, mask;
 
 	tbl = (__m128i *)mtab;
 
 	// create mask for 8-bit
-	xmm7 = _mm_setzero_si128();
-	xmm7 = _mm_cmpeq_epi16(xmm7, xmm7);	// 0xFFFF *8
-	xmm7 = _mm_srli_epi16(xmm7, 8);		// 0x00FF *8
+	mask = _mm_setzero_si128();
+	mask = _mm_cmpeq_epi16(mask, mask);	// 0xFFFF *8
+	mask = _mm_srli_epi16(mask, 8);		// 0x00FF *8
 
 	while (1){
 		xmm0 = _mm_cvtsi32_si128(factor);			// [_][_][_][_][_][_][_][1]
@@ -817,8 +826,8 @@ static void create_eight_table(unsigned char *mtab, int factor){
 
 		xmm0 = _mm_load_si128(&xmm2);
 		xmm1 = _mm_load_si128(&xmm3);
-		xmm0 = _mm_and_si128(xmm0, xmm7);
-		xmm1 = _mm_and_si128(xmm1, xmm7);
+		xmm0 = _mm_and_si128(xmm0, mask);
+		xmm1 = _mm_and_si128(xmm1, mask);
 		xmm0 = _mm_packus_epi16(xmm0, xmm1);	// lower 8-bit * 16
 		xmm2 = _mm_srli_epi16(xmm2, 8);
 		xmm3 = _mm_srli_epi16(xmm3, 8);
@@ -911,12 +920,8 @@ static void gf16_ssse3_block16u(unsigned char *input, unsigned char *output, uns
 // Address (input) does not need be 16-byte aligned
 static void gf16_ssse3_block32u(unsigned char *input, unsigned char *output, unsigned int bsize, unsigned char *table)
 {
-	__m128i *src, *dst;
 	__m128i xmm0, xmm1, xmm2, xmm3, xmm4, xmm5, xmm6, xmm7;
 	__m128i tbl0, tbl1, tbl2, tbl3, tbl4, tbl5, tbl6, tbl7;
-
-	src = (__m128i *)input;
-	dst = (__m128i *)output;
 
 	// copy tables to local
 	tbl0 = _mm_load_si128((__m128i *)table);
@@ -936,8 +941,8 @@ static void gf16_ssse3_block32u(unsigned char *input, unsigned char *output, uns
 	xmm7 = _mm_packus_epi16(xmm7, xmm7);	// 0x0F *16
 
 	while (bsize != 0){
-		xmm1 = _mm_loadu_si128(src);	// read source 32-bytes
-		xmm3 = _mm_loadu_si128(src + 1);
+		xmm1 = _mm_loadu_si128((__m128i *)input);	// read source 32-bytes
+		xmm3 = _mm_loadu_si128((__m128i *)input + 1);
 		xmm0 = _mm_and_si128(xmm1, xmm6);	// erase higher byte
 		xmm2 = _mm_and_si128(xmm3, xmm6);
 		xmm1 = _mm_srli_epi16(xmm1, 8);		// move higher byte to lower
@@ -975,17 +980,17 @@ static void gf16_ssse3_block32u(unsigned char *input, unsigned char *output, uns
 		xmm4 = _mm_xor_si128(xmm4, xmm2);	// combine result
 		xmm5 = _mm_xor_si128(xmm5, xmm3);
 
-		xmm0 = _mm_load_si128(dst);	// read dest 32-bytes
-		xmm1 = _mm_load_si128(dst + 1);
+		xmm0 = _mm_load_si128((__m128i *)output);	// read dest 32-bytes
+		xmm1 = _mm_load_si128((__m128i *)output + 1);
 		xmm3 = _mm_unpacklo_epi8(xmm4, xmm5);	// interleave lower and higher bytes
 		xmm4 = _mm_unpackhi_epi8(xmm4, xmm5);
 		xmm0 = _mm_xor_si128(xmm0, xmm3);
 		xmm1 = _mm_xor_si128(xmm1, xmm4);
-		_mm_store_si128(dst, xmm0);	// write dest 32-bytes
-		_mm_store_si128(dst + 1, xmm1);
+		_mm_store_si128((__m128i *)output, xmm0);	// write dest 32-bytes
+		_mm_store_si128((__m128i *)output + 1, xmm1);
 
-		src += 2;
-		dst += 2;
+		input += 32;
+		output += 32;
 		bsize -= 32;
 	}
 }
@@ -993,12 +998,8 @@ static void gf16_ssse3_block32u(unsigned char *input, unsigned char *output, uns
 // xmm レジスタにテーブルを読み込む方が 64-bit 版で微妙に速い
 static void gf16_ssse3_block32_altmap(unsigned char *input, unsigned char *output, unsigned int bsize, unsigned char *table)
 {
-	__m128i *src, *dst;
 	__m128i xmm0, xmm1, xmm2, xmm3, xmm4, xmm5, xmm7;
 	__m128i tbl0, tbl1, tbl2, tbl3, tbl4, tbl5, tbl6, tbl7;
-
-	src = (__m128i *)input;
-	dst = (__m128i *)output;
 
 	// copy tables to local
 	tbl0 = _mm_load_si128((__m128i *)table);
@@ -1017,8 +1018,8 @@ static void gf16_ssse3_block32_altmap(unsigned char *input, unsigned char *outpu
 	xmm7 = _mm_packus_epi16(xmm7, xmm7);	// 0x0F *16
 
 	while (bsize != 0){
-		xmm0 = _mm_load_si128(src);	// read source 32-bytes
-		xmm1 = _mm_load_si128(src + 1);
+		xmm0 = _mm_load_si128((__m128i *)input);	// read source 32-bytes
+		xmm1 = _mm_load_si128((__m128i *)input + 1);
 
 		xmm3 = _mm_load_si128(&xmm0);	// copy source
 		xmm0 = _mm_srli_epi16(xmm0, 4);	// prepare next 4-bit
@@ -1054,17 +1055,17 @@ static void gf16_ssse3_block32_altmap(unsigned char *input, unsigned char *outpu
 		xmm2 = _mm_shuffle_epi8(xmm2, xmm0);	// table look-up
 		xmm3 = _mm_shuffle_epi8(xmm3, xmm0);
 
-		xmm0 = _mm_load_si128(dst);	// read dest 32-bytes
-		xmm1 = _mm_load_si128(dst + 1);
+		xmm0 = _mm_load_si128((__m128i *)output);	// read dest 32-bytes
+		xmm1 = _mm_load_si128((__m128i *)output + 1);
 		xmm4 = _mm_xor_si128(xmm4, xmm2);	// combine result
 		xmm5 = _mm_xor_si128(xmm5, xmm3);
 		xmm4 = _mm_xor_si128(xmm4, xmm0);
 		xmm5 = _mm_xor_si128(xmm5, xmm1);
-		_mm_store_si128(dst, xmm4);	// write dest 32-bytes
-		_mm_store_si128(dst + 1, xmm5);
+		_mm_store_si128((__m128i *)output, xmm4);	// write dest 32-bytes
+		_mm_store_si128((__m128i *)output + 1, xmm5);
 
-		src += 2;
-		dst += 2;
+		input += 32;
+		output += 32;
 		bsize -= 32;
 	}
 }
@@ -1141,16 +1142,288 @@ static void gf16_ssse3_block32_altmap(unsigned char *input, unsigned char *outpu
 
 #endif
 
+// 逆行列計算用に掛け算だけする（XORで追加しない）
+static void gf16_ssse3_block16s(unsigned char *data, unsigned int bsize, unsigned char *table)
+{
+	__m128i dest, mask, xmm0, xmm1, xmm3, xmm4, xmm5, xmm6;
+	__m128i tbl0, tbl1, tbl2, tbl3, tbl4, tbl5, tbl6, tbl7;
+
+	// copy tables to local
+	tbl0 = _mm_load_si128((__m128i *)table);
+	tbl1 = _mm_load_si128((__m128i *)table + 1);
+	tbl2 = _mm_load_si128((__m128i *)table + 2);
+	tbl3 = _mm_load_si128((__m128i *)table + 3);
+	tbl4 = _mm_load_si128((__m128i *)table + 4);
+	tbl5 = _mm_load_si128((__m128i *)table + 5);
+	tbl6 = _mm_load_si128((__m128i *)table + 6);
+	tbl7 = _mm_load_si128((__m128i *)table + 7);
+
+	// create mask for 8 entries
+	mask = _mm_setzero_si128();
+	mask = _mm_cmpeq_epi16(mask, mask);	// 0xFFFF *8
+	mask = _mm_srli_epi16(mask, 12);	// 0x000F *8
+
+	while (bsize != 0){
+		xmm0 = _mm_load_si128((__m128i *)data);	// read source 16-bytes
+
+		xmm3 = _mm_load_si128(&tbl0);	// low table
+		xmm4 = _mm_load_si128(&tbl1);	// high table
+		xmm1 = _mm_load_si128(&xmm0);			// copy source
+		xmm0 = _mm_srli_epi16(xmm0, 4);			// prepare next 4-bit
+		xmm1 = _mm_and_si128(xmm1, mask);		// src & 0x000F
+		xmm3 = _mm_shuffle_epi8(xmm3, xmm1);	// table look-up
+		xmm1 = _mm_slli_epi16(xmm1, 8);			// shift 8-bit for higher table
+		xmm4 = _mm_shuffle_epi8(xmm4, xmm1);
+			xmm5 = _mm_load_si128(&tbl2);	// low table
+			xmm6 = _mm_load_si128(&tbl3);	// high table
+		dest = _mm_xor_si128(xmm3, xmm4);	// combine high and low
+
+			xmm1 = _mm_load_si128(&xmm0);			// copy source
+			xmm0 = _mm_srli_epi16(xmm0, 4);			// prepare next 4-bit
+			xmm1 = _mm_and_si128(xmm1, mask);		// src & 0x000F
+			xmm5 = _mm_shuffle_epi8(xmm5, xmm1);	// table look-up
+			xmm1 = _mm_slli_epi16(xmm1, 8);			// shift 8-bit for higher table
+			xmm6 = _mm_shuffle_epi8(xmm6, xmm1);
+		xmm3 = _mm_load_si128(&tbl4);	// low table
+		xmm4 = _mm_load_si128(&tbl5);	// high table
+			xmm5 = _mm_xor_si128(xmm5, xmm6);	// combine high and low
+			dest = _mm_xor_si128(dest, xmm5);
+
+		xmm1 = _mm_load_si128(&xmm0);			// copy source
+		xmm0 = _mm_srli_epi16(xmm0, 4);			// prepare next 4-bit
+		xmm1 = _mm_and_si128(xmm1, mask);		// src & 0x000F
+		xmm3 = _mm_shuffle_epi8(xmm3, xmm1);	// table look-up
+		xmm1 = _mm_slli_epi16(xmm1, 8);			// shift 8-bit for higher table
+		xmm4 = _mm_shuffle_epi8(xmm4, xmm1);
+			xmm5 = _mm_load_si128(&tbl6);	// low table
+			xmm6 = _mm_load_si128(&tbl7);	// high table
+		xmm3 = _mm_xor_si128(xmm3, xmm4);	// combine high and low
+		dest = _mm_xor_si128(dest, xmm3);
+
+			xmm5 = _mm_shuffle_epi8(xmm5, xmm0);	// table look-up
+			xmm0 = _mm_slli_epi16(xmm0, 8);			// shift 8-bit for higher table
+			xmm6 = _mm_shuffle_epi8(xmm6, xmm0);
+			xmm5 = _mm_xor_si128(xmm5, xmm6);	// combine high and low
+			dest = _mm_xor_si128(dest, xmm5);
+
+		_mm_store_si128((__m128i *)data, dest);
+
+		data += 16;
+		bsize -= 16;
+	}
+}
+
+// ２ブロック同時に計算することで、メモリーへのアクセス回数を減らす
+// 128バイトのテーブルを２個用意しておくこと
+// xmm レジスタの数が足りないので、テーブルを毎回ロードする
+static void gf16_ssse3_block32_altmap2(unsigned char *input1, unsigned char *input2, unsigned char *output, unsigned int bsize, unsigned char *table)
+{
+	__m128i *tbl;
+	__m128i xmm0, xmm1, xmm2, xmm3, xmm4, xmm5, xmm6, mask;
+
+	tbl = (__m128i *)table;
+
+	// create mask for 16 entries
+	mask = _mm_setzero_si128();
+	mask = _mm_cmpeq_epi16(mask, mask);	// 0xFFFF *8
+	mask = _mm_srli_epi16(mask, 12);	// 0x000F *8
+	mask = _mm_packus_epi16(mask, mask);	// 0x0F *16
+
+	while (bsize != 0){
+		xmm0 = _mm_load_si128((__m128i *)input1);	// read source 32-bytes
+		xmm1 = _mm_load_si128((__m128i *)input1 + 1);
+
+		xmm6 = _mm_load_si128(&xmm0);	// copy source
+		xmm0 = _mm_srli_epi16(xmm0, 4);	// prepare next 4-bit
+		xmm6 = _mm_and_si128(xmm6, mask);	// src & 0x0F
+		xmm0 = _mm_and_si128(xmm0, mask);	// (src >> 4) & 0x0F
+
+		xmm4 = _mm_load_si128(tbl);	// load tables
+		xmm5 = _mm_load_si128(tbl + 1);
+		xmm4 = _mm_shuffle_epi8(xmm4, xmm6);	// table look-up
+		xmm5 = _mm_shuffle_epi8(xmm5, xmm6);
+
+		xmm2 = _mm_load_si128(tbl + 2);	// load tables
+		xmm3 = _mm_load_si128(tbl + 3);
+		xmm2 = _mm_shuffle_epi8(xmm2, xmm0);	// table look-up
+		xmm3 = _mm_shuffle_epi8(xmm3, xmm0);
+		xmm4 = _mm_xor_si128(xmm4, xmm2);	// combine result
+		xmm5 = _mm_xor_si128(xmm5, xmm3);
+
+		xmm0 = _mm_load_si128(&xmm1);	// copy source
+		xmm0 = _mm_srli_epi16(xmm0, 4);	// prepare next 4-bit
+		xmm1 = _mm_and_si128(xmm1, mask);	// src & 0x0F
+		xmm0 = _mm_and_si128(xmm0, mask);	// (src >> 4) & 0x0F
+
+		xmm2 = _mm_load_si128(tbl + 4);	// load tables
+		xmm3 = _mm_load_si128(tbl + 5);
+		xmm2 = _mm_shuffle_epi8(xmm2, xmm1);	// table look-up
+		xmm3 = _mm_shuffle_epi8(xmm3, xmm1);
+		xmm4 = _mm_xor_si128(xmm4, xmm2);	// combine result
+		xmm5 = _mm_xor_si128(xmm5, xmm3);
+
+		xmm2 = _mm_load_si128(tbl + 6);	// load tables
+		xmm3 = _mm_load_si128(tbl + 7);
+		xmm2 = _mm_shuffle_epi8(xmm2, xmm0);	// table look-up
+		xmm3 = _mm_shuffle_epi8(xmm3, xmm0);
+		xmm4 = _mm_xor_si128(xmm4, xmm2);	// combine result
+		xmm5 = _mm_xor_si128(xmm5, xmm3);
+
+			xmm0 = _mm_load_si128((__m128i *)input2);	// read source 32-bytes
+			xmm1 = _mm_load_si128((__m128i *)input2 + 1);
+
+			xmm6 = _mm_load_si128(&xmm0);	// copy source
+			xmm0 = _mm_srli_epi16(xmm0, 4);	// prepare next 4-bit
+			xmm6 = _mm_and_si128(xmm6, mask);	// src & 0x0F
+			xmm0 = _mm_and_si128(xmm0, mask);	// (src >> 4) & 0x0F
+
+			xmm2 = _mm_load_si128(tbl + 8);	// load tables
+			xmm3 = _mm_load_si128(tbl + 9);
+			xmm2 = _mm_shuffle_epi8(xmm2, xmm6);	// table look-up
+			xmm3 = _mm_shuffle_epi8(xmm3, xmm6);
+			xmm4 = _mm_xor_si128(xmm4, xmm2);	// combine result
+			xmm5 = _mm_xor_si128(xmm5, xmm3);
+
+			xmm2 = _mm_load_si128(tbl + 10);	// load tables
+			xmm3 = _mm_load_si128(tbl + 11);
+			xmm2 = _mm_shuffle_epi8(xmm2, xmm0);	// table look-up
+			xmm3 = _mm_shuffle_epi8(xmm3, xmm0);
+			xmm4 = _mm_xor_si128(xmm4, xmm2);	// combine result
+			xmm5 = _mm_xor_si128(xmm5, xmm3);
+
+			xmm0 = _mm_load_si128(&xmm1);	// copy source
+			xmm0 = _mm_srli_epi16(xmm0, 4);	// prepare next 4-bit
+			xmm1 = _mm_and_si128(xmm1, mask);	// src & 0x0F
+			xmm0 = _mm_and_si128(xmm0, mask);	// (src >> 4) & 0x0F
+
+			xmm2 = _mm_load_si128(tbl + 12);	// load tables
+			xmm3 = _mm_load_si128(tbl + 13);
+			xmm2 = _mm_shuffle_epi8(xmm2, xmm1);	// table look-up
+			xmm3 = _mm_shuffle_epi8(xmm3, xmm1);
+			xmm4 = _mm_xor_si128(xmm4, xmm2);	// combine result
+			xmm5 = _mm_xor_si128(xmm5, xmm3);
+
+			xmm2 = _mm_load_si128(tbl + 14);	// load tables
+			xmm3 = _mm_load_si128(tbl + 15);
+			xmm2 = _mm_shuffle_epi8(xmm2, xmm0);	// table look-up
+			xmm3 = _mm_shuffle_epi8(xmm3, xmm0);
+			xmm4 = _mm_xor_si128(xmm4, xmm2);	// combine result
+			xmm5 = _mm_xor_si128(xmm5, xmm3);
+
+		xmm0 = _mm_load_si128((__m128i *)output);	// read dest 32-bytes
+		xmm1 = _mm_load_si128((__m128i *)output + 1);
+		xmm0 = _mm_xor_si128(xmm0, xmm4);
+		xmm1 = _mm_xor_si128(xmm1, xmm5);
+		_mm_store_si128((__m128i *)output, xmm0);	// write dest 32-bytes
+		_mm_store_si128((__m128i *)output + 1, xmm1);
+
+		input1 += 32;
+		input2 += 32;
+		output += 32;
+		bsize -= 32;
+	}
+}
+
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 // AVX2 命令を使うには Windows 7 以降じゃないといけない
 
 // _mm256_permute2x128_si256 の control の意味は以下を参照
 // http://www.felixcloutier.com/x86/VPERM2I128.html
 
-// テーブルを並び替えて使えば、ループ内の並び替え回数を一回に減らせる
-static void gf16_avx2_block32(unsigned char *input, unsigned char *output, unsigned int bsize, unsigned char *table)
+// AVX2 を使って全体を２倍していくと、13% ぐらい速くなる
+// でも、テーブル作成が少し速くなっても、全体的な速度はほとんど変わらない・・・
+static void create_eight_table_avx2(unsigned char *mtab, int factor)
 {
-	__m256i tbl0, tbl1, tbl2, tbl3, mask, src0, src1, tmp0, tmp1, tmp2, tmp3;
+	int count;
+	__m128i xmm0, xmm1, xmm2, xmm3, mask8;
+	__m256i ymm0, ymm1, ymm2, ymm3, base, poly, mask16;
+
+	// create mask for 8-bit
+	mask8 = _mm_setzero_si128();
+	mask8 = _mm_cmpeq_epi16(mask8, mask8);	// 0xFFFF *8
+	mask8 = _mm_srli_epi16(mask8, 8);		// 0x00FF *8
+
+	xmm0 = _mm_cvtsi32_si128(factor);			// [_][_][_][_][_][_][_][1]
+	xmm1 = _mm_setzero_si128();
+	factor = (factor << 1) ^ (((factor << 16) >> 31) & 0x1100B);
+	xmm1 = _mm_insert_epi16(xmm1, factor, 1);	// [_][_][_][_][_][_][2][_]
+	xmm2 = _mm_setzero_si128();
+	factor = (factor << 1) ^ (((factor << 16) >> 31) & 0x1100B);
+	xmm2 = _mm_insert_epi16(xmm2, factor, 4);	// [_][_][_][4][_][_][_][_]
+	xmm1 = _mm_unpacklo_epi16(xmm1, xmm1);		// [_][_][_][_][2][2][_][_]
+	factor = (factor << 1) ^ (((factor << 16) >> 31) & 0x1100B);
+	xmm3 = _mm_cvtsi32_si128(factor);			// [_][_][_][_][_][_][_][8]
+
+	xmm0 = _mm_shufflelo_epi16(xmm0, _MM_SHUFFLE(0, 1, 0, 1));	// [_][_][_][_][1][_][1][_]
+	xmm3 = _mm_unpacklo_epi16(xmm3, xmm3);						// [_][_][_][_][_][_][8][8]
+	xmm0 = _mm_xor_si128(xmm0, xmm1);							// [_][_][_][_][3][2][1][_]
+	xmm2 = _mm_shufflehi_epi16(xmm2, _MM_SHUFFLE(0, 0, 0, 0));	// [4][4][4][4][_][_][_][_]
+	xmm0 = _mm_unpacklo_epi64(xmm0, xmm0);						// [3][2][1][_][3][2][1][_]
+	xmm3 = _mm_shuffle_epi32(xmm3, _MM_SHUFFLE(0, 0, 0, 0));	// [8][8][8][8][8][8][8][8]
+	xmm2 = _mm_xor_si128(xmm2, xmm0);							// [7][6][5][4][3][2][1][_]
+	xmm3 = _mm_xor_si128(xmm3, xmm2);							// [15][14][13][12][11][10][9][8]
+
+	// 途中で AVX2 命令を使っても遅くならないっぽい
+	poly = _mm256_set1_epi32(0x100B100B);	// PRIM_POLY = 0x1100B * 16
+	mask16 = _mm256_cmpeq_epi16(poly, poly);
+	mask16 = _mm256_srli_epi16(mask16, 8);	// 0x00FF *16
+	base = _mm256_setzero_si256();
+	base = _mm256_inserti128_si256(base, xmm2, 0);
+	base = _mm256_inserti128_si256(base, xmm3, 1);
+
+	// ymm レジスタに読み込んでる間にメモリーに書き込んだ方が速い
+	xmm0 = _mm_and_si128(xmm2, mask8);
+	xmm1 = _mm_and_si128(xmm3, mask8);
+	xmm0 = _mm_packus_epi16(xmm0, xmm1);	// lower 8-bit * 16
+	xmm2 = _mm_srli_epi16(xmm2, 8);
+	xmm3 = _mm_srli_epi16(xmm3, 8);
+	xmm2 = _mm_packus_epi16(xmm2, xmm3);	// higher 8-bit * 16
+	_mm_store_si128((__m128i *)mtab    , xmm0);
+	_mm_store_si128((__m128i *)mtab + 1, xmm2);
+
+	for (count = 1; count < 4; count++){
+		// 全体を２倍する
+		ymm0 = _mm256_slli_epi16(base, 1);
+		ymm1 = _mm256_srai_epi16(base, 15);
+		ymm1 = _mm256_and_si256(ymm1, poly);
+		base = _mm256_xor_si256(ymm1, ymm0);
+
+		// 全体を２倍する
+		ymm0 = _mm256_slli_epi16(base, 1);
+		ymm1 = _mm256_srai_epi16(base, 15);
+		ymm1 = _mm256_and_si256(ymm1, poly);
+		base = _mm256_xor_si256(ymm1, ymm0);
+
+		// 全体を２倍する
+		ymm0 = _mm256_slli_epi16(base, 1);
+		ymm1 = _mm256_srai_epi16(base, 15);
+		ymm1 = _mm256_and_si256(ymm1, poly);
+		base = _mm256_xor_si256(ymm1, ymm0);
+
+		// 全体を２倍する
+		ymm0 = _mm256_slli_epi16(base, 1);
+		ymm1 = _mm256_srai_epi16(base, 15);
+		ymm1 = _mm256_and_si256(ymm1, poly);
+		base = _mm256_xor_si256(ymm1, ymm0);
+
+		// 並び替えて保存する
+		ymm0 = _mm256_and_si256(base, mask16);	// lower 8-bit * 16
+		ymm1 = _mm256_srli_epi16(base, 8);		// higher 8-bit * 16
+		ymm2 = _mm256_permute2x128_si256(ymm0, ymm1, 0x20);
+		ymm3 = _mm256_permute2x128_si256(ymm0, ymm1, 0x31);
+		ymm0 = _mm256_packus_epi16(ymm2, ymm3);
+		_mm256_store_si256((__m256i *)mtab + count, ymm0);
+	}
+
+	// AVX-SSE 切り替えの回避
+	_mm256_zeroupper();
+}
+
+// 逆行列計算用に掛け算だけする（XORで追加しない）
+static void gf16_avx2_block32s(unsigned char *data, unsigned int bsize, unsigned char *table)
+{
+	__m256i tbl0, tbl1, tbl2, tbl3, tbl4, tbl5, tbl6, tbl7;
+	__m256i mask, dest, src0, src1, tmp0, tmp1, tmp2, tmp3;
 
 	// copy tables to local
 	tmp0 = _mm256_load_si256((__m256i *)table);		// tbl0[low0][high0] <- 0x0f[lo][lo]
@@ -1158,11 +1431,152 @@ static void gf16_avx2_block32(unsigned char *input, unsigned char *output, unsig
 	tmp2 = _mm256_load_si256((__m256i *)table + 2);	// tbl2[low2][high2] <- 0x0f[hi][hi]
 	tmp3 = _mm256_load_si256((__m256i *)table + 3);	// tbl3[low3][high3] <- 0xf0[hi][hi]
 
-	// re-arrange table order
-	tbl0 = _mm256_permute2x128_si256(tmp0, tmp2, 0x30);	// tblA[low0][high2] <- 0x0f[lo][hi]
-	tbl1 = _mm256_permute2x128_si256(tmp1, tmp3, 0x30);	// tblB[low1][high3] <- 0xf0[lo][hi]
-	tbl2 = _mm256_permute2x128_si256(tmp2, tmp0, 0x03);	// tblC[high0][low2] <- 0x0f[lo][hi]
-	tbl3 = _mm256_permute2x128_si256(tmp3, tmp1, 0x03);	// tblD[high1][low3] <- 0xf0[lo][hi]
+	// split to 8 tables
+	tbl0 = _mm256_permute2x128_si256(tmp0, tmp0, 0x00);	// tbl0[low0][low0]
+	tbl1 = _mm256_permute2x128_si256(tmp1, tmp1, 0x00);	// tbl1[low1][low1]
+	tbl2 = _mm256_permute2x128_si256(tmp2, tmp2, 0x00);	// tbl2[low2][low2]
+	tbl3 = _mm256_permute2x128_si256(tmp3, tmp3, 0x00);	// tbl3[low3][low3]
+	tbl4 = _mm256_permute2x128_si256(tmp0, tmp0, 0x11);	// tbl0[high0][high0]
+	tbl5 = _mm256_permute2x128_si256(tmp1, tmp1, 0x11);	// tbl1[high1][high1]
+	tbl6 = _mm256_permute2x128_si256(tmp2, tmp2, 0x11);	// tbl2[high2][high2]
+	tbl7 = _mm256_permute2x128_si256(tmp3, tmp3, 0x11);	// tbl3[high3][high3]
+
+	// create mask for 16 entries
+	mask = _mm256_cmpeq_epi16(tmp0, tmp0);	// 0xFFFF *16
+	mask = _mm256_srli_epi16(mask, 12);		// 0x000F *16
+
+	while (bsize != 0){
+		src0 = _mm256_load_si256((__m256i *)data);	// read source 32-bytes
+
+		src1 = _mm256_and_si256(src0, mask);	// src & 0x0F
+		tmp0 = _mm256_shuffle_epi8(tbl0, src1);	// table look-up
+		src1 = _mm256_slli_epi16(src1, 8);		// shift 8-bit for higher table
+		tmp1 = _mm256_shuffle_epi8(tbl4, src1);
+		src0 = _mm256_srli_epi16(src0, 4);		// prepare next 4-bit
+		dest = _mm256_xor_si256(tmp0, tmp1);	// combine high and low
+
+		src1 = _mm256_and_si256(src0, mask);	// src & 0x0F
+		tmp0 = _mm256_shuffle_epi8(tbl1, src1);	// table look-up
+		src1 = _mm256_slli_epi16(src1, 8);		// shift 8-bit for higher table
+		tmp1 = _mm256_shuffle_epi8(tbl5, src1);
+		dest = _mm256_xor_si256(dest, tmp0);	// combine high and low
+		src0 = _mm256_srli_epi16(src0, 4);		// prepare next 4-bit
+		dest = _mm256_xor_si256(dest, tmp1);
+
+		src1 = _mm256_and_si256(src0, mask);	// src & 0x0F
+		tmp0 = _mm256_shuffle_epi8(tbl2, src1);	// table look-up
+		src1 = _mm256_slli_epi16(src1, 8);		// shift 8-bit for higher table
+		tmp1 = _mm256_shuffle_epi8(tbl6, src1);
+		dest = _mm256_xor_si256(dest, tmp0);	// combine high and low
+		src0 = _mm256_srli_epi16(src0, 4);		// prepare next 4-bit
+		dest = _mm256_xor_si256(dest, tmp1);
+
+		src1 = _mm256_and_si256(src0, mask);	// src & 0x0F
+		tmp0 = _mm256_shuffle_epi8(tbl3, src1);	// table look-up
+		src1 = _mm256_slli_epi16(src1, 8);		// shift 8-bit for higher table
+		tmp1 = _mm256_shuffle_epi8(tbl7, src1);
+		dest = _mm256_xor_si256(dest, tmp0);	// combine high and low
+		dest = _mm256_xor_si256(dest, tmp1);
+
+		_mm256_store_si256((__m256i *)data, dest);	// write dest 32-bytes
+
+		data += 32;
+		bsize -= 32;
+	}
+
+	// AVX-SSE 切り替えの回避
+	_mm256_zeroupper();
+}
+
+// 逆行列計算用に ALTMAP されてないソースにも対応しておく
+// Address (input) does not need be 32-byte aligned
+static void gf16_avx2_block32u(unsigned char *input, unsigned char *output, unsigned int bsize, unsigned char *table)
+{
+	__m256i tbl0, tbl1, tbl2, tbl3, tbl4, tbl5, tbl6, tbl7;
+	__m256i mask, dest, src0, src1, tmp0, tmp1, tmp2, tmp3;
+
+	// copy tables to local
+	tmp0 = _mm256_load_si256((__m256i *)table);		// tbl0[low0][high0] <- 0x0f[lo][lo]
+	tmp1 = _mm256_load_si256((__m256i *)table + 1);	// tbl1[low1][high1] <- 0xf0[lo][lo]
+	tmp2 = _mm256_load_si256((__m256i *)table + 2);	// tbl2[low2][high2] <- 0x0f[hi][hi]
+	tmp3 = _mm256_load_si256((__m256i *)table + 3);	// tbl3[low3][high3] <- 0xf0[hi][hi]
+
+	// split to 8 tables
+	tbl0 = _mm256_permute2x128_si256(tmp0, tmp0, 0x00);	// tbl0[low0][low0]
+	tbl1 = _mm256_permute2x128_si256(tmp1, tmp1, 0x00);	// tbl1[low1][low1]
+	tbl2 = _mm256_permute2x128_si256(tmp2, tmp2, 0x00);	// tbl2[low2][low2]
+	tbl3 = _mm256_permute2x128_si256(tmp3, tmp3, 0x00);	// tbl3[low3][low3]
+	tbl4 = _mm256_permute2x128_si256(tmp0, tmp0, 0x11);	// tbl0[high0][high0]
+	tbl5 = _mm256_permute2x128_si256(tmp1, tmp1, 0x11);	// tbl1[high1][high1]
+	tbl6 = _mm256_permute2x128_si256(tmp2, tmp2, 0x11);	// tbl2[high2][high2]
+	tbl7 = _mm256_permute2x128_si256(tmp3, tmp3, 0x11);	// tbl3[high3][high3]
+
+	// create mask for 16 entries
+	mask = _mm256_cmpeq_epi16(tmp0, tmp0);	// 0xFFFF *16
+	mask = _mm256_srli_epi16(mask, 12);		// 0x000F *16
+
+	while (bsize != 0){
+		src0 = _mm256_loadu_si256((__m256i *)input);	// read source 32-bytes
+		dest = _mm256_load_si256((__m256i *)output);	// read dest 32-bytes
+
+		src1 = _mm256_and_si256(src0, mask);	// src & 0x0F
+		tmp0 = _mm256_shuffle_epi8(tbl0, src1);	// table look-up
+		src1 = _mm256_slli_epi16(src1, 8);		// shift 8-bit for higher table
+		tmp1 = _mm256_shuffle_epi8(tbl4, src1);
+		dest = _mm256_xor_si256(dest, tmp0);	// combine high and low
+		src0 = _mm256_srli_epi16(src0, 4);		// prepare next 4-bit
+		dest = _mm256_xor_si256(dest, tmp1);
+
+		src1 = _mm256_and_si256(src0, mask);	// src & 0x0F
+		tmp0 = _mm256_shuffle_epi8(tbl1, src1);	// table look-up
+		src1 = _mm256_slli_epi16(src1, 8);		// shift 8-bit for higher table
+		tmp1 = _mm256_shuffle_epi8(tbl5, src1);
+		dest = _mm256_xor_si256(dest, tmp0);	// combine high and low
+		src0 = _mm256_srli_epi16(src0, 4);		// prepare next 4-bit
+		dest = _mm256_xor_si256(dest, tmp1);
+
+		src1 = _mm256_and_si256(src0, mask);	// src & 0x0F
+		tmp0 = _mm256_shuffle_epi8(tbl2, src1);	// table look-up
+		src1 = _mm256_slli_epi16(src1, 8);		// shift 8-bit for higher table
+		tmp1 = _mm256_shuffle_epi8(tbl6, src1);
+		dest = _mm256_xor_si256(dest, tmp0);	// combine high and low
+		src0 = _mm256_srli_epi16(src0, 4);		// prepare next 4-bit
+		dest = _mm256_xor_si256(dest, tmp1);
+
+		src1 = _mm256_and_si256(src0, mask);	// src & 0x0F
+		tmp0 = _mm256_shuffle_epi8(tbl3, src1);	// table look-up
+		src1 = _mm256_slli_epi16(src1, 8);		// shift 8-bit for higher table
+		tmp1 = _mm256_shuffle_epi8(tbl7, src1);
+		dest = _mm256_xor_si256(dest, tmp0);	// combine high and low
+		dest = _mm256_xor_si256(dest, tmp1);
+
+		_mm256_store_si256((__m256i *)output, dest);	// write dest 32-bytes
+
+		input += 32;
+		output += 32;
+		bsize -= 32;
+	}
+
+	// AVX-SSE 切り替えの回避
+	_mm256_zeroupper();
+}
+
+// テーブルを並び替えて使えば、ループ内の並び替え回数を一回に減らせる
+static void gf16_avx2_block32(unsigned char *input, unsigned char *output, unsigned int bsize, unsigned char *table)
+{
+	__m256i tbl0, tbl1, tbl2, tbl3, mask, dest, src0, src1, tmp0, tmp1, tmp2, tmp3;
+
+	// copy tables to local
+	tmp0 = _mm256_load_si256((__m256i *)table);		// tbl0[low0][high0] <- 0x0f[lo][lo]
+	tmp1 = _mm256_load_si256((__m256i *)table + 1);	// tbl1[low1][high1] <- 0xf0[lo][lo]
+	tmp2 = _mm256_load_si256((__m256i *)table + 2);	// tbl2[low2][high2] <- 0x0f[hi][hi]
+	tmp3 = _mm256_load_si256((__m256i *)table + 3);	// tbl3[low3][high3] <- 0xf0[hi][hi]
+
+	// re-arrange table order (permute より blend の方が速いらしい)
+	tbl0 = _mm256_blend_epi32(tmp0, tmp2, 0xF0);		// tbl0[low0][high2] <- 0x0f[lo][hi]
+	tbl1 = _mm256_blend_epi32(tmp1, tmp3, 0xF0);		// tbl1[low1][high3] <- 0xf0[lo][hi]
+	tbl2 = _mm256_permute2x128_si256(tmp2, tmp0, 0x03);	// tbl2[high0][low2] <- 0x0f[lo][hi]
+	tbl3 = _mm256_permute2x128_si256(tmp3, tmp1, 0x03);	// tbl3[high1][low3] <- 0xf0[lo][hi]
 
 	// create mask for 32 entries
 	mask = _mm256_cmpeq_epi16(tmp0, tmp0);	// 0xFFFF *16
@@ -1184,10 +1598,10 @@ static void gf16_avx2_block32(unsigned char *input, unsigned char *output, unsig
 		tmp2 = _mm256_xor_si256(tmp2, tmp3);
 		tmp2 = _mm256_permute2x128_si256(tmp2, tmp2, 0x01);	// exchange low & high 128-bit
 
-		src1 = _mm256_load_si256((__m256i *)output);	// read dest 32-bytes
-		src1 = _mm256_xor_si256(src1, tmp0);
-		src1 = _mm256_xor_si256(src1, tmp2);
-		_mm256_store_si256((__m256i *)output, src1);	// write dest 32-bytes
+		dest = _mm256_load_si256((__m256i *)output);	// read dest 32-bytes
+		tmp0 = _mm256_xor_si256(tmp0, tmp2);
+		dest = _mm256_xor_si256(dest, tmp0);
+		_mm256_store_si256((__m256i *)output, dest);	// write dest 32-bytes
 
 		input += 32;
 		output += 32;
@@ -1299,6 +1713,83 @@ static void gf16_avx2_block32(unsigned char *input, unsigned char *output, unsig
 	_mm256_zeroupper();
 }
 */
+
+// ２ブロック同時に計算することで、メモリーへのアクセス回数を減らす
+// 128バイトのテーブルを２個用意しておくこと
+static void gf16_avx2_block32_2(unsigned char *input1, unsigned char *input2, unsigned char *output, unsigned int bsize, unsigned char *table)
+{
+	__m256i mask, src0, src1, tmp0, tmp1, tmp2, tmp3;
+	__m256i tbl0, tbl1, tbl2, tbl3, tbl4, tbl5, tbl6, tbl7;
+
+	// copy tables to local
+	tmp0 = _mm256_load_si256((__m256i *)table);		// tbl0[low0][high0] <- 0x0f[lo][lo]
+	tmp1 = _mm256_load_si256((__m256i *)table + 1);	// tbl1[low1][high1] <- 0xf0[lo][lo]
+	tmp2 = _mm256_load_si256((__m256i *)table + 2);	// tbl2[low2][high2] <- 0x0f[hi][hi]
+	tmp3 = _mm256_load_si256((__m256i *)table + 3);	// tbl3[low3][high3] <- 0xf0[hi][hi]
+
+	// re-arrange table order (permute より blend の方が速いらしい)
+	tbl0 = _mm256_blend_epi32(tmp0, tmp2, 0xF0);		// tbl0[low0][high2] <- 0x0f[lo][hi]
+	tbl1 = _mm256_blend_epi32(tmp1, tmp3, 0xF0);		// tbl1[low1][high3] <- 0xf0[lo][hi]
+	tbl2 = _mm256_permute2x128_si256(tmp2, tmp0, 0x03);	// tbl2[high0][low2] <- 0x0f[lo][hi]
+	tbl3 = _mm256_permute2x128_si256(tmp3, tmp1, 0x03);	// tbl3[high1][low3] <- 0xf0[lo][hi]
+
+	tmp0 = _mm256_load_si256((__m256i *)table + 4);
+	tmp1 = _mm256_load_si256((__m256i *)table + 5);
+	tmp2 = _mm256_load_si256((__m256i *)table + 6);
+	tmp3 = _mm256_load_si256((__m256i *)table + 7);
+	tbl4 = _mm256_blend_epi32(tmp0, tmp2, 0xF0);
+	tbl5 = _mm256_blend_epi32(tmp1, tmp3, 0xF0);
+	tbl6 = _mm256_permute2x128_si256(tmp2, tmp0, 0x03);
+	tbl7 = _mm256_permute2x128_si256(tmp3, tmp1, 0x03);
+
+	// create mask for 32 entries
+	mask = _mm256_cmpeq_epi16(tmp0, tmp0);	// 0xFFFF *16
+	mask = _mm256_srli_epi16(mask, 12);		// 0x000F *16
+	mask = _mm256_packus_epi16(mask, mask);	// 0x0F *32
+
+	while (bsize != 0){
+		src0 = _mm256_load_si256((__m256i *)input1);	// read source 32-bytes
+		src1 = _mm256_srli_epi16(src0, 4);	// prepare next 4-bit
+		src0 = _mm256_and_si256(src0, mask);	// src & 0x0F
+		src1 = _mm256_and_si256(src1, mask);	// (src >> 4) & 0x0F
+
+		tmp0 = _mm256_shuffle_epi8(tbl0, src0);	// table look-up
+		tmp1 = _mm256_shuffle_epi8(tbl1, src1);
+		tmp2 = _mm256_shuffle_epi8(tbl2, src0);
+		tmp3 = _mm256_shuffle_epi8(tbl3, src1);
+		tmp0 = _mm256_xor_si256(tmp0, tmp1);	// combine result
+		tmp2 = _mm256_xor_si256(tmp2, tmp3);
+
+			src0 = _mm256_load_si256((__m256i *)input2);	// read source 32-bytes
+			src1 = _mm256_srli_epi16(src0, 4);	// prepare next 4-bit
+			src0 = _mm256_and_si256(src0, mask);	// src & 0x0F
+			src1 = _mm256_and_si256(src1, mask);	// (src >> 4) & 0x0F
+
+			tmp1 = _mm256_shuffle_epi8(tbl4, src0);	// table look-up
+			tmp3 = _mm256_shuffle_epi8(tbl6, src0);
+			tmp0 = _mm256_xor_si256(tmp0, tmp1);	// combine result
+			tmp2 = _mm256_xor_si256(tmp2, tmp3);
+
+			tmp1 = _mm256_shuffle_epi8(tbl5, src1);	// table look-up
+			tmp3 = _mm256_shuffle_epi8(tbl7, src1);
+			tmp0 = _mm256_xor_si256(tmp0, tmp1);	// combine result
+			tmp2 = _mm256_xor_si256(tmp2, tmp3);
+
+		src0 = _mm256_load_si256((__m256i *)output);	// read dest 32-bytes
+		tmp2 = _mm256_permute2x128_si256(tmp2, tmp2, 0x01);	// exchange low & high 128-bit
+		src0 = _mm256_xor_si256(src0, tmp0);
+		src0 = _mm256_xor_si256(src0, tmp2);
+		_mm256_store_si256((__m256i *)output, src0);	// write dest 32-bytes
+
+		input1 += 32;
+		input2 += 32;
+		output += 32;
+		bsize -= 32;
+	}
+
+	// AVX-SSE 切り替えの回避
+	_mm256_zeroupper();
+}
 
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
@@ -1953,9 +2444,57 @@ void galois_region_multiply(
 		return;
 	}
 
-	if (count >= 32){	// 64バイト以上なら掛け算用のテーブルを使った方が速い
+	if (count >= 64){	// 64バイト以上なら掛け算用のテーブルを使った方が速い
 #ifndef NO_SIMD
-		if (cpu_flag & 1){	// SSSE3 対応なら
+		if (cpu_flag & 16){	// AVX2 対応なら
+			__declspec( align(32) ) unsigned char small_table[128];
+			int s, d;
+
+			create_eight_table_avx2(small_table, factor);
+
+			// アドレスが 32の倍数で無い場合は 32バイト単位で計算する効率が落ちる
+			while ((ULONG_PTR)r2 & 0x1E){
+				// そこで最初の 1～15個(2～30バイト)だけ普通に計算する
+				s = r1[0];
+				d = r2[0];
+				d ^= small_table[s & 0xF] | ((int)(small_table[16 + (s & 0xF)]) << 8);
+				s = s >> 4;
+				d ^= small_table[32 + (s & 0xF)] | ((int)(small_table[48 + (s & 0xF)]) << 8);
+				s = s >> 4;
+				d ^= small_table[64 + (s & 0xF)] | ((int)(small_table[80 + (s & 0xF)]) << 8);
+				s = s >> 4;
+				d ^= small_table[96 + s] | ((int)(small_table[112 + s]) << 8);
+				r2[0] = (unsigned short)d;
+				r1++;
+				r2++;
+				count--;
+			}
+
+			// 16個ずつ計算するので 16の倍数にする
+			gf16_avx2_block32u((unsigned char *)r1, (unsigned char *)r2,
+					(count & 0xFFFFFFF0) << 1, small_table);
+			r1 += count & 0xFFFFFFF0;
+			r2 += count & 0xFFFFFFF0;
+			count &= 15;
+
+			// 残りは 1個ずつ計算する
+			while (count != 0){
+				s = r1[0];
+				d = r2[0];
+				d ^= small_table[s & 0xF] | ((int)(small_table[16 + (s & 0xF)]) << 8);
+				s = s >> 4;
+				d ^= small_table[32 + (s & 0xF)] | ((int)(small_table[48 + (s & 0xF)]) << 8);
+				s = s >> 4;
+				d ^= small_table[64 + (s & 0xF)] | ((int)(small_table[80 + (s & 0xF)]) << 8);
+				s = s >> 4;
+				d ^= small_table[96 + s] | ((int)(small_table[112 + s]) << 8);
+				r2[0] = (unsigned short)d;
+				r1++;
+				r2++;
+				count--;
+			}
+
+		} else if (cpu_flag & 1){	// SSSE3 対応なら
 			__declspec( align(16) ) unsigned char small_table[128];
 			int s, d;
 
@@ -2093,30 +2632,125 @@ void galois_region_divide(
 {
 	factor = galois_reciprocal(factor);	// factor = 1 / factor
 
-	if (count >= 32){
-		unsigned int mtab[256 * 2];
+	if (count >= 64){
+// 行列サイズが小さいのでテーブル作成に時間がかかって、全く速くならない・・・
+/*
+#ifndef NO_SIMD
+		if (cpu_flag & 16){	// AVX2 対応なら
+			__declspec( align(32) ) unsigned char small_table[128];
+			int s, d;
 
-		create_two_table(mtab, factor);	// 掛け算用のテーブルをその場で構成する
+			create_eight_table_avx2(small_table, factor);
 
-		// アドレスが 4の倍数で無い場合は 4バイト単位で計算する効率が落ちる
-		if (((ULONG_PTR)r1 & 2) != 0){
-			// そこで最初の 1個(2バイト)だけ普通に計算する
-			r1[0] = (unsigned short)(mtab[((unsigned char *)r1)[0]] ^ mtab[256 + ((unsigned char *)r1)[1]]);
-			r1++;
-			count--;
+			// アドレスが 32の倍数で無い場合は 32バイト単位で計算する効率が落ちる
+			while ((ULONG_PTR)r1 & 0x1E){
+				// そこで最初の 1～15個(2～30バイト)だけ普通に計算する
+				s = r1[0];
+				d = small_table[s & 0xF] | ((int)(small_table[16 + (s & 0xF)]) << 8);
+				s = s >> 4;
+				d ^= small_table[32 + (s & 0xF)] | ((int)(small_table[48 + (s & 0xF)]) << 8);
+				s = s >> 4;
+				d ^= small_table[64 + (s & 0xF)] | ((int)(small_table[80 + (s & 0xF)]) << 8);
+				s = s >> 4;
+				d ^= small_table[96 + s] | ((int)(small_table[112 + s]) << 8);
+				r1[0] = (unsigned short)d;
+				r1++;
+				count--;
+			}
+
+			// 16個ずつ計算するので 16の倍数にする
+			gf16_avx2_block32s((unsigned char *)r1, (count & 0xFFFFFFF0) << 1, small_table);
+			r1 += count & 0xFFFFFFF0;
+			count &= 15;
+
+			// 残りは 1個ずつ計算する
+			while (count != 0){
+				s = r1[0];
+				d = small_table[s & 0xF] | ((int)(small_table[16 + (s & 0xF)]) << 8);
+				s = s >> 4;
+				d ^= small_table[32 + (s & 0xF)] | ((int)(small_table[48 + (s & 0xF)]) << 8);
+				s = s >> 4;
+				d ^= small_table[64 + (s & 0xF)] | ((int)(small_table[80 + (s & 0xF)]) << 8);
+				s = s >> 4;
+				d ^= small_table[96 + s] | ((int)(small_table[112 + s]) << 8);
+				r1[0] = (unsigned short)d;
+				r1++;
+				count--;
+			}
+
+		} else if (cpu_flag & 1){	// SSSE3 対応なら
+			__declspec( align(16) ) unsigned char small_table[128];
+			int s, d;
+
+			create_eight_table(small_table, factor);
+
+			// アドレスが 16の倍数で無い場合は 16バイト単位で計算する効率が落ちる
+			while ((ULONG_PTR)r1 & 0xE){
+				// そこで最初の 1～7個(2～14バイト)だけ普通に計算する
+				s = r1[0];
+				d = small_table[s & 0xF] | ((int)(small_table[16 + (s & 0xF)]) << 8);
+				s = s >> 4;
+				d ^= small_table[32 + (s & 0xF)] | ((int)(small_table[48 + (s & 0xF)]) << 8);
+				s = s >> 4;
+				d ^= small_table[64 + (s & 0xF)] | ((int)(small_table[80 + (s & 0xF)]) << 8);
+				s = s >> 4;
+				d ^= small_table[96 + s] | ((int)(small_table[112 + s]) << 8);
+				r1[0] = (unsigned short)d;
+				r1++;
+				count--;
+			}
+
+			// 8個ずつ計算するので 8の倍数にする
+			gf16_ssse3_block16s((unsigned char *)r1, (count & 0xFFFFFFF8) << 1, small_table);
+			r1 += count & 0xFFFFFFF8;
+			count &= 7;
+
+			// 残りは 1個ずつ計算する
+			while (count != 0){
+				s = r1[0];
+				d = small_table[s & 0xF] | ((int)(small_table[16 + (s & 0xF)]) << 8);
+				s = s >> 4;
+				d ^= small_table[32 + (s & 0xF)] | ((int)(small_table[48 + (s & 0xF)]) << 8);
+				s = s >> 4;
+				d ^= small_table[64 + (s & 0xF)] | ((int)(small_table[80 + (s & 0xF)]) << 8);
+				s = s >> 4;
+				d ^= small_table[96 + s] | ((int)(small_table[112 + s]) << 8);
+				r1[0] = (unsigned short)d;
+				r1++;
+				count--;
+			}
+
+		} else {	// Combined Multi Table support (2 tables of 256-entries)
+#endif
+*/
+			unsigned int mtab[256 * 2];
+
+			create_two_table(mtab, factor);	// 掛け算用のテーブルをその場で構成する
+
+			// アドレスが 4の倍数で無い場合は 4バイト単位で計算する効率が落ちる
+			if (((ULONG_PTR)r1 & 2) != 0){
+				// そこで最初の 1個(2バイト)だけ普通に計算する
+				r1[0] = (unsigned short)(mtab[((unsigned char *)r1)[0]] ^ mtab[256 + ((unsigned char *)r1)[1]]);
+				r1++;
+				count--;
+			}
+
+			// バッファーを 32-bit整数として扱う
+			while (count >= 2){	// 2個(4バイト)ずつ計算する
+				// 先に計算しておいた 2個の参照テーブルを使う
+				((unsigned int *)r1)[0] = mtab[((unsigned char *)r1)[0]] ^ mtab[256 + ((unsigned char *)r1)[1]] ^
+										((mtab[((unsigned char *)r1)[2]] ^ mtab[256 + ((unsigned char *)r1)[3]]) << 16);
+				r1 += 2;
+				count -= 2;
+			}
+			// 奇数なら最後に 1個余る
+			if (count == 1)
+				r1[0] = (unsigned short)(mtab[((unsigned char *)r1)[0]] ^ mtab[256 + ((unsigned char *)r1)[1]]);
+/*
+#ifndef NO_SIMD
 		}
-
-		// バッファーを 32-bit整数として扱う
-		while (count >= 2){	// 2個(4バイト)ずつ計算する
-			// 先に計算しておいた 2個の参照テーブルを使う
-			((unsigned int *)r1)[0] = mtab[((unsigned char *)r1)[0]] ^ mtab[256 + ((unsigned char *)r1)[1]] ^
-									((mtab[((unsigned char *)r1)[2]] ^ mtab[256 + ((unsigned char *)r1)[3]]) << 16);
-			r1 += 2;
-			count -= 2;
-		}
-		// 奇数なら最後に 1個余る
-		if (count == 1)
-			r1[0] = (unsigned short)(mtab[((unsigned char *)r1)[0]] ^ mtab[256 + ((unsigned char *)r1)[1]]);
+#endif
+*/
 
 	} else {	// 小さいデータは普通に計算する
 		int log_y = galois_log_table[factor];
@@ -2271,6 +2905,42 @@ void galois_align32_multiply(
 	}
 }
 
+// 掛け算を２回行って、一度に更新する (SSSE3 & ALTMAP)
+void galois_align32_multiply2(
+	unsigned char *src1,	// Region to multiply (must be aligned by 16)
+	unsigned char *src2,
+	unsigned char *dst,		// Products go here
+	unsigned int len,		// Byte length (must be multiple of 32)
+	int factor1,			// Number to multiply by
+	int factor2)
+{
+	if ((factor1 == 1) && (factor2 == 1)){	// 両方の factor が 1の場合
+		__m128i xmm0, xmm1, xmm2;
+
+		while (len != 0){
+			xmm0 = _mm_load_si128((__m128i *)dst);
+			xmm1 = _mm_load_si128((__m128i *)src1);
+			xmm2 = _mm_load_si128((__m128i *)src2);
+			xmm0 = _mm_xor_si128(xmm0, xmm1);
+			xmm0 = _mm_xor_si128(xmm0, xmm2);
+			_mm_store_si128((__m128i *)dst, xmm0);
+			src1 += 16;
+			src2 += 16;
+			dst += 16;
+			len -= 16;
+		}
+
+	// 掛け算用のテーブルを常に作成する (32バイトだと少し遅くなる)
+	} else {
+		__declspec( align(16) ) unsigned char small_table[256];
+
+		create_eight_table(small_table, factor1);
+		create_eight_table(small_table + 128, factor2);
+
+		gf16_ssse3_block32_altmap2(src1, src2, dst, len, small_table);
+	}
+}
+
 // 256バイトごとに並び替えられたバッファー専用の JIT(SSE2) を使った掛け算
 void galois_align256_multiply(
 	unsigned char *r1,	// Region to multiply (must be aligned by 16)
@@ -2321,29 +2991,51 @@ void galois_align32avx_multiply(
 			}
 
 			_mm256_zeroupper();	// AVX-SSE 切り替えの回避
-
-/*
-			__m128i xmm0, xmm1;	// 16バイトごとに XOR する
-
-			while (len != 0){
-				xmm0 = _mm_load_si128((__m128i *)r1);
-				xmm1 = _mm_load_si128((__m128i *)r2);
-				xmm1 = _mm_xor_si128(xmm1, xmm0);
-				_mm_store_si128((__m128i *)r2, xmm1);
-				r1 += 16;
-				r2 += 16;
-				len -= 16;
-			}
-*/
 		}
 
 	// 掛け算用のテーブルを常に作成する (32バイトだと少し遅くなる)
 	} else {
 		__declspec( align(32) ) unsigned char small_table[128];
 
-		create_eight_table(small_table, factor);
+		create_eight_table_avx2(small_table, factor);
 
 		gf16_avx2_block32(r1, r2, len, small_table);
+	}
+}
+
+// 掛け算を２回行って、一度に更新する (AVX2 & ALTMAP)
+void galois_align32avx_multiply2(
+	unsigned char *src1,	// Region to multiply (must be aligned by 32)
+	unsigned char *src2,
+	unsigned char *dst,		// Products go here
+	unsigned int len,		// Byte length (must be multiple of 32)
+	int factor1,			// Number to multiply by
+	int factor2)
+{
+	if ((factor1 == 1) && (factor2 == 1)){	// 両方の factor が 1の場合
+		__m256i ymm0, ymm1, ymm2;
+		while (len != 0){
+			ymm0 = _mm256_load_si256((__m256i *)dst);
+			ymm1 = _mm256_load_si256((__m256i *)src1);
+			ymm2 = _mm256_load_si256((__m256i *)src2);
+			ymm0 = _mm256_xor_si256(ymm0, ymm1);
+			ymm0 = _mm256_xor_si256(ymm0, ymm2);
+			_mm256_store_si256((__m256i *)dst, ymm0);
+			src1 += 32;
+			src2 += 32;
+			dst += 32;
+			len -= 32;
+		}
+		_mm256_zeroupper();	// AVX-SSE 切り替えの回避
+
+	// 掛け算用のテーブルを常に作成する (32バイトだと少し遅くなる)
+	} else {
+		__declspec( align(32) ) unsigned char small_table[256];
+
+		create_eight_table_avx2(small_table, factor1);
+		create_eight_table_avx2(small_table + 128, factor2);
+
+		gf16_avx2_block32_2(src1, src2, dst, len, small_table);
 	}
 }
 

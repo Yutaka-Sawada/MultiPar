@@ -1,5 +1,5 @@
 ﻿// par2.c
-// Copyright : 2023-03-15 Yutaka Sawada
+// Copyright : 2023-09-21 Yutaka Sawada
 // License : GPL
 
 #ifndef _UNICODE
@@ -112,12 +112,12 @@ int par2_create(
 		err = -12;
 	} else {
 		// メモリーを確保できるか試す
-		err = read_block_num(parity_num, cpu_num - 1, 0, 256);
+		err = read_block_num(parity_num, 0, 256);
 		if (err == 0)
 			err = -13;
 	}
 #ifdef TIMER
-	printf("read_block_num = %d\n", read_block_num(parity_num, cpu_num - 1, 0, 256));
+	printf("read_block_num = %d\n", read_block_num(parity_num, 0, 256));
 #endif
 	if (err > 0){	// 1-pass方式が可能
 #ifdef TIMER

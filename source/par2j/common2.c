@@ -1,5 +1,5 @@
 ﻿// common2.c
-// Copyright : 2023-03-14 Yutaka Sawada
+// Copyright : 2023-09-23 Yutaka Sawada
 // License : GPL
 
 #ifndef _UNICODE
@@ -1849,8 +1849,9 @@ int sqrt32(int num)
 
 int cpu_num = 1;	// CPU/Core 個数が制限されてる場合は、上位に本来の数を置く
 // /arch:SSE2, +1=SSSE3, +2=SSE4.1, +4=SSE4.2, +8=CLMUL, +16=AVX2, +128=JIT(SSE2), +256=Old
+// 上位 16-bit = L2 cache サイズから計算した制限サイズ
 unsigned int cpu_flag = 0;
-unsigned int cpu_cache = 0;	// 上位 16-bit = L2 cache * 2, 下位 16-bit = L3 cache
+unsigned int cpu_cache = 0;	// 上位 16-bit = L3 cache の制限サイズ, 下位 16-bit = 同時処理数
 unsigned int memory_use = 0;	// メモリー使用量 0=auto, 1～7 -> 1/8 ～ 7/8
 
 static int count_bit(DWORD_PTR value)
@@ -1869,7 +1870,7 @@ static int count_bit(DWORD_PTR value)
 void check_cpu(void)
 {
 	int core_count = 0, use_count;
-	unsigned int CPUInfo[4];
+	unsigned int CPUInfo[4], limit_size = 0;
 	unsigned int returnLength, byteOffset;
 	DWORD_PTR ProcessAffinityMask, SystemAffinityMask; // 32-bit なら 4バイト、64-bit なら 8バイト整数
 	PSYSTEM_LOGICAL_PROCESSOR_INFORMATION buffer = NULL, ptr;
@@ -2006,42 +2007,52 @@ void check_cpu(void)
 		//printf("Number of available physical processor cores: %d\n", core_count);
 		if (cache3_size > 0){
 			//printf("L3 cache: %d KB (%d way)\n", cache3_size >> 10 , cache3_way);
-			cache3_size /= cache3_way;	// set-associative のサイズにする
-			if (cache3_size < 131072)
-				cache3_size = 128 << 10;	// 128 KB 以上にする
+			cpu_cache = cache3_size / cache3_way;	// set-associative のサイズにする
+			if (cpu_cache < 131072)
+				cpu_cache = 128 << 10;	// 128 KB 以上にする
 		}
 		if (cache2_size > 0){
 			//printf("L2 cache: %d KB (%d way)\n", cache2_size >> 10, cache2_way);
-			cache2_size /= cache2_way;	// set-associative のサイズにする
-			if (cache2_size < 32768)
-				cache2_size = 32 << 10;	// 32 KB 以上にする
-			//printf("Limit size of Cache Blocking: %d KB\n", cache2_size >> 10);
-			cpu_cache = cache2_size | (cache3_size >> 17);
+			limit_size = cache2_size / cache2_way;	// set-associative のサイズにする
+			if (limit_size < 65536)
+				limit_size = 64 << 10;	// 64 KB 以上にする
+			// 同時処理数を決める
+			if (cache2_way >= 16){
+				returnLength = cache2_way / 2;	// L2 cache の分割数が多い場合は、その半分にする
+			} else {
+				returnLength = 0;
+			}
+			if (cache3_size > 0){	// L2 cache に対する L3 cache のサイズの倍率にする
+				byteOffset = cache3_size / cache2_size;
+				if (returnLength < byteOffset){
+					returnLength = byteOffset;
+					if (cache2_way >= cache3_way)	// L2 cache の分割数が L3 cache 以上なら 1.5倍にする
+						returnLength += returnLength / 2;
+				}
+			}
+			cpu_cache |= returnLength & 0x1FFFF;
 		}
 	}
 
-	if (cpu_cache == 0)	// キャッシュ・サイズが不明なら、128 KB にする
-		cpu_cache = 128 << 10;
+	if (limit_size == 0)	// キャッシュ・サイズが不明なら、128 KB にする
+		limit_size = 128 << 10;
+	//printf("Limit size of Cache Blocking: %d KB\n", limit_size >> 10);
+	// cpu_flag の上位 16-bit にキャッシュの制限サイズを置く
+	cpu_flag |= limit_size & 0xFFFF0000;	// 64 KB 未満は無視する
+
 	if (core_count == 0){	// 物理コア数が不明なら、論理コア数と同じにする
 		core_count = cpu_num;
 		use_count = cpu_num;
-	} else if (core_count < cpu_num){	// 物理コア数が共有されてるなら
-		if (core_count >= 6){			// 6 コア以上ならそれ以上増やさない
-			use_count = core_count;
-		} else {	// 2~5 コアなら 1個だけ増やす
-			use_count = core_count + 1;
-		}
+	} else if (core_count < cpu_num){	// 物理コアが共有されてるなら
+		use_count = core_count;	// 物理コア数と同じにする
 	} else {
-		use_count = core_count;
+		use_count = cpu_num;	// 論理コア数と同じにする
 	}
 	if (use_count > MAX_CPU)	// 利用するコア数が実装上の制限を越えないようにする
 		use_count = MAX_CPU;
 	//printf("Core count: logical, physical, use = %d, %d, %d\n", cpu_num, core_count, use_count);
 	// 上位に論理コア数と物理コア数、下位に利用するコア数を配置する
 	cpu_num = (cpu_num << 24) | (core_count << 16) | use_count;
-
-	// cpu_flag の上位 17-bit にキャッシュの制限サイズを置く
-	cpu_flag |= cpu_cache & 0xFFFF8000;	// 32 KB 未満は無視する
 }
 
 // OS が 32-bit か 64-bit かを調べる

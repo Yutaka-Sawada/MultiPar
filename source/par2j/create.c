@@ -1,5 +1,5 @@
 ﻿// create.c
-// Copyright : 2022-02-16 Yutaka Sawada
+// Copyright : 2023-09-23 Yutaka Sawada
 // License : GPL
 
 #ifndef _UNICODE

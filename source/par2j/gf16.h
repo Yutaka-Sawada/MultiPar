@@ -47,6 +47,15 @@ typedef void (* REGION_MULTIPLY) (
 	int factor);		// Number to multiply by
 REGION_MULTIPLY galois_align_multiply;
 
+typedef void (* REGION_MULTIPLY2) (
+	unsigned char *src1,	// Region to multiply
+	unsigned char *src2,
+	unsigned char *dst,		// Products go here
+	unsigned int len,		// Byte length
+	int factor1,			// Number to multiply by
+	int factor2);
+REGION_MULTIPLY2 galois_align_multiply2;
+
 // 領域並び替え用の関数定義
 typedef void (* REGION_ALTMAP) (unsigned char *data, unsigned int bsize);
 REGION_ALTMAP galois_altmap_change;

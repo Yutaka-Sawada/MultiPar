@@ -10,7 +10,6 @@ extern "C" {
 
 // Read all source & Keep some parity 方式
 // 部分的なエンコードを行う最低ブロック数
-#define PART_MAX_RATE	1	// ソース・ブロック数の 1/2  = 50%
 #define PART_MIN_RATE	5	// ソース・ブロック数の 1/32 = 3.1%
 
 // Read some source & Keep all parity 方式
@@ -33,7 +32,6 @@ unsigned int get_io_size(
 // 何ブロックまとめてファイルから読み込むかを空きメモリー量から計算する
 int read_block_num(
 	int keep_num,			// 保持するパリティ・ブロック数
-	int add_num,			// 余裕を見るブロック数
 	size_t trial_alloc,		// 確保できるか確認するのか
 	int alloc_unit);		// メモリー単位の境界 (sse_unit か MEM_UNIT)
 

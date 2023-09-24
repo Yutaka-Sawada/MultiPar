@@ -18,7 +18,9 @@ __kernel void method1(
 	__global uint *src,
 	__global uint *dst,
 	__global ushort *factors,
-	int blk_num)
+	int blk_num,
+	int offset,
+	int length)
 {
 	__local uint mtab[512];
 	int i, blk;
@@ -27,14 +29,15 @@ __kernel void method1(
 	const int work_size = get_global_size(0);
 	const int table_id = get_local_id(0);
 
-	for (i = work_id; i < BLK_SIZE; i += work_size)
+	src += offset;
+	for (i = work_id; i < length; i += work_size)
 		dst[i] = 0;
 
 	for (blk = 0; blk < blk_num; blk++){
 		calc_table(mtab, table_id, factors[blk]);
 		barrier(CLK_LOCAL_MEM_FENCE);
 
-		for (i = work_id; i < BLK_SIZE; i += work_size){
+		for (i = work_id; i < length; i += work_size){
 			v = src[i];
 			sum = mtab[(uchar)(v >> 16)] ^ mtab[256 + (v >> 24)];
 			sum <<= 16;
@@ -50,7 +53,9 @@ __kernel void method2(
 	__global uint *src,
 	__global uint *dst,
 	__global ushort *factors,
-	int blk_num)
+	int blk_num,
+	int offset,
+	int length)
 {
 	__local uint mtab[512];
 	int i, blk, pos;
@@ -59,7 +64,8 @@ __kernel void method2(
 	const int work_size = get_global_size(0) * 2;
 	const int table_id = get_local_id(0);
 
-	for (i = work_id; i < BLK_SIZE; i += work_size){
+	src += offset;
+	for (i = work_id; i < length; i += work_size){
 		dst[i    ] = 0;
 		dst[i + 1] = 0;
 	}
@@ -68,7 +74,7 @@ __kernel void method2(
 		calc_table(mtab, table_id, factors[blk]);
 		barrier(CLK_LOCAL_MEM_FENCE);
 
-		for (i = work_id; i < BLK_SIZE; i += work_size){
+		for (i = work_id; i < length; i += work_size){
 			pos = (i & ~7) + ((i & 7) >> 1);
 			lo = src[pos    ];
 			hi = src[pos + 4];
@@ -86,64 +92,13 @@ __kernel void method2(
 	}
 }
 
-__kernel void method3(
-	__global uint *src,
-	__global uint *dst,
-	__global ushort *factors,
-	int blk_num)
-{
-	__global uint *blk_src;
-	__local uint mtab[512];
-	int i, blk, chk_size, remain, pos;
-	uint lo, hi, sum1, sum2;
-	const int work_id = get_global_id(0) * 2;
-	const int work_size = get_global_size(0) * 2;
-	const int table_id = get_local_id(0);
-
-	remain = BLK_SIZE;
-	chk_size = CHK_SIZE;
-	while (remain > 0){
-		if (chk_size > remain)
-			chk_size = remain;
-
-		for (i = work_id; i < chk_size; i += work_size){
-			dst[i    ] = 0;
-			dst[i + 1] = 0;
-		}
-
-		blk_src = src;
-		for (blk = 0; blk < blk_num; blk++){
-			calc_table(mtab, table_id, factors[blk]);
-			barrier(CLK_LOCAL_MEM_FENCE);
-
-			for (i = work_id; i < chk_size; i += work_size){
-				pos = (i & ~7) + ((i & 7) >> 1);
-				lo = blk_src[pos    ];
-				hi = blk_src[pos + 4];
-				sum1 = mtab[(uchar)(lo >> 16)] ^ mtab[256 + (uchar)(hi >> 16)];
-				sum2 = mtab[lo >> 24] ^ mtab[256 + (hi >> 24)];
-				sum1 <<= 16;
-				sum2 <<= 16;
-				sum1 ^= mtab[(uchar)lo] ^ mtab[256 + (uchar)hi];
-				sum2 ^= mtab[(uchar)(lo >> 8)] ^ mtab[256 + (uchar)(hi >> 8)];
-				dst[pos    ] ^= (sum1 & 0x00FF00FF) | ((sum2 & 0x00FF00FF) << 8);
-				dst[pos + 4] ^= ((sum1 & 0xFF00FF00) >> 8) | (sum2 & 0xFF00FF00);
-			}
-			blk_src += BLK_SIZE;
-			barrier(CLK_LOCAL_MEM_FENCE);
-		}
-
-		src += CHK_SIZE;
-		dst += CHK_SIZE;
-		remain -= CHK_SIZE;
-	}
-}
-
 __kernel void method4(
 	__global uint *src,
 	__global uint *dst,
 	__global ushort *factors,
-	int blk_num)
+	int blk_num,
+	int offset,
+	int length)
 {
 	__local int table[16];
 	__local uint cache[256];
@@ -152,7 +107,8 @@ __kernel void method4(
 	const int work_id = get_global_id(0);
 	const int work_size = get_global_size(0);
 
-	for (i = work_id; i < BLK_SIZE; i += work_size)
+	src += offset;
+	for (i = work_id; i < length; i += work_size)
 		dst[i] = 0;
 
 	for (blk = 0; blk < blk_num; blk++){
@@ -166,7 +122,7 @@ __kernel void method4(
 		}
 		barrier(CLK_LOCAL_MEM_FENCE);
 
-		for (i = work_id; i < BLK_SIZE; i += work_size){
+		for (i = work_id; i < length; i += work_size){
 			pos = i & 255;
 			cache[pos] = src[i];
 			barrier(CLK_LOCAL_MEM_FENCE);

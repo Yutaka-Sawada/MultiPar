@@ -1,5 +1,5 @@
 ﻿// reedsolomon.c
-// Copyright : 2023-05-29 Yutaka Sawada
+// Copyright : 2023-09-23 Yutaka Sawada
 // License : GPL
 
 #ifndef _UNICODE
@@ -38,6 +38,13 @@
 #define GPU_SOURCE_COUNT_LIMIT 256
 #define GPU_PARITY_COUNT_LIMIT 32
 
+/*
+#define GPU_DATA_LIMIT 1
+#define GPU_BLOCK_SIZE_LIMIT 32768
+#define GPU_SOURCE_COUNT_LIMIT 16
+#define GPU_PARITY_COUNT_LIMIT 4
+*/
+
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 // chunk がキャッシュに収まるようにすれば速くなる！ (Cache Blocking という最適化手法)
@@ -46,7 +53,7 @@ int try_cache_blocking(int unit_size)
 	int limit_size, chunk_count, chunk_size, cache_line_diff;
 
 	// CPUキャッシュをどのくらいまで使うか
-	limit_size = cpu_flag & 0x7FFF8000;	// 最低でも 32KB になる
+	limit_size = cpu_flag & 0x7FFF0000;	// 最低でも 64KB になる
 	if (limit_size == 0)	// キャッシュ・サイズを取得できなかった場合は最適化しない
 		return unit_size;
 
@@ -160,7 +167,6 @@ unsigned int get_io_size(
 // 何ブロックまとめてファイルから読み込むかを空きメモリー量から計算する
 int read_block_num(
 	int keep_num,			// 保持するパリティ・ブロック数
-	int add_num,			// 余裕を見るブロック数
 	size_t trial_alloc,		// 確保できるか確認するのか
 	int alloc_unit)			// メモリー単位の境界 (sse_unit か MEM_UNIT)
 {
@@ -177,7 +183,7 @@ int read_block_num(
 
 	if (trial_alloc){
 		__int64 possible_size;
-		possible_size = (__int64)unit_size * (source_num + keep_num + add_num);
+		possible_size = (__int64)unit_size * (source_num + keep_num);
 #ifndef _WIN64	// 32-bit 版なら
 		if (possible_size > MAX_MEM_SIZE)	// 確保する最大サイズを 2GB までにする
 			possible_size = MAX_MEM_SIZE;
@@ -191,13 +197,13 @@ int read_block_num(
 	}
 	mem_size = get_mem_size(trial_alloc) / unit_size;	// 何個分確保できるか
 
-	if (mem_size >= (size_t)(source_num + keep_num + add_num)){	// 最大個数より多い
+	if (mem_size >= (size_t)(source_num + keep_num)){	// 最大個数より多い
 		buf_num = source_num;
-	} else if ((int)mem_size < read_min + keep_num + add_num){	// 少なすぎる
+	} else if ((int)mem_size < read_min + keep_num){	// 少なすぎる
 		buf_num = 0;	// メモリー不足の印
 	} else {	// ソース・ブロック個数を等分割する
 		int split_num;
-		buf_num = (int)mem_size - (keep_num + add_num);
+		buf_num = (int)mem_size - keep_num;
 		split_num = (source_num + buf_num - 1) / buf_num;	// 何回に別けて読み込むか
 		buf_num = (source_num + split_num - 1) / split_num;
 	}
@@ -263,7 +269,7 @@ static int invert_matrix_st(unsigned short *mat,
 
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 // マルチ・プロセッサー対応
-
+/*
 typedef struct {	// RS threading control struct
 	unsigned short *mat;	// 行列
 	int cols;	// 横行の長さ
@@ -308,8 +314,57 @@ static DWORD WINAPI thread_func(LPVOID lpParameter)
 	CloseHandle(th->end);
 	return 0;
 }
+*/
+typedef struct {	// Maxtrix Inversion threading control struct
+	unsigned short *mat;	// 行列
+	int cols;	// 横行の長さ
+	volatile int start;	// 掛ける行の先頭位置
+	volatile int pivot;	// 倍率となる値の位置
+	volatile int skip;	// とばす行
+	volatile int now;	// 消去する行
+	HANDLE run;
+	HANDLE end;
+} INV_TH;
+
+// サブ・スレッド
+static DWORD WINAPI thread_func(LPVOID lpParameter)
+{
+	unsigned short *mat;
+	int j, cols, row_start2, factor;
+	HANDLE hRun, hEnd;
+	INV_TH *th;
+
+	th = (INV_TH *)lpParameter;
+	mat = th->mat;
+	cols = th->cols;
+	hRun = th->run;
+	hEnd = th->end;
+	SetEvent(hEnd);	// 設定完了を通知する
+
+	WaitForSingleObject(hRun, INFINITE);	// 計算開始の合図を待つ
+	while (th->skip >= 0){
+		while ((j = InterlockedDecrement(&(th->now))) >= 0){	// j = --th_now
+			if (j == th->skip)
+				continue;
+			row_start2 = cols * j;	// その行の開始位置
+			factor = mat[row_start2 + th->pivot];	// j 行の pivot 列の値
+			mat[row_start2 + th->pivot] = 0;	// これが行列を一個で済ます手
+			// 先の計算により、i 行の pivot 列の値は必ず 1なので、この factor が倍率になる
+			galois_region_multiply(mat + th->start, mat + row_start2, cols, factor);
+		}
+		//_mm_sfence();	// メモリーへの書き込みを完了する
+		SetEvent(hEnd);	// 計算終了を通知する
+		WaitForSingleObject(hRun, INFINITE);	// 計算開始の合図を待つ
+	}
+
+	// 終了処理
+	CloseHandle(hRun);
+	CloseHandle(hEnd);
+	return 0;
+}
 
 // マルチ・スレッドで逆行列を計算する (利用するパリティ・ブロックの所だけ)
+/*
 static int invert_matrix_mt(unsigned short *mat,
 	int rows,				// 横行の数、行列の縦サイズ、失われたソース・ブロックの数 = 利用するパリティ・ブロック数
 	int cols,				// 縦列の数、行列の横サイズ、本来のソース・ブロック数
@@ -410,6 +465,130 @@ static int invert_matrix_mt(unsigned short *mat,
 	WaitForSingleObject(th->h, INFINITE);
 	CloseHandle(th->h);
 	return 0;
+}
+*/
+
+static int invert_matrix_mt(unsigned short *mat,
+	int rows,				// 横行の数、行列の縦サイズ、失われたソース・ブロックの数 = 利用するパリティ・ブロック数
+	int cols,				// 縦列の数、行列の横サイズ、本来のソース・ブロック数
+	source_ctx_r *s_blk)	// 各ソース・ブロックの情報
+{
+	int err = 0, j, row_start2, factor, sub_num;
+	unsigned int time_last = GetTickCount();
+	HANDLE hSub[MAX_CPU / 2], hRun[MAX_CPU / 2], hEnd[MAX_CPU / 2];
+	INV_TH th[1];
+
+	memset(hSub, 0, sizeof(HANDLE) * (MAX_CPU / 2));
+	memset(th, 0, sizeof(INV_TH));
+
+	// サブ・スレッドの数は平方根（切り上げ）にする
+	sub_num = 1;
+	j = 2;
+	while (j < cpu_num){	// 1~2=1, 3~4=2, 5~8=3, 9~16=4, 17~32=5
+		sub_num++;
+		j *= 2;
+	}
+	if (sub_num > rows - 2)
+		sub_num = rows - 2;	// 多過ぎても意味ないので制限する
+#ifdef TIMER
+	// 使うスレッド数は、メイン・スレッドの分も含めるので 1個増える
+	printf("\nMaxtrix Inversion with %d threads\n", sub_num + 1);
+#endif
+
+	// サブ・スレッドを起動する
+	th->mat = mat;
+	th->cols = cols;
+	for (j = 0; j < sub_num; j++){	// サブ・スレッドごとに
+		// イベントを作成する
+		hRun[j] = CreateEvent(NULL, FALSE, FALSE, NULL);	// 両方とも Auto Reset にする
+		if (hRun[j] == NULL){
+			print_win32_err();
+			printf("error, inv-thread\n");
+			err = 1;
+			goto error_end;
+		}
+		hEnd[j] = CreateEvent(NULL, FALSE, FALSE, NULL);
+		if (hEnd[j] == NULL){
+			print_win32_err();
+			CloseHandle(hRun[j]);
+			printf("error, inv-thread\n");
+			err = 1;
+			goto error_end;
+		}
+		// サブ・スレッドを起動する
+		th->run = hRun[j];
+		th->end = hEnd[j];
+		//_mm_sfence();	// メモリーへの書き込みを完了してからスレッドを起動する
+		hSub[j] = (HANDLE)_beginthreadex(NULL, STACK_SIZE, thread_func, (LPVOID)th, 0, NULL);
+		if (hSub[j] == NULL){
+			print_win32_err();
+			CloseHandle(hRun[j]);
+			CloseHandle(hEnd[j]);
+			printf("error, inv-thread\n");
+			err = 1;
+			goto error_end;
+		}
+		WaitForSingleObject(hEnd[j], INFINITE);	// 設定終了の合図を待つ (リセットする)
+	}
+
+	// Gaussian Elimination with 1 matrix
+	th->pivot = 0;
+	th->start = 0;	// その行の開始位置
+	for (th->skip = 0; th->skip < rows; th->skip++){
+		// 経過表示
+		if (GetTickCount() - time_last >= UPDATE_TIME){
+			if (print_progress((th->skip * 1000) / rows)){
+				err = 2;
+				goto error_end;
+			}
+			time_last = GetTickCount();
+		}
+
+		// その行 (パリティ・ブロック) がどのソース・ブロックの代用か
+		while ((th->pivot < cols) && (s_blk[th->pivot].exist != 0))
+			th->pivot++;
+
+		// Divide the row by element i,pivot
+		factor = mat[th->start + th->pivot];
+		if (factor > 1){
+			mat[th->start + th->pivot] = 1;	// これが行列を一個で済ます手
+			galois_region_divide(mat + th->start, cols, factor);
+		} else if (factor == 0){	// factor = 0 だと、その行列の逆行列を計算できない
+			err = (0x00010000 | th->pivot);	// どのソース・ブロックで問題が発生したのかを返す
+			goto error_end;
+		}
+
+		// 別の行の同じ pivot 列が 0以外なら、その値を 0にするために、
+		// i 行を何倍かしたものを XOR する
+		th->now = rows;	// 初期値 + 1
+		//_mm_sfence();	// メモリーへの書き込みを完了してからスレッドを再開する
+		for (j = 0; j < sub_num; j++)
+			SetEvent(hRun[j]);	// サブ・スレッドに計算を開始させる
+		while ((j = InterlockedDecrement(&(th->now))) >= 0){	// j = --th_now
+			if (j == th->skip)	// 同じ行はとばす
+				continue;
+			row_start2 = cols * j;	// その行の開始位置
+			factor = mat[row_start2 + th->pivot];	// j 行の pivot 列の値
+			mat[row_start2 + th->pivot] = 0;	// これが行列を一個で済ます手
+			// 先の計算により、i 行の pivot 列の値は必ず 1なので、この factor が倍率になる
+			galois_region_multiply(mat + th->start, mat + row_start2, cols, factor);
+		}
+
+		WaitForMultipleObjects(sub_num, hEnd, TRUE, INFINITE);	// サブ・スレッドの計算終了の合図を待つ
+		th->start += cols;
+		th->pivot++;
+	}
+
+error_end:
+	InterlockedExchange(&(th->skip), -1);		// 終了指示
+	for (j = 0; j < sub_num; j++){
+		if (hSub[j]){	// サブ・スレッドを終了させる
+			SetEvent(hRun[j]);
+			WaitForSingleObject(hSub[j], INFINITE);
+			CloseHandle(hSub[j]);
+		}
+	}
+	return err;
 }
 
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
@@ -539,11 +718,9 @@ unsigned int time_total = GetTickCount();
 	}
 
 	// パリティ計算用の行列演算の準備をする
-	if (parity_num > source_num){
-		len = sizeof(unsigned short) * (source_num + parity_num);
-	} else {
-		len = sizeof(unsigned short) * source_num * 2;
-	}
+	len = sizeof(unsigned short) * source_num;
+	if (OpenCL_method != 0)
+		len *= 2;	// GPU の作業領域も確保しておく
 	constant = malloc(len);
 	if (constant == NULL){
 		printf("malloc, %d\n", len);
@@ -551,7 +728,11 @@ unsigned int time_total = GetTickCount();
 		goto error_end;
 	}
 #ifdef TIMER
-	printf("\nmatrix size = %d.%d KB\n", len >> 10, (len >> 10) % 10);
+	if (len & 0xFFFFF000){
+		printf("\nmatrix size = %u KB\n", len >> 10);
+	} else {
+		printf("\nmatrix size = %u Bytes\n", len);
+	}
 #endif
 	// パリティ検査行列の基になる定数
 	make_encode_constant(constant);
@@ -623,11 +804,9 @@ unsigned int time_total = GetTickCount();
 	}
 
 	// パリティ計算用の行列演算の準備をする
-	if (parity_num > source_num){
-		len = sizeof(unsigned short) * (source_num + parity_num);
-	} else {
-		len = sizeof(unsigned short) * source_num * 2;
-	}
+	len = sizeof(unsigned short) * source_num;
+	if (OpenCL_method != 0)
+		len *= 2;	// GPU の作業領域も確保しておく
 	constant = malloc(len);
 	if (constant == NULL){
 		printf("malloc, %d\n", len);
@@ -635,7 +814,11 @@ unsigned int time_total = GetTickCount();
 		goto error_end;
 	}
 #ifdef TIMER
-	printf("\nmatrix size = %d.%d KB\n", len >> 10, (len >> 10) % 10);
+	if (len & 0xFFFFF000){
+		printf("\nmatrix size = %u KB\n", len >> 10);
+	} else {
+		printf("\nmatrix size = %u Bytes\n", len);
+	}
 #endif
 	// パリティ検査行列の基になる定数
 	make_encode_constant(constant);
@@ -719,9 +902,11 @@ unsigned int time_matrix = 0, time_total = GetTickCount();
 	}
 #ifdef TIMER
 	if (len & 0xFFF00000){
-		printf("\nmatrix size = %d.%d MB\n", len >> 20, (len >> 20) % 10);
+		printf("\nmatrix size = %u MB\n", len >> 20);
+	} else if (len & 0x000FF000){
+		printf("\nmatrix size = %u KB\n", len >> 10);
 	} else {
-		printf("\nmatrix size = %d.%d KB\n", len >> 10, (len >> 10) % 10);
+		printf("\nmatrix size = %u Bytes\n", len);
 	}
 #endif
 	// 何番目の消失ソース・ブロックがどのパリティで代替されるか
@@ -783,7 +968,7 @@ time_matrix = GetTickCount() - time_matrix;
 		if (memory_use & 16){
 			err = -4;	// SSD なら Read all 方式でブロックが断片化しても速い
 		} else 
-		if (read_block_num(block_lost, 2, 0, MEM_UNIT) != 0){
+		if (read_block_num(block_lost, 0, MEM_UNIT) != 0){
 			err = -5;	// HDD でメモリーが足りてるなら Read some 方式を使う
 		} else {
 			err = -4;	// メモリー不足なら Read all 方式でブロックを断片化させる
@@ -793,7 +978,7 @@ time_matrix = GetTickCount() - time_matrix;
 		if (memory_use & 16){
 			err = -2;	// SSD なら Read all 方式でブロックが断片化しても速い
 		} else 
-		if (read_block_num(block_lost, cpu_num - 1, 0, sse_unit) != 0){
+		if (read_block_num(block_lost, 0, sse_unit) != 0){
 			err = -3;	// HDD でメモリーが足りてるなら Read some 方式を使う
 		} else {
 			err = -2;	// メモリー不足なら Read all 方式でブロックを断片化させる
