@@ -1,3 +1,21 @@
+Release note of v1.3.3 tree
+
+[ Changes from 1.3.2.9 to 1.3.3.0 ] (2023/09/24)
+
+GUI update
+ Change
+  CPU usage slider gets additional level.
+
+PAR2 client update
+ Change
+  Max number of using threads is increased to 32.
+
+ Improvement
+  Matrix inversion may use more threads.
+  L3 cache optimization was improved for recent CPUs.
+
+/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+
 Release note of v1.3.2 tree
 
  I tried to decrease probability of false positive at Malware detection.
