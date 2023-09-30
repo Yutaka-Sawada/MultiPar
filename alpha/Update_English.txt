@@ -1,10 +1,16 @@
 Release note of v1.3.3 tree
 
-[ Changes from 1.3.2.9 to 1.3.3.0 ] (2023/09/27)
+[ Changes from 1.3.2.9 to 1.3.3.0 ] (2023/09/30)
+
+GUI update
+ Change
+  Option adapted to new "lc" settings.
+  It's possible to add 5th item in "Media size" on Create window.
 
 PAR2 client update
  Change
   Max number of using threads is increased to 32.
+  Threshold to use GPU was decreased.
 
  Improvement
   Matrix inversion may use more threads.
