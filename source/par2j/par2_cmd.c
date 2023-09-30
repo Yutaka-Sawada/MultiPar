@@ -1,5 +1,5 @@
 ﻿// par2_cmd.c
-// Copyright : 2023-09-18 Yutaka Sawada
+// Copyright : 2023-09-28 Yutaka Sawada
 // License : GPL
 
 #ifndef _UNICODE
@@ -1507,6 +1507,9 @@ ri= switch_set & 0x00040000
 						k = ((cpu_num & 0x00FF0000) >> 16) - 1;
 					} else if (k == 255){	// 物理コア数より増やす
 						k = ((cpu_num & 0x00FF0000) >> 16) + 1;
+						//k = cpu_num >> 16;
+						//k = ((k & 0xFF) + (k >> 8)) / 2;	// 物理コア数と論理コア数の中間にする？
+						// タスクマネージャーにおける CPU使用率は 100%になるけど、速くはならない・・・
 					}
 					if (k > MAX_CPU){
 						k = MAX_CPU;

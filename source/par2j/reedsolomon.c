@@ -1,5 +1,5 @@
 ﻿// reedsolomon.c
-// Copyright : 2023-09-23 Yutaka Sawada
+// Copyright : 2023-09-28 Yutaka Sawada
 // License : GPL
 
 #ifndef _UNICODE
@@ -30,20 +30,13 @@
 
 // GPU を使う最小データサイズ (MB 単位)
 // GPU の起動には時間がかかるので、データが小さすぎると逆に遅くなる
-#define GPU_DATA_LIMIT 512
+#define GPU_DATA_LIMIT 200
 
 // GPU を使う最小ブロックサイズとブロック数
 // CPU と GPU で処理を割り振る為には、ある程度のブロック数を必要とする
 #define GPU_BLOCK_SIZE_LIMIT 65536
-#define GPU_SOURCE_COUNT_LIMIT 256
-#define GPU_PARITY_COUNT_LIMIT 32
-
-/*
-#define GPU_DATA_LIMIT 1
-#define GPU_BLOCK_SIZE_LIMIT 32768
-#define GPU_SOURCE_COUNT_LIMIT 16
-#define GPU_PARITY_COUNT_LIMIT 4
-*/
+#define GPU_SOURCE_COUNT_LIMIT 192
+#define GPU_PARITY_COUNT_LIMIT 8
 
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
