@@ -1,57 +1,65 @@
 # MultiPar
 
-### v1.3.2.9 is public
-&nbsp; This is the final release of v1.3.2 tree. 
-Because I want to public this as a stable version, I didn't change contents so much. 
-PAR clients are same as previous version. 
-Including long term used applications may be good to avoid false positive at Malware detection.
+### v1.3.3.0 is public
 
-&nbsp; I fixed a [compatibility issue in calling 7-Zip](https://github.com/Yutaka-Sawada/MultiPar/issues/92), 
-which I didn't know the change. 
-Thanks Lyoko-Jeremie for bug report. 
-The incident happened, when a user selected many files.
+&nbsp; This is a testing version to improve speed of PAR2 calculation. 
+Because the new method isn't tested so much, there may be a bug, failure, or mistake. 
+Be careful to use this non-stable version. 
+When you don't want to test by yourself, you should not use this yet. 
+If you see a problem, please report the incident. 
+I will try to solve as possible as I can.
 
-&nbsp; I made a sample feature to Save & Restore different "base directories". 
-When you put PAR files in another folder from source files, it will set the previous directory automatically. 
-Because this feature was tested little, it's disabled by default at this time. 
-If you want to enable, add section `[Path]` on "MultiPar.ini". 
-Then set `MRUMax` value, which is the maximum number of stored directries. 
-You may set the value upto 26. It's disabled, when the value is 0. 
-These two lines are like below:
-```
-[Path]
-MRUMax=5
-```
+&nbsp; The PAR2 calculation speed may be 10% ~ 50% faster than old version. 
+The optimization depends on hardware environment. 
+I don't know what is the best setting on which PC. 
+From [many tests of debug versions](https://github.com/Yutaka-Sawada/MultiPar/issues/99), 
+it will select maybe better setting automatically. 
+Thanks testers for many trials. 
+If you want to compare speed of different settings on your PC, you may try those debug versions.
 
-&nbsp; While I made MultiPar as an utility tool, I didn't give priority to its speed. 
-If someone wants faster Parchive tool, I suggest to use ParPar tools instead of MultiPar. 
-They are "[High performance PAR2 create client for NodeJS](https://github.com/animetosho/ParPar)" or 
-"[speed focused par2cmdline fork](https://github.com/animetosho/par2cmdline-turbo)". 
-Though the speed depends on hardware environments and user's setting, it would be 50% ~ 100 % faster than my par2j. 
-Only when you have a very fast graphics borad, GPU enabled par2j may be faster. 
-I plan to improve speed of par2j in next v1.3.3 tree.
-Though it will become 20% ~ 30% faster than old par2j, ParPar would be faster mostly.
+&nbsp; I changed GPU implementation largely, too. 
+To adopt CPU optimization, it will process smaller tasks on GPU. 
+Because GPU don't use CPU's cache, it's inefficient for GPU's task. 
+I don't know that new method is faster than old version or not.
+
+Threshold to use GPU:
+- Data size must be larger than 200 MB.
+- Block size must be larger than 64 KB.
+- Number of source blocks must be more than 192.
+- Number of recovery blocks must be more than 8.
+
+&nbsp; Because [a user requested](https://github.com/Yutaka-Sawada/MultiPar/issues/102), 
+I implemented a way to add 5th item in "Media size" on Create window. 
+Write this line `MediaList4=name:size` under `[Option]` section in `MultiPar.ini`. 
+Currently, you cannot change the item on Option window.
 
 
-[ Changes from 1.3.2.8 to 1.3.2.9 ]  
+[ Changes from 1.3.2.9 to 1.3.3.0 ]  
 
 GUI update
-- New
-  - Verification may save different base directories in MultiPar.ini file.
+- Change
+  - Option adapted to new "lc" settings.
+  - It's possible to add 5th item in "Media size" on Create window.
 
-- Bug fix
-  - Archiver's option was updated for recent 7-Zip versions.
+PAR2 client update
+- Change
+  - Max number of using threads is increased to 32.
+  - Threshold to use GPU was decreased.
+
+- Improvement
+  - Matrix inversion may use more threads.
+  - L3 cache optimization was improved for recent CPUs.
 
 
 [ Hash value ]  
 
-MultiPar132.zip  
-MD5: 305D86C8C7A0F5C1A23CEAFFBE4F02BF  
-SHA1: 464BB7AB7D14FD35D2AEF99042EEB8E556DA0417  
+MultiPar1330.zip  
+MD5: 79570F84B74ECF8E5100561F7AAC3803  
+SHA1: ACF7F164001708789C5D94003ED6B5C172235D54  
 
-MultiPar132_setup.exe  
-MD5: 18F9BE1FF1C6D668E3A3906C691CCB98  
-SHA1: 116C6B2A15FCFD9BB74F0EF9D6C8A4BF78299588  
+MultiPar1330_setup.exe  
+MD5: D1F1A5A4DF1C9EDD698C9A017AF31039  
+SHA1: 4C3314B909572A303EBBE8E015A2E813841CFA33  
 &nbsp; To install under "Program Files" or "Program Files (x86)" directory, 
 you must start the installer with administrative privileges by selecting 
 "Run as administrator" on right-click menu.
