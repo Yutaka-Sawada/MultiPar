@@ -17,6 +17,10 @@ extern "C" {
 #define READ_MIN_RATE	1	// 保持するブロック数の 1/2 = 50%
 #define READ_MIN_NUM	16
 
+// CPU cache 最適化のため、同時に処理するブロック数を制限する
+#define CACHE_MIN_NUM	8
+#define CACHE_MAX_NUM	128
+
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 // Cache Blocking を試みる
@@ -34,6 +38,12 @@ int read_block_num(
 	int keep_num,			// 保持するパリティ・ブロック数
 	size_t trial_alloc,		// 確保できるか確認するのか
 	int alloc_unit);		// メモリー単位の境界 (sse_unit か MEM_UNIT)
+
+// 1st encode, decode を何スレッドで実行するか決める
+int calc_thread_num1(int max_num);
+
+// 1st & 2nd encode, decode を何スレッドで実行するか決める
+int calc_thread_num2(int max_num, int *cpu_num2);
 
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 

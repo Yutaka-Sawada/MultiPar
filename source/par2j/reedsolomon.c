@@ -1,5 +1,5 @@
 ﻿// reedsolomon.c
-// Copyright : 2023-09-28 Yutaka Sawada
+// Copyright : 2023-10-21 Yutaka Sawada
 // License : GPL
 
 #ifndef _UNICODE
@@ -202,6 +202,48 @@ int read_block_num(
 	}
 
 	return buf_num;
+}
+
+// 1st encode, decode を何スレッドで実行するか決める
+int calc_thread_num1(int max_num)
+{
+	int i, num;
+
+	// 読み込み中はスレッド数を減らす（シングル・スレッドの時は 0にする）
+	num = 0;
+	i = 1;
+	while (i * 2 <= cpu_num){	// 1=0, 2~3=1, 4~7=2, 8~15=3, 16~31=4, 32=5
+		num++;
+		i *= 2;
+	}
+	if (num > max_num)
+		num = max_num;
+
+	return num;
+}
+
+// 1st & 2nd encode, decode を何スレッドで実行するか決める
+int calc_thread_num2(int max_num, int *cpu_num2)
+{
+	int i, num1, num2;
+
+	// 読み込み中はスレッド数を減らす（シングル・スレッドの時は 0にする）
+	num1 = 0;
+	i = 1;
+	while (i * 2 <= cpu_num){	// 1=0, 2~3=1, 4~7=2, 8~15=3, 16~31=4, 32=5
+		num1++;
+		i *= 2;
+	}
+	if (num1 > max_num)
+		num1 = max_num;
+
+	// CPU と GPU で必ず２スレッド使う
+	num2 = cpu_num;
+	if (num2 < 2)
+		num2 = 2;
+	*cpu_num2 = num2;
+
+	return num1;
 }
 
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
@@ -960,8 +1002,7 @@ time_matrix = GetTickCount() - time_matrix;
 		// ブロック数が多いなら、ブロックごとにスレッドを割り当てる (GPU を使う)
 		if (memory_use & 16){
 			err = -4;	// SSD なら Read all 方式でブロックが断片化しても速い
-		} else 
-		if (read_block_num(block_lost, 0, MEM_UNIT) != 0){
+		} else if (read_block_num(block_lost * 2, 0, MEM_UNIT) != 0){
 			err = -5;	// HDD でメモリーが足りてるなら Read some 方式を使う
 		} else {
 			err = -4;	// メモリー不足なら Read all 方式でブロックを断片化させる
@@ -970,8 +1011,7 @@ time_matrix = GetTickCount() - time_matrix;
 		// ソース・ブロックを全て断片的に読み込むか、いくつかを丸ごと読み込むかを決める
 		if (memory_use & 16){
 			err = -2;	// SSD なら Read all 方式でブロックが断片化しても速い
-		} else 
-		if (read_block_num(block_lost, 0, sse_unit) != 0){
+		} else if (read_block_num(block_lost, 0, sse_unit) != 0){
 			err = -3;	// HDD でメモリーが足りてるなら Read some 方式を使う
 		} else {
 			err = -2;	// メモリー不足なら Read all 方式でブロックを断片化させる

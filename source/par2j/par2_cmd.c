@@ -1,5 +1,5 @@
 ﻿// par2_cmd.c
-// Copyright : 2023-09-28 Yutaka Sawada
+// Copyright : 2023-10-15 Yutaka Sawada
 // License : GPL
 
 #ifndef _UNICODE
@@ -87,35 +87,37 @@ static void print_environment(void)
 	printf("CPU thread\t: %d / %d\n", cpu_num & 0xFFFF, cpu_num >> 24);
 	cpu_num &= 0xFFFF;	// 利用するコア数だけにしておく
 	printf("CPU cache limit : %d KB, %d KB\n", (cpu_flag & 0xFFFF0000) >> 10, (cpu_cache & 0xFFFE0000) >> 10);
-#ifndef _WIN64	// 32-bit 版は MMX, SSE2, SSSE3 のどれかを表示する
+#ifndef _WIN64	// 32-bit 版は MMX, SSE2, SSSE3, AVX2 のどれかを表示する
 	printf("CPU extra\t:");
-	if (cpu_flag & 1){
+	if (((cpu_flag & 16) != 0) && ((cpu_flag & 256) == 0)){
+		printf(" AVX2");
+	} else if (cpu_flag & 1){
 		if (cpu_flag & 256){
-			printf(" SSSE3(old)");
+			printf(" SSSE3(slow)");
 		} else {
 			printf(" SSSE3");
 		}
-	} else if (cpu_flag & 128){
+	} else if (((cpu_flag & 128) != 0) && ((cpu_flag & 256) == 0)){
 		printf(" SSE2");
 	} else {
 		printf(" MMX");
 	}
-#else	// 64-bit 版は SSE2, SSSE3 を表示する
+#else	// 64-bit 版は SSE2, SSSE3, AVX2 を表示する
 	printf("CPU extra\t: x64");
-	if (cpu_flag & 1){
+	if (((cpu_flag & 16) != 0) && ((cpu_flag & 256) == 0)){
+		printf(" AVX2");
+	} else if (cpu_flag & 1){
 		if (cpu_flag & 256){
-			printf(" SSSE3(old)");
+			printf(" SSSE3(slow)");
 		} else {
 			printf(" SSSE3");
 		}
-	} else if (cpu_flag & 128){
+	} else if (((cpu_flag & 128) != 0) && ((cpu_flag & 256) == 0)){
 		printf(" SSE2");
 	}
 #endif
 	if (cpu_flag & 8)
 		printf(" CLMUL");
-	if (cpu_flag & 16)
-		printf(" AVX2");
 	printf("\nMemory usage\t: ");
 	if (memory_use & 7){
 		printf("%d/8", memory_use & 7);
@@ -1486,8 +1488,8 @@ ri= switch_set & 0x00040000
 				} else if (k & 512){
 					OpenCL_method = -1;	// Slower GPU
 				}
-				if (k & 1024)	// CLMUL を使わない、SSSE3 の古いエンコーダーを使う
-					cpu_flag = (cpu_flag & 0xFFFFFFF7) | 0x100;
+				if (k & 1024)	// CLMUL と ALTMAP を使わない
+					cpu_flag = (cpu_flag & 0xFFFFFFF7) | 256;
 				if (k & 2048)	// JIT(SSE2) を使わない
 					cpu_flag &= 0xFFFFFF7F;
 				if (k & 4096)	// SSSE3 を使わない
@@ -1506,10 +1508,10 @@ ri= switch_set & 0x00040000
 					} else if (k == 254){	// 物理コア数より減らす
 						k = ((cpu_num & 0x00FF0000) >> 16) - 1;
 					} else if (k == 255){	// 物理コア数より増やす
-						k = ((cpu_num & 0x00FF0000) >> 16) + 1;
-						//k = cpu_num >> 16;
-						//k = ((k & 0xFF) + (k >> 8)) / 2;	// 物理コア数と論理コア数の中間にする？
+						k = cpu_num >> 16;
+						k = ((k & 0xFF) + (k >> 8)) / 2;	// 物理コア数と論理コア数の中間にする？
 						// タスクマネージャーにおける CPU使用率は 100%になるけど、速くはならない・・・
+						// k = (k & 0xFF) + ((k >> 8) - (k & 0xFF)) / 4;	// 物理コア数の 5/4 にする？
 					}
 					if (k > MAX_CPU){
 						k = MAX_CPU;

@@ -1,5 +1,5 @@
 ﻿// rs_encode.c
-// Copyright : 2023-09-21 Yutaka Sawada
+// Copyright : 2023-10-22 Yutaka Sawada
 // License : GPL
 
 #ifndef _UNICODE
@@ -295,11 +295,11 @@ printf(" 2nd encode %d.%03d sec, %d loop, %d MB/s\n", time_encode2b / 1000, time
 // GPU 対応のサブ・スレッド (最後のスレッドなので、1st encode では呼ばれない)
 static DWORD WINAPI thread_encode_gpu(LPVOID lpParameter)
 {
-	unsigned char *s_buf, *p_buf;
+	unsigned char *s_buf, *g_buf;
 	unsigned short *constant, *factor;
-	int i, j, max_num, chunk_num;
+	int i, j;
 	int src_off, src_num;
-	unsigned int unit_size, len, off, chunk_size;
+	unsigned int unit_size;
 	HANDLE hRun, hEnd;
 	RS_TH *th;
 #ifdef TIMER
@@ -308,17 +308,14 @@ unsigned int time_start2, time_encode2 = 0, loop_count2 = 0;
 
 	th = (RS_TH *)lpParameter;
 	constant = th->mat;
-	p_buf = th->buf;
+	g_buf = th->buf;
 	unit_size = th->size;
-	chunk_size = th->len;
 	hRun = th->run;
 	hEnd = th->end;
 	//_mm_sfence();
 	SetEvent(hEnd);	// 設定完了を通知する
 
 	factor = constant + source_num;
-	chunk_num = (unit_size + chunk_size - 1) / chunk_size;
-	max_num = chunk_num * parity_num;
 
 	WaitForSingleObject(hRun, INFINITE);	// 計算開始の合図を待つ
 	while (th->now < INT_MAX / 2){
@@ -337,27 +334,19 @@ time_start2 = GetTickCount();
 			InterlockedExchange(&(th->now), INT_MAX / 3);	// サブ・スレッドの計算を中断する
 		}
 
-		// スレッドごとに作成するパリティ・ブロックの chunk を変える
-		len = chunk_size;
-		while ((j = InterlockedIncrement(&(th->now))) < max_num){	// j = ++th_now
-			off = j / parity_num;	// chunk の番号
-			j = j % parity_num;		// parity の番号
-			off *= chunk_size;		// chunk の位置
-			if (off + len > unit_size)
-				len = unit_size - off;	// 最後の chunk だけサイズが異なるかも
-
+		// 一つの GPUスレッドが全てのパリティ・ブロックを処理する
+		while ((j = InterlockedIncrement(&(th->now))) < parity_num){	// j = ++th_now
 			// factor は定数行列の乗数になる
 			for (i = 0; i < src_num; i++)
 				factor[i] = galois_power(constant[src_off + i], first_num + j);
 
 			// VRAM上のソース・ブロックごとにパリティを追加していく
-			i = gpu_multiply_chunks(src_num, factor, p_buf + (size_t)unit_size * j + off, off, len);
+			i = gpu_multiply_blocks(src_num, factor, g_buf + (size_t)unit_size * j, unit_size);
 			if (i != 0){
 				th->len = i;
 				InterlockedExchange(&(th->now), INT_MAX / 3);	// サブ・スレッドの計算を中断する
 				break;
 			}
-
 #ifdef TIMER
 loop_count2 += src_num;
 #endif
@@ -375,7 +364,6 @@ time_encode2 += GetTickCount() - time_start2;
 		WaitForSingleObject(hRun, INFINITE);	// 計算開始の合図を待つ
 	}
 #ifdef TIMER
-loop_count2 /= chunk_num;	// chunk数で割ってブロック数にする
 printf("gpu-thread :\n");
 if (time_encode2 > 0){
 	i = (int)((__int64)loop_count2 * unit_size * 125 / ((__int64)time_encode2 * 131072));
@@ -664,16 +652,9 @@ int encode_method2(	// ソース・データを全て読み込む場合
 	len = try_cache_blocking(unit_size);
 	//len = ((len + 2) / 3 + (sse_unit - 1)) & ~(sse_unit - 1);	// 1/3の実験用
 	chunk_num = (unit_size + len - 1) / len;
-	cpu_num1 = 0;	// 読み込み中はスレッド数を減らす（シングル・スレッドの時は 0にする）
-	i = 1;
-	while (i * 2 <= cpu_num){	// 1=0, 2~3=1, 4~7=2, 8~15=3, 16~31=4, 32=5
-		cpu_num1++;
-		i *= 2;
-	}
-	if (cpu_num1 > part_num)
-		cpu_num1 = part_num;
+	cpu_num1 = calc_thread_num1(part_num);	// 読み込み中はスレッド数を減らす
 	src_max = cpu_cache & 0xFFFE;	// CPU cache 最適化のため、同時に処理するブロック数を制限する
-	if ((src_max < 8) || (cpu_num == 1))
+	if ((src_max < CACHE_MIN_NUM) || (cpu_num == 1))
 		src_max = 0x8000;	// 不明または少な過ぎる場合は、制限しない
 #ifdef TIMER
 	printf("\n read all source blocks, and keep some parity blocks\n");
@@ -1145,16 +1126,9 @@ int encode_method3(	// パリティ・ブロックを全て保持して、一度
 	prog_base = (__int64)(source_num + prog_write) * parity_num + prog_read * source_num;	// ブロックの合計掛け算個数 + 読み書き回数
 	len = try_cache_blocking(unit_size);
 	chunk_num = (unit_size + len - 1) / len;
-	cpu_num1 = 0;	// 読み込み中はスレッド数を減らす（シングル・スレッドの時は 0にする）
-	i = 1;
-	while (i * 2 <= cpu_num){	// 1=0, 2~3=1, 4~7=2, 8~15=3, 16~31=4, 32=5
-		cpu_num1++;
-		i *= 2;
-	}
-	if (cpu_num1 > parity_num)
-		cpu_num1 = parity_num;
+	cpu_num1 = calc_thread_num1(parity_num);	// 読み込み中はスレッド数を減らす
 	src_max = cpu_cache & 0xFFFE;	// CPU cache 最適化のため、同時に処理するブロック数を制限する
-	if ((src_max < 8) || (cpu_num == 1))
+	if ((src_max < CACHE_MIN_NUM) || (cpu_num == 1))
 		src_max = 0x8000;	// 不明または少な過ぎる場合は、制限しない
 #ifdef TIMER
 	printf("\n read some source blocks, and keep all parity blocks\n");
@@ -1424,7 +1398,7 @@ time_start = GetTickCount();
 	memcpy(common_buf + common_size, common_buf, common_size);	// 後の半分に前半のをコピーする
 	// 最後にパリティ・ブロックのチェックサムを検証して、リカバリ・ファイルに書き込む
 	err = create_recovery_file_1pass(file_path, recovery_path, packet_limit, block_distri,
-			packet_num, common_buf, common_size, footer_buf, footer_size, rcv_hFile, p_buf, unit_size);
+			packet_num, common_buf, common_size, footer_buf, footer_size, rcv_hFile, p_buf, NULL, unit_size);
 #ifdef TIMER
 time_write = GetTickCount() - time_start;
 #endif
@@ -1463,26 +1437,28 @@ int encode_method4(	// 全てのブロックを断片的に保持する場合 (G
 	parity_ctx_c *p_blk,		// パリティ・ブロックの情報
 	unsigned short *constant)	// 複数ブロック分の領域を確保しておく？
 {
-	unsigned char *buf = NULL, *p_buf, *work_buf, *hash;
+	unsigned char *buf = NULL, *p_buf, *g_buf, *work_buf, *hash;
 	int err = 0, i, j, last_file, chunk_num;
-	int cpu_num1, src_off, src_num, src_max, vram_max;
+	int cpu_num1, src_off, src_num, src_max;
+	int cpu_num2, vram_max, cpu_end, gpu_end, th_act;
 	unsigned int io_size, unit_size, len, block_off;
 	unsigned int time_last, prog_read, prog_write;
 	__int64 file_off, prog_num = 0, prog_base;
 	HANDLE hFile = NULL;
 	HANDLE hSub[MAX_CPU], hRun[MAX_CPU], hEnd[MAX_CPU];
-	RS_TH th[1];
+	RS_TH th[1], th2[1];
 	PHMD5 md_ctx, *md_ptr = NULL;
 
 	memset(hSub, 0, sizeof(HANDLE) * MAX_CPU);
 
 	// 作業バッファーを確保する
 	// part_num を使わず、全てのブロックを保持する所がencode_method2と異なることに注意！
-	io_size = get_io_size(source_num + parity_num, NULL, 1, MEM_UNIT);
+	// CPU計算スレッドと GPU計算スレッドで保存先を別けるので、パリティ・ブロック分を２倍確保する
+	io_size = get_io_size(source_num + parity_num * 2, NULL, 1, MEM_UNIT);
 	//io_size = (((io_size + 1) / 2 + HASH_SIZE + (MEM_UNIT - 1)) & ~(MEM_UNIT - 1)) - HASH_SIZE;	// 2分割の実験用
 	//io_size = (((io_size + 2) / 3 + HASH_SIZE + (MEM_UNIT - 1)) & ~(MEM_UNIT - 1)) - HASH_SIZE;	// 3分割の実験用
 	unit_size = io_size + HASH_SIZE;	// チェックサムの分だけ増やす
-	file_off = (source_num + parity_num) * (size_t)unit_size + HASH_SIZE;
+	file_off = (source_num + parity_num * 2) * (size_t)unit_size + HASH_SIZE;
 	buf = _aligned_malloc((size_t)file_off, MEM_UNIT);	// GPU 用の境界
 	if (buf == NULL){
 		printf("malloc, %I64d\n", file_off);
@@ -1490,30 +1466,24 @@ int encode_method4(	// 全てのブロックを断片的に保持する場合 (G
 		goto error_end;
 	}
 	p_buf = buf + (size_t)unit_size * source_num;	// パリティ・ブロックを記録する領域
-	hash = p_buf + (size_t)unit_size * parity_num;
+	g_buf = p_buf + (size_t)unit_size * parity_num;	// GPUスレッド用
+	hash = g_buf + (size_t)unit_size * parity_num;
 	prog_base = (block_size + io_size - 1) / io_size;
 	prog_read = (parity_num + 31) / 32;	// 読み書きの経過をそれぞれ 3% ぐらいにする
 	prog_write = (source_num + 31) / 32;
 	prog_base *= (__int64)(source_num + prog_write) * parity_num + prog_read * source_num;	// 全体の断片の個数
 	len = try_cache_blocking(unit_size);
 	chunk_num = (unit_size + len - 1) / len;
-	cpu_num1 = 0;	// 読み込み中はスレッド数を減らす（シングル・スレッドの時は 0にする）
-	i = 1;
-	while (i * 2 <= cpu_num){	// 1=0, 2~3=1, 4~7=2, 8~15=3, 16~31=4, 32=5
-		cpu_num1++;
-		i *= 2;
-	}
-	if (cpu_num1 > parity_num)
-		cpu_num1 = parity_num;
-	//cpu_num1 = 0;	// 2nd encode の実験用に 1st encode を停止する
+	cpu_num1 = calc_thread_num2(parity_num, &cpu_num2);	// 使用するスレッド数を調節する
 	src_max = cpu_cache & 0xFFFE;	// CPU cache 最適化のため、同時に処理するブロック数を制限する
-	if ((src_max < 8) || (cpu_num <= 2))
-		src_max = 0x8000;	// 不明または少な過ぎる場合は、制限しない
+	if ((src_max < CACHE_MIN_NUM) || (src_max > CACHE_MAX_NUM))
+		src_max = CACHE_MAX_NUM;	// 不明または極端な場合は、規定値にする
+	//cpu_num1 = 0;	// 2nd encode の実験用に 1st encode を停止する
 #ifdef TIMER
 	printf("\n read all source blocks, and keep all parity blocks (GPU)\n");
 	printf("buffer size = %I64d MB, io_size = %d, split = %d\n", file_off >> 20, io_size, (block_size + io_size - 1) / io_size);
 	printf("cache: limit size = %d, chunk_size = %d, chunk_num = %d\n", cpu_flag & 0x7FFF0000, len, chunk_num);
-	printf("unit_size = %d, cpu_num1 = %d, src_max = %d\n", unit_size, cpu_num1, src_max);
+	printf("unit_size = %d, cpu_num1 = %d, cpu_num2 = %d\n", unit_size, cpu_num1, cpu_num2);
 #endif
 
 	if (io_size < block_size){	// スライスが分割される場合だけ、途中までのハッシュ値を保持する
@@ -1534,15 +1504,14 @@ int encode_method4(	// 全てのブロックを断片的に保持する場合 (G
 
 	// OpenCL の初期化
 	vram_max = source_num;
-	i = init_OpenCL(unit_size, len, &vram_max);
+	i = init_OpenCL(unit_size, &vram_max);
 	if (i != 0){
 		if (i != 3)	// GPU が見つからなかった場合はエラー表示しない
 			printf("init_OpenCL, %d, %d\n", i & 0xFF, i >> 8);
 		i = free_OpenCL();
 		if (i != 0)
 			printf("free_OpenCL, %d, %d", i & 0xFF, i >> 8);
-		OpenCL_method = 0;	// GPU を使わない設定にする
-		// GPU を使わずに計算を続行する場合は以下をコメントアウト
+		OpenCL_method = 0;	// GPU を使えなかった印
 		err = -2;	// CPU だけの方式に切り替える
 		goto error_end;
 	}
@@ -1552,10 +1521,14 @@ int encode_method4(	// 全てのブロックを断片的に保持する場合 (G
 
 	// マルチ・スレッドの準備をする
 	th->mat = constant;
+	th2->mat = constant;
 	th->buf = p_buf;
+	th2->buf = g_buf;
 	th->size = unit_size;
+	th2->size = unit_size;
 	th->len = len;	// chunk size
-	for (j = 0; j < cpu_num; j++){	// サブ・スレッドごとに
+	th2->len = 0;	// GPUのエラー通知用にする
+	for (j = 0; j < cpu_num2; j++){	// サブ・スレッドごとに
 		hRun[j] = CreateEvent(NULL, FALSE, FALSE, NULL);	// Auto Reset にする
 		if (hRun[j] == NULL){
 			print_win32_err();
@@ -1572,12 +1545,13 @@ int encode_method4(	// 全てのブロックを断片的に保持する場合 (G
 			goto error_end;
 		}
 		// サブ・スレッドを起動する
-		th->run = hRun[j];
-		th->end = hEnd[j];
-		//_mm_sfence();	// メモリーへの書き込みを完了してからスレッドを起動する
-		if ((j == cpu_num - 1) && (OpenCL_method != 0)){	// 最後のスレッドを GPU 管理用にする
-			hSub[j] = (HANDLE)_beginthreadex(NULL, STACK_SIZE, thread_encode_gpu, (LPVOID)th, 0, NULL);
+		if (j == cpu_num2 - 1){	// 最後のスレッドを GPU 管理用にする
+			th2->run = hRun[j];
+			th2->end = hEnd[j];
+			hSub[j] = (HANDLE)_beginthreadex(NULL, STACK_SIZE, thread_encode_gpu, (LPVOID)th2, 0, NULL);
 		} else {
+			th->run = hRun[j];
+			th->end = hEnd[j];
 			hSub[j] = (HANDLE)_beginthreadex(NULL, STACK_SIZE, thread_encode3, (LPVOID)th, 0, NULL);
 		}
 		if (hSub[j] == NULL){
@@ -1590,7 +1564,6 @@ int encode_method4(	// 全てのブロックを断片的に保持する場合 (G
 		}
 		WaitForSingleObject(hEnd[j], INFINITE);	// 設定終了の合図を待つ (リセットしない)
 	}
-	th->len = 0;	// GPUのエラー通知用にする
 
 	// ソース・ブロック断片を読み込んで、パリティ・ブロック断片を作成する
 	time_last = GetTickCount();
@@ -1708,6 +1681,7 @@ skip_count++;
 time_read += GetTickCount() - time_start;
 #endif
 
+		memset(g_buf, 0, (size_t)unit_size * parity_num);	// 待機中に GPU用の領域をゼロ埋めしておく
 		WaitForMultipleObjects(cpu_num1, hEnd, TRUE, INFINITE);	// サブ・スレッドの計算終了の合図を待つ
 		src_off += 1;	// 計算を開始するソース・ブロックの番号
 		if (src_off > 0){
@@ -1733,72 +1707,150 @@ skip_count++;
 			len = io_size;
 		}
 
-		// GPU と CPU のどちらに最適化するかが難しい
-		src_num = src_max;	// 一度に処理するソース・ブロックの数を制限する
-		if (src_num > vram_max){	// VRAM に収まらない場合は、VRAM のサイズに応じて分割する
-			src_num = vram_max & ~1;	// 減らして偶数にする（元が奇数なら分割数が増えるかも）
-			i = (source_num - src_off + src_num - 1) / src_num;	// 何回に分けて処理するか
-			src_num = (source_num - src_off + i - 1) / i;	// 一度に処理する量を平均化する
-			src_num = (src_num + 1) & ~1;	// 増やして偶数にする
-		}
+		th2->size = 0;	// 計算前の状態にしておく (th->size は既に 0 になってる)
+		cpu_end = gpu_end = 0;
 #ifdef TIMER
-		printf("remain = %d, src_off = %d, src_num = %d\n", source_num - src_off, src_off, src_num);
+		printf("remain = %d, src_off = %d, src_max = %d\n", source_num - src_off, src_off, src_max);
 #endif
 		while (src_off < source_num){
-			// ソース・ブロックを何個ずつ処理するか
-			if (src_off + src_num > source_num){
-				src_num = source_num - src_off;
-#ifdef TIMER
-				printf("last1: src_off = %d, src_num = %d\n", src_off, src_num);
-#endif
-			} else if (src_off + src_num * 2 - 1 >= source_num){
-				src_num = source_num - src_off;
-				if (src_num > vram_max){	// VRAM のサイズまでにする
-					src_num = (src_num + 1) / 2;	// 半分にする
-					src_num = (src_num + 1) & ~1;	// 偶数にする
+			// GPUスレッドと CPUスレッドのどちらかが待機中になるまで待つ
+			do {
+				th_act = 0;
+				// CPUスレッドの動作状況を調べる
+				if (WaitForMultipleObjects(cpu_num2 - 1, hEnd, TRUE, 0) == WAIT_TIMEOUT){
+					th_act |= 1;	// CPUスレッドが動作中
+				} else if (th->size > 0){	// CPUスレッドの計算量を加算する
+					prog_num += th->size * parity_num;
+					th->size = 0;
 				}
-#ifdef TIMER
-				printf("last2: src_off = %d, src_num = %d\n", src_off, src_num);
-#endif
-			}
-
-			// GPU と CPU がスレッドごとにパリティ・ブロックを計算する
-			th->buf = buf + (size_t)unit_size * src_off;
-			th->off = src_off;	// ソース・ブロックの番号にする
-			th->size = src_num;
-			th->now = -1;	// 初期値 - 1
-			//_mm_sfence();
-			//for (j = cpu_num - 1; j >= 0; j--){	// GPU から先に計算を開始する？
-			for (j = 0; j < cpu_num; j++){
-				ResetEvent(hEnd[j]);	// リセットしておく
-				SetEvent(hRun[j]);	// サブ・スレッドに計算を開始させる
-			}
-
-			// サブ・スレッドの計算終了の合図を UPDATE_TIME だけ待ちながら、経過表示する
-			while (WaitForMultipleObjects(cpu_num, hEnd, TRUE, UPDATE_TIME) == WAIT_TIMEOUT){
-				// th-now が最高値なので、計算が終わってるのは th-now + 1 - cpu_num 個となる
-				j = th->now + 1 - cpu_num;
-				if (j < 0)
-					j = 0;
-				j /= chunk_num;	// chunk数で割ってブロック数にする
-				// 経過表示（UPDATE_TIME 時間待った場合なので、必ず経過してるはず）
-				if (print_progress((int)(((prog_num + src_num * j) * 1000) / prog_base))){
-					err = 2;
-					goto error_end;
+				// GPUスレッドの動作状況を調べる
+				if (WaitForSingleObject(hEnd[cpu_num2 - 1], 0) == WAIT_TIMEOUT){
+					th_act |= 2;	// GPUスレッドが動作中
+				} else if (th2->size > 0){	// GPUスレッドの計算量を加算する
+					if (th2->len != 0){	// エラー発生
+						i = th2->len;
+						printf("error, gpu-thread, %d, %d\n", i & 0xFF, i >> 8);
+						err = 1;
+						goto error_end;
+					}
+					prog_num += th2->size * parity_num;
+					th2->size = 0;
 				}
-				time_last = GetTickCount();
-			}
-			if (th->len != 0){	// エラー発生
-				i = th->len;
-				printf("error, gpu-thread, %d, %d\n", i & 0xFF, i >> 8);
-				err = 1;
-				goto error_end;
+				if (th_act == 3){	// 両方が動作中なら
+				//if (th_act == 1){	// CPUスレッドだけが動作中か調べる実験
+				//if (th_act == 2){	// GPUスレッドだけが動作中か調べる実験
+					// サブ・スレッドの計算終了の合図を UPDATE_TIME だけ待ちながら、経過表示する
+					while (WaitForMultipleObjects(cpu_num2, hEnd, FALSE, UPDATE_TIME) == WAIT_TIMEOUT){
+						// th2-now が GPUスレッドの最高値なので、計算が終わってるのは th2-now 個となる
+						i = th2->now;
+						if (i < 0){
+							i = 0;
+						} else {
+							i *= th2->size;
+						}
+						// th-now が CPUスレッドの最高値なので、計算が終わってるのは th-now + 2 - cpu_num2 個となる
+						j = th->now + 2 - cpu_num2;
+						if (j < 0){
+							j = 0;
+						} else {
+							j /= chunk_num;	// chunk数で割ってブロック数にする
+							j *= th->size;
+						}
+						// 経過表示（UPDATE_TIME 時間待った場合なので、必ず経過してるはず）
+						if (print_progress((int)(((prog_num + i + j) * 1000) / prog_base))){
+							err = 2;
+							goto error_end;
+						}
+						time_last = GetTickCount();
+					}
+				}
+			} while (th_act == 3);
+			//} while (th_act == 1);	// CPUスレッドの終了だけを待つ実験
+			//} while (th_act == 2);	// GPUスレッドの終了だけを待つ実験
+
+			// どちらかのスレッドでパリティ・ブロックを計算する
+			if ((th_act & 1) == 0){	// CPUスレッドを優先的に開始する
+				src_num = src_max;	// 一度に処理するソース・ブロックの数を制限する
+				if (src_off + src_num * 2 - 1 >= source_num){
+					src_num = source_num - src_off;
+#ifdef TIMER
+					printf("CPU last: src_off = %d, src_num = %d\n", src_off, src_num);
+#endif
+				}
+				cpu_end += src_num;
+				th->buf = buf + (size_t)unit_size * src_off;
+				th->off = src_off;	// ソース・ブロックの番号にする
+				th->size = src_num;
+				th->now = -1;	// CPUスレッドの初期値 - 1
+				//_mm_sfence();
+				for (j = 0; j < cpu_num2 - 1; j++){
+					ResetEvent(hEnd[j]);	// リセットしておく
+					SetEvent(hRun[j]);	// サブ・スレッドに計算を開始させる
+				}
+			} else {	// CPUスレッドが動作中なら、GPUスレッドを開始する
+				src_num = (source_num - src_off) * gpu_end / (cpu_end + gpu_end);	// 残りブロック数に対する割合
+				if (src_num < src_max)
+					if (gpu_end / src_max < (cpu_end / src_max) / 2){	// GPU が遅い場合は最低負担量も減らす
+						if (gpu_end < cpu_end / 4){
+							if (src_num < src_max / 4)
+								src_num = src_max / 4;
+						} else if (src_num < src_max / 2){
+							src_num = src_max / 2;
+						}
+					} else {
+						src_num = src_max;	// 最低でも CPUスレッドと同じ量を担当する
+					}
+				if (src_num > vram_max)
+					src_num = vram_max;
+				if (src_off + src_num > source_num){
+					src_num = source_num - src_off;
+#ifdef TIMER
+					printf("GPU last 1: src_off = %d, src_num = %d\n", src_off, src_num);
+#endif
+				} else if (src_off + src_num + src_max > source_num){
+					src_num = source_num - src_off - src_max;
+#ifdef TIMER
+					printf("GPU last 2: src_off = %d, src_num = %d\n", src_off, src_num);
+				} else {
+					printf("GPU: remain = %d, src_off = %d, src_num = %d\n", source_num - src_off, src_off, src_num);
+#endif
+				}
+				gpu_end += src_num;
+				th2->buf = buf + (size_t)unit_size * src_off;
+				th2->off = src_off;	// ソース・ブロックの番号にする
+				th2->size = src_num;
+				th2->now = -1;	// GPUスレッドの初期値 - 1
+				//_mm_sfence();
+				ResetEvent(hEnd[cpu_num2 - 1]);	// リセットしておく
+				SetEvent(hRun[cpu_num2 - 1]);	// サブ・スレッドに計算を開始させる
 			}
 
 			// 経過表示
-			prog_num += src_num * parity_num;
 			if (GetTickCount() - time_last >= UPDATE_TIME){
-				if (print_progress((int)((prog_num * 1000) / prog_base))){
+				if (th2->size == 0){
+					i = 0;
+				} else {
+					// th2-now がGPUスレッドの最高値なので、計算が終わってるのは th2-now 個となる
+					i = th2->now;
+					if (i < 0){
+						i = 0;
+					} else {
+						i *= th2->size;
+					}
+				}
+				if (th->size == 0){
+					j = 0;
+				} else {
+					// th-now が CPUスレッドの最高値なので、計算が終わってるのは th-now + 2 - cpu_num2 個となる
+					j = th->now + 2 - cpu_num2;
+					if (j < 0){
+						j = 0;
+					} else {
+						j /= chunk_num;	// chunk数で割ってブロック数にする
+						j *= th->size;
+					}
+				}
+				if (print_progress((int)(((prog_num + i + j) * 1000) / prog_base))){
 					err = 2;
 					goto error_end;
 				}
@@ -1808,12 +1860,58 @@ skip_count++;
 			src_off += src_num;
 		}
 
+		// 全スレッドの計算終了の合図を UPDATE_TIME だけ待ちながら、経過表示する
+		while (WaitForMultipleObjects(cpu_num2, hEnd, TRUE, UPDATE_TIME) == WAIT_TIMEOUT){
+			if (th2->size == 0){
+				i = 0;
+			} else {
+				// th2-now が GPUスレッドの最高値なので、計算が終わってるのは th2-now 個となる
+				i = th2->now;
+				if (i < 0){
+					i = 0;
+				} else {
+					i *= th2->size;
+				}
+			}
+			if (th->size == 0){
+				j = 0;
+			} else {
+				// th-now が CPUスレッドの最高値なので、計算が終わってるのは th-now + 2 - cpu_num2 個となる
+				j = th->now + 2 - cpu_num2;
+				if (j < 0){
+					j = 0;
+				} else {
+					j /= chunk_num;	// chunk数で割ってブロック数にする
+					j *= th->size;
+				}
+			}
+			// 経過表示（UPDATE_TIME 時間待った場合なので、必ず経過してるはず）
+			if (print_progress((int)(((prog_num + i + j) * 1000) / prog_base))){
+				err = 2;
+				goto error_end;
+			}
+			time_last = GetTickCount();
+		}
+		if (th2->size > 0){	// GPUスレッドの計算量を加算する
+			if (th2->len != 0){	// エラー発生
+				i = th2->len;
+				printf("error, gpu-thread, %d, %d\n", i & 0xFF, i >> 8);
+				err = 1;
+				goto error_end;
+			}
+			prog_num += th2->size * parity_num;
+		}
+		if (th->size > 0)	// CPUスレッドの計算量を加算する
+			prog_num += th->size * parity_num;
+
 #ifdef TIMER
 time_start = GetTickCount();
 #endif
 		// パリティ・ブロックを書き込む
 		work_buf = p_buf;
 		for (i = 0; i < parity_num; i++){
+			// CPUスレッドと GPUスレッドの計算結果を合わせる
+			galois_align_xor(g_buf + (size_t)unit_size * i, work_buf, unit_size);
 			// パリティ・ブロックのチェックサムを検証する
 			checksum16_return(work_buf, hash, io_size);
 			if (memcmp(work_buf + io_size, hash, HASH_SIZE) != 0){
@@ -1931,7 +2029,8 @@ if (prog_num != prog_base)
 
 error_end:
 	InterlockedExchange(&(th->now), INT_MAX / 2);	// サブ・スレッドの計算を中断する
-	for (j = 0; j < cpu_num; j++){
+	InterlockedExchange(&(th2->now), INT_MAX / 2);
+	for (j = 0; j < cpu_num2; j++){
 		if (hSub[j]){	// サブ・スレッドを終了させる
 			SetEvent(hRun[j]);
 			WaitForSingleObject(hSub[j], INFINITE);
@@ -1965,24 +2064,26 @@ int encode_method5(	// ソース・ブロックの一部とパリティ・ブロ
 	source_ctx_c *s_blk,		// ソース・ブロックの情報
 	unsigned short *constant)
 {
-	unsigned char *buf = NULL, *p_buf;
+	unsigned char *buf = NULL, *p_buf, *g_buf;
 	int err = 0, i, j, last_file, chunk_num;
 	int source_off, read_num, packet_off;
-	int cpu_num1, src_off, src_num, src_max, vram_max;
+	int cpu_num1, src_off, src_num, src_max;
+	int cpu_num2, vram_max, cpu_end, gpu_end, th_act;
 	unsigned int unit_size, len;
 	unsigned int time_last, prog_read, prog_write;
 	__int64 prog_num = 0, prog_base;
 	size_t mem_size;
 	HANDLE hFile = NULL;
 	HANDLE hSub[MAX_CPU], hRun[MAX_CPU], hEnd[MAX_CPU];
-	RS_TH th[1];
+	RS_TH th[1], th2[1];
 	PHMD5 file_md_ctx, blk_md_ctx;
 
 	memset(hSub, 0, sizeof(HANDLE) * MAX_CPU);
 	unit_size = (block_size + HASH_SIZE + (MEM_UNIT - 1)) & ~(MEM_UNIT - 1);	// MEM_UNIT の倍数にする
 
 	// 作業バッファーを確保する
-	read_num = read_block_num(parity_num, 1, MEM_UNIT);	// ソース・ブロックを何個読み込むか
+	// CPU計算スレッドと GPU計算スレッドで保存先を別けるので、パリティ・ブロック分を２倍確保する
+	read_num = read_block_num(parity_num * 2, 1, MEM_UNIT);	// ソース・ブロックを何個読み込むか
 	if (read_num == 0){
 #ifdef TIMER
 		printf("cannot keep enough blocks, use another method\n");
@@ -1991,7 +2092,7 @@ int encode_method5(	// ソース・ブロックの一部とパリティ・ブロ
 	}
 	//read_num = (read_num + 1) / 2 + 1;	// 2分割の実験用
 	//read_num = (read_num + 2) / 3 + 1;	// 3分割の実験用
-	mem_size = (size_t)(read_num + parity_num) * unit_size;
+	mem_size = (size_t)(read_num + parity_num * 2) * unit_size;
 	buf = _aligned_malloc(mem_size, MEM_UNIT);	// GPU 用の境界
 	if (buf == NULL){
 		printf("malloc, %Id\n", mem_size);
@@ -1999,40 +2100,34 @@ int encode_method5(	// ソース・ブロックの一部とパリティ・ブロ
 		goto error_end;
 	}
 	p_buf = buf + (size_t)unit_size * read_num;	// パリティ・ブロックを記録する領域
+	g_buf = p_buf + (size_t)unit_size * parity_num;	// GPUスレッド用
 	prog_read = (parity_num + 31) / 32;	// 読み書きの経過をそれぞれ 3% ぐらいにする
 	prog_write = (source_num + 31) / 32;
 	prog_base = (__int64)(source_num + prog_write) * parity_num + prog_read * source_num;	// ブロックの合計掛け算個数 + 書き込み回数
 	len = try_cache_blocking(unit_size);
 	chunk_num = (unit_size + len - 1) / len;
-	cpu_num1 = 0;	// 読み込み中はスレッド数を減らす（シングル・スレッドの時は 0にする）
-	i = 1;
-	while (i * 2 <= cpu_num){	// 1=0, 2~3=1, 4~7=2, 8~15=3, 16~31=4, 32=5
-		cpu_num1++;
-		i *= 2;
-	}
-	if (cpu_num1 > parity_num)
-		cpu_num1 = parity_num;
+	cpu_num1 = calc_thread_num2(parity_num, &cpu_num2);	// 使用するスレッド数を調節する
 	src_max = cpu_cache & 0xFFFE;	// CPU cache 最適化のため、同時に処理するブロック数を制限する
-	if ((src_max < 8) || (cpu_num <= 2))
-		src_max = 0x8000;	// 不明または少な過ぎる場合は、制限しない
+	if ((src_max < CACHE_MIN_NUM) || (src_max > CACHE_MAX_NUM))
+		src_max = CACHE_MAX_NUM;	// 不明または極端な場合は、規定値にする
+	//cpu_num1 = 0;	// 2nd encode の実験用に 1st encode を停止する
 #ifdef TIMER
 	printf("\n read some source blocks, and keep all parity blocks (GPU)\n");
 	printf("buffer size = %Id MB, read_num = %d, round = %d\n", mem_size >> 20, read_num, (source_num + read_num - 1) / read_num);
 	printf("cache: limit size = %d, chunk_size = %d, chunk_num = %d\n", cpu_flag & 0x7FFF0000, len, chunk_num);
-	printf("unit_size = %d, cpu_num1 = %d, src_max = %d\n", unit_size, cpu_num1, src_max);
+	printf("unit_size = %d, cpu_num1 = %d, cpu_num2 = %d\n", unit_size, cpu_num1, cpu_num2);
 #endif
 
 	// OpenCL の初期化
 	vram_max = read_num;	// 読み込める分だけにする
-	i = init_OpenCL(unit_size, len, &vram_max);
+	i = init_OpenCL(unit_size, &vram_max);
 	if (i != 0){
 		if (i != 3)	// GPU が見つからなかった場合はエラー表示しない
 			printf("init_OpenCL, %d, %d\n", i & 0xFF, i >> 8);
 		i = free_OpenCL();
 		if (i != 0)
 			printf("free_OpenCL, %d, %d", i & 0xFF, i >> 8);
-		OpenCL_method = 0;	// GPU を使わない設定にする
-		// GPU を使わずに計算を続行する場合は以下をコメントアウト
+		OpenCL_method = 0;	// GPU を使えなかった印
 		err = -3;	// CPU だけの方式に切り替える
 		goto error_end;
 	}
@@ -2043,10 +2138,14 @@ int encode_method5(	// ソース・ブロックの一部とパリティ・ブロ
 
 	// マルチ・スレッドの準備をする
 	th->mat = constant;
+	th2->mat = constant;
 	th->buf = p_buf;
+	th2->buf = g_buf;
 	th->size = unit_size;
+	th2->size = unit_size;
 	th->len = len;	// chunk size
-	for (j = 0; j < cpu_num; j++){	// サブ・スレッドごとに
+	th2->len = 0;	// GPUのエラー通知用にする
+	for (j = 0; j < cpu_num2; j++){	// サブ・スレッドごとに
 		hRun[j] = CreateEvent(NULL, FALSE, FALSE, NULL);	// Auto Reset にする
 		if (hRun[j] == NULL){
 			print_win32_err();
@@ -2063,12 +2162,13 @@ int encode_method5(	// ソース・ブロックの一部とパリティ・ブロ
 			goto error_end;
 		}
 		// サブ・スレッドを起動する
-		th->run = hRun[j];
-		th->end = hEnd[j];
-		//_mm_sfence();	// メモリーへの書き込みを完了してからスレッドを起動する
-		if ((j == cpu_num - 1) && (OpenCL_method != 0)){	// 最後のスレッドを GPU 管理用にする
-			hSub[j] = (HANDLE)_beginthreadex(NULL, STACK_SIZE, thread_encode_gpu, (LPVOID)th, 0, NULL);
+		if (j == cpu_num2 - 1){	// 最後のスレッドを GPU 管理用にする
+			th2->run = hRun[j];
+			th2->end = hEnd[j];
+			hSub[j] = (HANDLE)_beginthreadex(NULL, STACK_SIZE, thread_encode_gpu, (LPVOID)th2, 0, NULL);
 		} else {
+			th->run = hRun[j];
+			th->end = hEnd[j];
 			hSub[j] = (HANDLE)_beginthreadex(NULL, STACK_SIZE, thread_encode3, (LPVOID)th, 0, NULL);
 		}
 		if (hSub[j] == NULL){
@@ -2081,7 +2181,6 @@ int encode_method5(	// ソース・ブロックの一部とパリティ・ブロ
 		}
 		WaitForSingleObject(hEnd[j], INFINITE);	// 設定終了の合図を待つ (リセットしない)
 	}
-	th->len = 0;	// GPUのエラー通知用にする
 
 	// 何回かに別けてソース・ブロックを読み込んで、パリティ・ブロックを少しずつ作成する
 	time_last = GetTickCount();
@@ -2229,6 +2328,8 @@ time_start = GetTickCount();
 time_read += GetTickCount() - time_start;
 #endif
 
+		if (source_off == 0)
+			memset(g_buf, 0, (size_t)unit_size * parity_num);	// 待機中に GPU用の領域をゼロ埋めしておく
 		WaitForMultipleObjects(cpu_num1, hEnd, TRUE, INFINITE);	// サブ・スレッドの計算終了の合図を待つ
 		src_off += 1;	// 計算を開始するソース・ブロックの番号
 		if (src_off == 0)	// 1st encode しなかった場合（src_off = 0）は、生成ブロックをゼロ埋めする
@@ -2238,72 +2339,148 @@ time_read += GetTickCount() - time_start;
 		printf("partial encode = %d / %d (%d.%d%%), source_off = %d\n", src_off - source_off, read_num, j / 10, j % 10, source_off);
 #endif
 
-		// GPU と CPU のどちらに最適化するかが難しい
+		th2->size = 0;	// 計算前の状態にしておく (th->size は既に 0 になってる)
+		cpu_end = gpu_end = 0;
 		src_off -= source_off;	// バッファー内でのソース・ブロックの位置にする
-		src_num = src_max;	// 一度に処理するソース・ブロックの数を制限する
-		if (src_num > vram_max){	// VRAM に収まらない場合は、VRAM のサイズに応じて分割する
-			src_num = vram_max & ~1;	// 減らして偶数にする（元が奇数なら分割数が増えるかも）
-			i = (read_num - src_off + src_num - 1) / src_num;	// 何回に分けて処理するか
-			src_num = (read_num - src_off + i - 1) / i;	// 一度に処理する量を平均化する
-			src_num = (src_num + 1) & ~1;	// 増やして偶数にする
-		}
 #ifdef TIMER
-		printf("remain = %d, src_off = %d, src_num = %d\n", read_num - src_off, src_off, src_num);
+		printf("remain = %d, src_off = %d, src_max = %d\n", read_num - src_off, src_off, src_max);
 #endif
 		while (src_off < read_num){
-			// ソース・ブロックを何個ずつ処理するか
-			if (src_off + src_num > read_num){
-				src_num = read_num - src_off;
-#ifdef TIMER
-				printf("last1: src_off = %d, src_num = %d\n", src_off, src_num);
-#endif
-			} else if (src_off + src_num * 2 - 1 >= read_num){
-				src_num = read_num - src_off;
-				if (src_num > vram_max){	// VRAM のサイズまでにする
-					src_num = (src_num + 1) / 2;	// 半分にする
-					src_num = (src_num + 1) & ~1;	// 偶数にする
+			// GPUスレッドと CPUスレッドのどちらかが待機中になるまで待つ
+			do {
+				th_act = 0;
+				// CPUスレッドの動作状況を調べる
+				if (WaitForMultipleObjects(cpu_num2 - 1, hEnd, TRUE, 0) == WAIT_TIMEOUT){
+					th_act |= 1;	// CPUスレッドが動作中
+				} else if (th->size > 0){	// CPUスレッドの計算量を加算する
+					prog_num += th->size * parity_num;
+					th->size = 0;
 				}
-#ifdef TIMER
-				printf("last2: src_off = %d, src_num = %d\n", src_off, src_num);
-#endif
-			}
-
-			// GPU と CPU がスレッドごとにパリティ・ブロックを計算する
-			th->buf = buf + (size_t)unit_size * src_off;
-			th->off = source_off + src_off;	// ソース・ブロックの番号にする
-			th->size = src_num;
-			th->now = -1;	// 初期値 - 1
-			//_mm_sfence();
-			for (j = 0; j < cpu_num; j++){
-				ResetEvent(hEnd[j]);	// リセットしておく
-				SetEvent(hRun[j]);	// サブ・スレッドに計算を開始させる
-			}
-
-			// サブ・スレッドの計算終了の合図を UPDATE_TIME だけ待ちながら、経過表示する
-			while (WaitForMultipleObjects(cpu_num, hEnd, TRUE, UPDATE_TIME) == WAIT_TIMEOUT){
-				// th-now が最高値なので、計算が終わってるのは th-now + 1 - cpu_num 個となる
-				j = th->now + 1 - cpu_num;
-				if (j < 0)
-					j = 0;
-				j /= chunk_num;	// chunk数で割ってブロック数にする
-				// 経過表示（UPDATE_TIME 時間待った場合なので、必ず経過してるはず）
-				if (print_progress((int)(((prog_num + src_num * j) * 1000) / prog_base))){
-					err = 2;
-					goto error_end;
+				// GPUスレッドの動作状況を調べる
+				if (WaitForSingleObject(hEnd[cpu_num2 - 1], 0) == WAIT_TIMEOUT){
+					th_act |= 2;	// GPUスレッドが動作中
+				} else if (th2->size > 0){	// GPUスレッドの計算量を加算する
+					if (th2->len != 0){	// エラー発生
+						i = th2->len;
+						printf("error, gpu-thread, %d, %d\n", i & 0xFF, i >> 8);
+						err = 1;
+						goto error_end;
+					}
+					prog_num += th2->size * parity_num;
+					th2->size = 0;
 				}
-				time_last = GetTickCount();
-			}
-			if (th->len != 0){	// エラー発生
-				i = th->len;
-				printf("error, gpu-thread, %d, %d\n", i & 0xFF, i >> 8);
-				err = 1;
-				goto error_end;
+				if (th_act == 3){	// 両方が動作中なら
+					// サブ・スレッドの計算終了の合図を UPDATE_TIME だけ待ちながら、経過表示する
+					while (WaitForMultipleObjects(cpu_num2, hEnd, FALSE, UPDATE_TIME) == WAIT_TIMEOUT){
+						// th2-now が GPUスレッドの最高値なので、計算が終わってるのは th2-now 個となる
+						i = th2->now;
+						if (i < 0){
+							i = 0;
+						} else {
+							i *= th2->size;
+						}
+						// th-now が CPUスレッドの最高値なので、計算が終わってるのは th-now + 2 - cpu_num2 個となる
+						j = th->now + 2 - cpu_num2;
+						if (j < 0){
+							j = 0;
+						} else {
+							j /= chunk_num;	// chunk数で割ってブロック数にする
+							j *= th->size;
+						}
+						// 経過表示（UPDATE_TIME 時間待った場合なので、必ず経過してるはず）
+						if (print_progress((int)(((prog_num + i + j) * 1000) / prog_base))){
+							err = 2;
+							goto error_end;
+						}
+						time_last = GetTickCount();
+					}
+				}
+			} while (th_act == 3);
+
+			// どちらかのスレッドでパリティ・ブロックを計算する
+			if ((th_act & 1) == 0){	// CPUスレッドを優先的に開始する
+				src_num = src_max;	// 一度に処理するソース・ブロックの数を制限する
+				if (src_off + src_num * 2 - 1 >= read_num){
+					src_num = read_num - src_off;
+#ifdef TIMER
+					printf("lastC: src_off = %d, src_num = %d\n", src_off, src_num);
+#endif
+				}
+				cpu_end += src_num;
+				th->buf = buf + (size_t)unit_size * src_off;
+				th->off = source_off + src_off;	// ソース・ブロックの番号にする
+				th->size = src_num;
+				th->now = -1;	// CPUスレッドの初期値 - 1
+				//_mm_sfence();
+				for (j = 0; j < cpu_num2 - 1; j++){
+					ResetEvent(hEnd[j]);	// リセットしておく
+					SetEvent(hRun[j]);	// サブ・スレッドに計算を開始させる
+				}
+			} else {	// CPUスレッドが動作中なら、GPUスレッドを開始する
+				src_num = (read_num - src_off) * gpu_end / (cpu_end + gpu_end);	// 残りブロック数に対する割合
+				if (src_num < src_max){
+					if (gpu_end / src_max < (cpu_end / src_max) / 2){	// GPU が遅い場合は最低負担量も減らす
+						if (gpu_end < cpu_end / 4){
+							if (src_num < src_max / 4)
+								src_num = src_max / 4;
+						} else if (src_num < src_max / 2){
+							src_num = src_max / 2;
+						}
+					} else {
+						src_num = src_max;	// 最低でも CPUスレッドと同じ量を担当する
+					}
+				}
+				if (src_num > vram_max)
+					src_num = vram_max;
+				if (src_off + src_num > read_num){
+					src_num = read_num - src_off;
+#ifdef TIMER
+					printf("GPU last 1: src_off = %d, src_num = %d\n", src_off, src_num);
+#endif
+				} else if (src_off + src_num + src_max > read_num){
+					src_num = read_num - src_off - src_max;
+#ifdef TIMER
+					printf("GPU last 2: src_off = %d, src_num = %d\n", src_off, src_num);
+				} else {
+					printf("GPU: remain = %d, src_off = %d, src_num = %d\n", read_num - src_off, src_off, src_num);
+#endif
+				}
+				gpu_end += src_num;
+				th2->buf = buf + (size_t)unit_size * src_off;
+				th2->off = source_off + src_off;	// ソース・ブロックの番号にする
+				th2->size = src_num;
+				th2->now = -1;	// GPUスレッドの初期値 - 1
+				//_mm_sfence();
+				ResetEvent(hEnd[cpu_num2 - 1]);	// リセットしておく
+				SetEvent(hRun[cpu_num2 - 1]);	// サブ・スレッドに計算を開始させる
 			}
 
 			// 経過表示
-			prog_num += src_num * parity_num;
 			if (GetTickCount() - time_last >= UPDATE_TIME){
-				if (print_progress((int)((prog_num * 1000) / prog_base))){
+				if (th2->size == 0){
+					i = 0;
+				} else {
+					// th2-now がGPUスレッドの最高値なので、計算が終わってるのは th2-now 個となる
+					i = th2->now;
+					if (i < 0){
+						i = 0;
+					} else {
+						i *= th2->size;
+					}
+				}
+				if (th->size == 0){
+					j = 0;
+				} else {
+					// th-now が CPUスレッドの最高値なので、計算が終わってるのは th-now + 2 - cpu_num2 個となる
+					j = th->now + 2 - cpu_num2;
+					if (j < 0){
+						j = 0;
+					} else {
+						j /= chunk_num;	// chunk数で割ってブロック数にする
+						j *= th->size;
+					}
+				}
+				if (print_progress((int)(((prog_num + i + j) * 1000) / prog_base))){
 					err = 2;
 					goto error_end;
 				}
@@ -2312,6 +2489,50 @@ time_read += GetTickCount() - time_start;
 
 			src_off += src_num;
 		}
+
+		// 全スレッドの計算終了の合図を UPDATE_TIME だけ待ちながら、経過表示する
+		while (WaitForMultipleObjects(cpu_num2, hEnd, TRUE, UPDATE_TIME) == WAIT_TIMEOUT){
+			if (th2->size == 0){
+				i = 0;
+			} else {
+				// th2-now が GPUスレッドの最高値なので、計算が終わってるのは th2-now 個となる
+				i = th2->now;
+				if (i < 0){
+					i = 0;
+				} else {
+					i *= th2->size;
+				}
+			}
+			if (th->size == 0){
+				j = 0;
+			} else {
+				// th-now が CPUスレッドの最高値なので、計算が終わってるのは th-now + 2 - cpu_num2 個となる
+				j = th->now + 2 - cpu_num2;
+				if (j < 0){
+					j = 0;
+				} else {
+					j /= chunk_num;	// chunk数で割ってブロック数にする
+					j *= th->size;
+				}
+			}
+			// 経過表示（UPDATE_TIME 時間待った場合なので、必ず経過してるはず）
+			if (print_progress((int)(((prog_num + i + j) * 1000) / prog_base))){
+				err = 2;
+				goto error_end;
+			}
+			time_last = GetTickCount();
+		}
+		if (th2->size > 0){	// GPUスレッドの計算量を加算する
+			if (th2->len != 0){	// エラー発生
+				i = th2->len;
+				printf("error, gpu-thread, %d, %d\n", i & 0xFF, i >> 8);
+				err = 1;
+				goto error_end;
+			}
+			prog_num += th2->size * parity_num;
+		}
+		if (th->size > 0)	// CPUスレッドの計算量を加算する
+			prog_num += th->size * parity_num;
 
 		source_off += read_num;
 	}
@@ -2322,7 +2543,7 @@ time_start = GetTickCount();
 	memcpy(common_buf + common_size, common_buf, common_size);	// 後の半分に前半のをコピーする
 	// 最後にパリティ・ブロックのチェックサムを検証して、リカバリ・ファイルに書き込む
 	err = create_recovery_file_1pass(file_path, recovery_path, packet_limit, block_distri,
-			packet_num, common_buf, common_size, footer_buf, footer_size, rcv_hFile, p_buf, unit_size);
+			packet_num, common_buf, common_size, footer_buf, footer_size, rcv_hFile, p_buf, g_buf, unit_size);
 #ifdef TIMER
 time_write = GetTickCount() - time_start;
 #endif
@@ -2337,7 +2558,8 @@ if (prog_num != prog_base - prog_write * parity_num)
 
 error_end:
 	InterlockedExchange(&(th->now), INT_MAX / 2);	// サブ・スレッドの計算を中断する
-	for (j = 0; j < cpu_num; j++){
+	InterlockedExchange(&(th2->now), INT_MAX / 2);
+	for (j = 0; j < cpu_num2; j++){
 		if (hSub[j]){	// サブ・スレッドを終了させる
 			SetEvent(hRun[j]);
 			WaitForSingleObject(hSub[j], INFINITE);

@@ -1,5 +1,5 @@
 ﻿// par2.c
-// Copyright : 2023-09-21 Yutaka Sawada
+// Copyright : 2023-10-15 Yutaka Sawada
 // License : GPL
 
 #ifndef _UNICODE
@@ -181,7 +181,7 @@ int par2_create(
 			}
 		} else {
 			// 共通パケットを作成する
-			if ((memory_use & 16) && (cpu_num >= 4) && (entity_num >= 2)){	// SSDなら複数ファイルを同時に処理する
+			if ((memory_use & 16) && (cpu_num >= 3) && (entity_num >= 2)){	// SSDなら複数ファイルを同時に処理する
 				common_size = set_common_packet_multi(common_buf, &packet_num, (switch_p & 2) >> 1, files);
 			} else {
 				common_size = set_common_packet(common_buf, &packet_num, (switch_p & 2) >> 1, files);
@@ -529,7 +529,7 @@ int par2_verify(
 
 	// ソース・ファイルが完全かどうかを調べる
 	// ファイルの状態は 完全、消失、追加、破損(完全なブロックの数) の4種類
-	if ((memory_use & 16) && (cpu_num >= 4) && (entity_num >= 2)){	// SSDなら複数ファイルを同時に処理する
+	if ((memory_use & 16) && (cpu_num >= 3) && (entity_num >= 2)){	// SSDなら複数ファイルを同時に処理する
 		err = check_file_complete_multi(ascii_buf, uni_buf, files, s_blk);
 	} else {
 		err = check_file_complete(ascii_buf, uni_buf, files, s_blk);
@@ -741,7 +741,7 @@ int par2_repair(
 
 	// ソース・ファイルが完全かどうかを一覧表示する
 	// ファイルの状態は 完全、消失、追加、破損(完全なブロックの数) の4種類
-	if ((memory_use & 16) && (cpu_num >= 4) && (entity_num >= 2)){	// SSDなら複数ファイルを同時に処理する
+	if ((memory_use & 16) && (cpu_num >= 3) && (entity_num >= 2)){	// SSDなら複数ファイルを同時に処理する
 		err = check_file_complete_multi(ascii_buf, uni_buf, files, s_blk);
 	} else {
 		err = check_file_complete(ascii_buf, uni_buf, files, s_blk);

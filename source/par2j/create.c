@@ -1,5 +1,5 @@
 ﻿// create.c
-// Copyright : 2023-09-23 Yutaka Sawada
+// Copyright : 2023-10-22 Yutaka Sawada
 // License : GPL
 
 #ifndef _UNICODE
@@ -320,7 +320,7 @@ error_end:
 	return off;
 }
 
-#define MAX_MULTI_READ	4	// SSDで同時に読み込む最大ファイル数
+#define MAX_MULTI_READ	6	// SSDで同時に読み込む最大ファイル数
 
 // SSD 上で複数ファイルのハッシュ値を同時に求めるバージョン
 int set_common_packet_multi(
@@ -348,11 +348,9 @@ unsigned int time_start = GetTickCount();
 	memset(th, 0, sizeof(FILE_HASH_TH) * MAX_MULTI_READ);
 	// Core数に応じてスレッド数を増やす
 	if ((memory_use & 32) != 0){	// NVMe SSD
-		if (cpu_num >= 8){	// 8 ~ 16 Cores
-			multi_read = 4;
-		} else {	// 3 Cores + Hyper-threading, or 4 ~ 7 Cores
-			multi_read = 3;
-		}
+		multi_read = (cpu_num + 2) / 3 + 1;	// 3=2, 4~6=3, 7~9=4, 10~12=5, 13~=6
+		if (multi_read > MAX_MULTI_READ)
+			multi_read = MAX_MULTI_READ;
 	} else {	// SATA SSD
 		multi_read = 2;
 	}
@@ -1282,6 +1280,7 @@ int create_recovery_file_1pass(
 	int footer_size,			// 末尾パケットのバッファー・サイズ
 	HANDLE *rcv_hFile,			// 各リカバリ・ファイルのハンドル
 	unsigned char *p_buf,		// 計算済みのパリティ・ブロック
+	unsigned char *g_buf,		// GPU用 (GPUを使わない場合は NULLにすること)
 	unsigned int unit_size)
 {
 	unsigned char *packet_header, hash[HASH_SIZE];
@@ -1438,6 +1437,10 @@ int create_recovery_file_1pass(
 
 		// Recovery Slice packet は後から書き込む
 		for (j = block_start; j < block_start + block_count; j++){
+			if (g_buf != NULL){	// GPUを使った場合
+				// CPUスレッドと GPUスレッドの計算結果を合わせる
+				galois_align_xor(g_buf + (size_t)unit_size * j, p_buf, unit_size);
+			}
 			// パリティ・ブロックのチェックサムを検証する
 			checksum16_return(p_buf, hash, unit_size - HASH_SIZE);
 			if (memcmp(p_buf + unit_size - HASH_SIZE, hash, HASH_SIZE) != 0){

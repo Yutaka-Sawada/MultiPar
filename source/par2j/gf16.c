@@ -71,7 +71,6 @@ extern unsigned int cpu_flag;	// declared in common2.h
 // CPU によって使う関数を変更する際の仮宣言
 
 //#define NO_SIMD	// SIMD を使わない場合
-//#define NO_ALTMAP	// SSSE3 や JIT(SSE2) の並び替えを使わない場合 (CLMULや32バイト単位は有効)
 
 int sse_unit;
 
@@ -134,8 +133,11 @@ int galois_create_table(void)
 	checksum16_altmap = checksum16;
 	checksum16_return = checksum16;
 #ifndef NO_SIMD
-#ifndef NO_ALTMAP
-	if (cpu_flag & 16){	// AVX2 対応なら
+	if (cpu_flag & 256){	// AVX2, SSSE3, JIT(SSE2) の並び替えを使わない場合
+		// 将来的には AVX-512 などの命令に対応してもいい
+		//printf("\nWithout ALTMAP\n");
+		//sse_unit = 32;
+	} else if (cpu_flag & 16){	// AVX2 対応なら
 		//printf("\nUse AVX2 & ALTMAP\n");
 		sse_unit = 32;	// 32, 64, 128 のどれでもいい
 		galois_align_multiply = galois_align32avx_multiply;
@@ -145,16 +147,14 @@ int galois_create_table(void)
 		checksum16_altmap = checksum16_altmap32;
 		checksum16_return = checksum16_return32;
 	} else if (cpu_flag & 1){	// SSSE3 対応なら
-		if ((cpu_flag & 256) == 0){	// SSSE3 & ALTMAP を使う
-			//printf("\nUse SSSE3 & ALTMAP\n");
-			sse_unit = 32;	// 32, 64, 128 のどれでもいい
-			galois_align_multiply = galois_align32_multiply;
-			galois_align_multiply2 = galois_align32_multiply2;
-			galois_altmap_change = galois_altmap32_change;
-			galois_altmap_return = galois_altmap32_return;
-			checksum16_altmap = checksum16_altmap32;
-			checksum16_return = checksum16_return32;
-		}
+		//printf("\nUse SSSE3 & ALTMAP\n");
+		sse_unit = 32;	// 32, 64, 128 のどれでもいい
+		galois_align_multiply = galois_align32_multiply;
+		galois_align_multiply2 = galois_align32_multiply2;
+		galois_altmap_change = galois_altmap32_change;
+		galois_altmap_return = galois_altmap32_return;
+		checksum16_altmap = checksum16_altmap32;
+		checksum16_return = checksum16_return32;
 	} else {	// SSSE3 が利用できない場合
 		if ((cpu_flag & 128) && (jit_alloc() == 0)){	// JIT(SSE2) を使う
 			//printf("\nUse JIT(SSE2) & ALTMAP\n");
@@ -167,7 +167,6 @@ int galois_create_table(void)
 			checksum16_return = checksum16_return256;
 		}
 	}
-#endif
 #endif
 
 	return 0;
@@ -2792,7 +2791,7 @@ void galois_align_xor(
 #endif
 }
 
-// 16バイト境界のバッファー専用の掛け算
+// 16バイト境界のバッファー専用の掛け算 (ALTMAP しない)
 void galois_align16_multiply(
 	unsigned char *r1,	// Region to multiply (must be aligned by 16)
 	unsigned char *r2,	// Products go here
@@ -2826,6 +2825,16 @@ void galois_align16_multiply(
 
 	// 掛け算用のテーブルを常に作成する (32バイトだと少し遅くなる)
 #ifndef NO_SIMD
+/*
+	// sse_unit が 32の倍数な時だけ
+	} else if (cpu_flag & 16){	// AVX2 対応なら
+		__declspec( align(32) ) unsigned char small_table[128];
+
+		create_eight_table_avx2(small_table, factor);
+
+		gf16_avx2_block32u(r1, r2, len, small_table);
+*/
+
 	} else if (cpu_flag & 1){	// SSSE3 対応なら
 		__declspec( align(16) ) unsigned char small_table[128];
 
@@ -2869,7 +2878,6 @@ void galois_align16_multiply(
 			len -= 8;
 		}
 #endif
-
 	}
 }
 

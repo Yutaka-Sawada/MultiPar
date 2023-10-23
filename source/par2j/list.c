@@ -1,5 +1,5 @@
 ﻿// list.c
-// Copyright : 2022-10-14 Yutaka Sawada
+// Copyright : 2023-10-15 Yutaka Sawada
 // License : GPL
 
 #ifndef _UNICODE
@@ -348,7 +348,7 @@ if (time_start > 0){
 // SSD 上で複数ファイルを同時に検査する
 
 // MAX_MULTI_READ の２倍ぐらいにする？
-#define MAX_READ_NUM 10
+#define MAX_READ_NUM 12
 
 int check_file_complete_multi(
 	char *ascii_buf,
@@ -370,11 +370,9 @@ unsigned int time_start = GetTickCount();
 	memset(hSub, 0, sizeof(HANDLE) * MAX_READ_NUM);
 	// Core数に応じてスレッド数を増やす
 	if ((memory_use & 32) != 0){	// NVMe SSD
-		if (cpu_num >= 8){	// 8 ~ 16 Cores
-			multi_read = 4;
-		} else {	// 3 Cores + Hyper-threading, or 4 ~ 7 Cores
-			multi_read = 3;
-		}
+		multi_read = (cpu_num + 2) / 3 + 1;	// 3=2, 4~6=3, 7~9=4, 10~12=5, 13~=6
+		if (multi_read > MAX_READ_NUM / 2)
+			multi_read = MAX_READ_NUM / 2;
 	} else {	// SATA SSD
 		multi_read = 2;
 	}

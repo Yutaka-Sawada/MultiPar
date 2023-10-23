@@ -1,5 +1,5 @@
 ﻿// common2.c
-// Copyright : 2023-09-23 Yutaka Sawada
+// Copyright : 2023-10-13 Yutaka Sawada
 // License : GPL
 
 #ifndef _UNICODE
@@ -1848,7 +1848,7 @@ int sqrt32(int num)
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 int cpu_num = 1;	// CPU/Core 個数が制限されてる場合は、上位に本来の数を置く
-// /arch:SSE2, +1=SSSE3, +2=SSE4.1, +4=SSE4.2, +8=CLMUL, +16=AVX2, +128=JIT(SSE2), +256=Old
+// /arch:SSE2, +1=SSSE3, +2=SSE4.1, +4=SSE4.2, +8=CLMUL, +16=AVX2, +128=JIT(SSE2), +256=ALTMAPなし
 // 上位 16-bit = L2 cache サイズから計算した制限サイズ
 unsigned int cpu_flag = 0;
 unsigned int cpu_cache = 0;	// 上位 16-bit = L3 cache の制限サイズ, 下位 16-bit = 同時処理数

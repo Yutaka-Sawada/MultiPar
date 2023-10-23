@@ -82,6 +82,7 @@ int create_recovery_file_1pass(
 	int footer_size,			// 末尾パケットのバッファー・サイズ
 	HANDLE *rcv_hFile,			// 各リカバリ・ファイルのハンドル
 	unsigned char *p_buf,		// 計算済みのパリティ・ブロック
+	unsigned char *g_buf,		// GPU用 (GPUを使わない場合は NULLにすること)
 	unsigned int unit_size);
 
 // 作成中のリカバリ・ファイルを削除する

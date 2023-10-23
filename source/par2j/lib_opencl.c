@@ -1,5 +1,5 @@
 ﻿// lib_opencl.c
-// Copyright : 2023-09-23 Yutaka Sawada
+// Copyright : 2023-10-22 Yutaka Sawada
 // License : GPL
 
 #ifndef _WIN32_WINNT
@@ -102,7 +102,6 @@ API_clEnqueueNDRangeKernel gfn_clEnqueueNDRangeKernel;
 入力
 OpenCL_method : どのデバイスを選ぶか
 unit_size : ブロックの単位サイズ
-chunk_size: 分割された断片サイズ
 src_max : ソース・ブロック個数
 
 出力
@@ -112,7 +111,7 @@ OpenCL_method : 動作フラグいろいろ
 */
 
 // 0=成功, 1～エラー番号
-int init_OpenCL(int unit_size, int chunk_size, int *src_max)
+int init_OpenCL(int unit_size, int *src_max)
 {
 	char buf[2048], *p_source;
 	int err = 0, i, j;
@@ -283,23 +282,12 @@ int init_OpenCL(int unit_size, int chunk_size, int *src_max)
 //				printf("Shared Virtual Memory = 0x%I64X\n", param_value8);
 #endif
 
-			ret = fn_clGetDeviceInfo(device_id[j], CL_DEVICE_ADDRESS_BITS, sizeof(cl_uint), &param_value, NULL);
-			if (ret != CL_SUCCESS)
-				continue;
 			ret = fn_clGetDeviceInfo(device_id[j], CL_DEVICE_MAX_MEM_ALLOC_SIZE, sizeof(cl_ulong), &param_value8, NULL);
 			if (ret != CL_SUCCESS)
 				continue;
 #ifdef DEBUG_OUTPUT
-			printf("ADDRESS_BITS = %d\n", param_value);
 			printf("MAX_MEM_ALLOC_SIZE = %I64d MB\n", param_value8 >> 20);
 #endif
-			if (param_value == 32){	// CL_DEVICE_ADDRESS_BITS によって確保するメモリー領域の上限を変える
-				if (param_value8 > 0x30000000)	// 768MB までにする
-					param_value8 = 0x30000000;
-			} else {	// 64-bit OS でも 2GB までにする
-				if (param_value8 > 0x80000000)
-					param_value8 = 0x80000000;
-			}
 
 			ret = fn_clGetDeviceInfo(device_id[j], CL_DEVICE_MAX_COMPUTE_UNITS, sizeof(cl_uint), &num_groups, NULL);
 			if (ret != CL_SUCCESS)
@@ -325,13 +313,13 @@ int init_OpenCL(int unit_size, int chunk_size, int *src_max)
 				OpenCL_group_num = num_groups;	// ワークグループ数は COMPUTE_UNITS 数にする
 				alloc_max = (size_t)param_value8;
 
-				// AMD Radeon ではメモリー領域が全体の 1/4 とは限らない
+				// AMD や Intel の GPU ではメモリー領域が全体の 1/4 とは限らない
 				ret = fn_clGetDeviceInfo(device_id[j], CL_DEVICE_GLOBAL_MEM_SIZE, sizeof(cl_ulong), &param_value8, NULL);
 				if (ret == CL_SUCCESS){
 #ifdef DEBUG_OUTPUT
 					printf("GLOBAL_MEM_SIZE = %I64d MB\n", param_value8 >> 20);
 #endif
-					// 領域一個あたりのサイズは全体の 1/4 までにする
+					// 領域一個あたりのサイズは全体の 1/4 までにする（VRAMを使いすぎると不安定になる）
 					param_value8 /= 4;
 					if ((cl_ulong)alloc_max > param_value8)
 						alloc_max = (size_t)param_value8;
@@ -366,7 +354,7 @@ int init_OpenCL(int unit_size, int chunk_size, int *src_max)
 		return (ret << 8) | 12;
 
 	// 計算方式を選択する
-	if ((((cpu_flag & 0x101) == 1) || ((cpu_flag & 16) != 0)) && (sse_unit == 32)){
+	if ((((cpu_flag & 0x101) == 1) || ((cpu_flag & 0x110) == 0x10)) && (sse_unit == 32)){
 		OpenCL_method = 2;	// SSSE3 & ALTMAP または AVX2 ならデータの並び替え対応版を使う
 	} else if (((cpu_flag & 128) != 0) && (sse_unit == 256)){
 		OpenCL_method = 4;	// JIT(SSE2) は bit ごとに上位から 16バイトずつ並ぶ
@@ -380,10 +368,10 @@ int init_OpenCL(int unit_size, int chunk_size, int *src_max)
 	// work group 数が必要以上に多い場合は減らす
 	if (OpenCL_method == 2){
 		// work item 一個が 8バイトずつ計算する、256個なら work group ごとに 2KB 担当する
-		data_size = chunk_size / 2048;
+		data_size = unit_size / 2048;
 	} else {
 		// work item 一個が 4バイトずつ計算する、256個なら work group ごとに 1KB 担当する
-		data_size = chunk_size / 1024;
+		data_size = unit_size / 1024;
 	}
 	if (OpenCL_group_num > data_size){
 		OpenCL_group_num = data_size;
@@ -401,9 +389,9 @@ int init_OpenCL(int unit_size, int chunk_size, int *src_max)
 	printf("src buf : %zd KB (%d blocks), possible\n", data_size >> 10, count);
 #endif
 
-	// 出力先はchunk 1個分だけあればいい
+	// 出力先は1ブロック分だけあればいい
 	// CL_MEM_ALLOC_HOST_PTRを使えばpinned memoryになるらしい
-	data_size = (chunk_size + 63) & ~63;	//  cache line sizes (64 bytes) の倍数にする
+	data_size = unit_size;
 	OpenCL_dst = gfn_clCreateBuffer(OpenCL_context, CL_MEM_WRITE_ONLY | CL_MEM_ALLOC_HOST_PTR, data_size, NULL, &ret);
 	if (ret != CL_SUCCESS)
 		return (ret << 8) | 13;
@@ -700,12 +688,11 @@ int gpu_copy_blocks(
 }
 
 // ソース・ブロックを掛け算する
-int gpu_multiply_chunks(
+int gpu_multiply_blocks(
 	int src_num,			// Number of multiplying source blocks
 	unsigned short *mat,	// Matrix of numbers to multiply by
 	unsigned char *buf,		// Products go here
-	int offset,				// Offset in each block
-	int length)				// Byte length
+	int len)				// Byte length
 {
 	unsigned __int64 *vram, *src, *dst;
 	size_t global_size, local_size;
@@ -720,14 +707,6 @@ int gpu_multiply_chunks(
 	ret = gfn_clSetKernelArg(OpenCL_kernel, 3, sizeof(int), &src_num);
 	if (ret != CL_SUCCESS)
 		return (ret << 8) | 103;
-	offset /= 4;	// 4バイト整数単位にする
-	ret = gfn_clSetKernelArg(OpenCL_kernel, 4, sizeof(int), &offset);
-	if (ret != CL_SUCCESS)
-		return (ret << 8) | 104;
-	length /= 4;	// 4バイト整数単位にする
-	ret = gfn_clSetKernelArg(OpenCL_kernel, 5, sizeof(int), &length);
-	if (ret != CL_SUCCESS)
-		return (ret << 8) | 105;
 
 	// カーネル並列実行
 	local_size = 256;	// テーブルやキャッシュのため、work item 数は 256に固定する
@@ -738,18 +717,18 @@ int gpu_multiply_chunks(
 		return (ret << 8) | 11;
 
 	// 出力内容をホスト側に反映させる
-	vram = gfn_clEnqueueMapBuffer(OpenCL_command, OpenCL_dst, CL_TRUE, CL_MAP_READ, 0, length * 4, 0, NULL, NULL, &ret);
+	vram = gfn_clEnqueueMapBuffer(OpenCL_command, OpenCL_dst, CL_TRUE, CL_MAP_READ, 0, len, 0, NULL, NULL, &ret);
 	if (ret != CL_SUCCESS)
 		return (ret << 8) | 12;
 
 	// 8バイトごとに XOR する (SSE2 で XOR しても速くならず)
 	src = vram;
 	dst = (unsigned __int64 *)buf;
-	while (length > 0){
+	while (len > 0){
 		*dst ^= *src;
 		dst++;
 		src++;
-		length -= 2;
+		len -= 8;
 	}
 
 	// ホスト側でデータを変更しなくても、clEnqueueMapBufferと対で呼び出さないといけない
