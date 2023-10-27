@@ -1,5 +1,5 @@
 ﻿// reedsolomon.c
-// Copyright : 2023-10-21 Yutaka Sawada
+// Copyright : 2023-10-26 Yutaka Sawada
 // License : GPL
 
 #ifndef _UNICODE
@@ -229,8 +229,8 @@ int calc_thread_num2(int max_num, int *cpu_num2)
 
 	// 読み込み中はスレッド数を減らす（シングル・スレッドの時は 0にする）
 	num1 = 0;
-	i = 1;
-	while (i * 2 <= cpu_num){	// 1=0, 2~3=1, 4~7=2, 8~15=3, 16~31=4, 32=5
+	i = 2;
+	while (i <= cpu_num){	// 1=0, 2~3=1, 4~7=2, 8~15=3, 16~31=4, 32=5
 		num1++;
 		i *= 2;
 	}

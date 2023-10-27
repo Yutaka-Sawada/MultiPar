@@ -1,5 +1,5 @@
 ﻿// rs_encode.c
-// Copyright : 2023-10-25 Yutaka Sawada
+// Copyright : 2023-10-27 Yutaka Sawada
 // License : GPL
 
 #ifndef _UNICODE
@@ -1797,8 +1797,8 @@ skip_count++;
 						} else if (src_num > src_max * 2){	// ただし、CPUスレッド担当量の 2倍までに制限する
 							src_num = src_max * 2;
 						}
-					} else if (gpu_end < cpu_end / 2){	// GPU が遅い場合は最低負担量も減らす
-						if (gpu_end < cpu_end / 4){
+					} else if (gpu_end * 2 < cpu_end){	// GPU が遅い場合は最低負担量も減らす
+						if (gpu_end * 4 < cpu_end){
 							if (src_num < src_max / 4)
 								src_num = src_max / 4;
 						} else if (src_num < src_max / 2){
@@ -1818,8 +1818,15 @@ skip_count++;
 				} else if (src_off + src_num + src_max > source_num){
 					src_num = source_num - src_off - src_max;
 					// src_num が 0にならないように、src_num == src_max なら上の last1 にする
+					if ((src_num < src_max) && (src_num + src_max <= vram_max) && (gpu_end * 2 > cpu_end)){
+						src_num += src_max;	// GPU担当量が少なくて、余裕がある場合は、残りも全て任せる
 #ifdef TIMER
-					printf("GPU last 2: src_off = %d, src_num = %d\n", src_off, src_num);
+						printf("GPU last +: src_off = %d, src_num = %d + %d\n", src_off, src_num - src_max, src_max);
+					} else {
+						printf("GPU last 2: src_off = %d, src_num = %d\n", src_off, src_num);
+#endif
+					}
+#ifdef TIMER
 				} else {
 					printf("GPU: remain = %d, src_off = %d, src_num = %d\n", source_num - src_off, src_off, src_num);
 #endif
@@ -2412,7 +2419,7 @@ time_read += GetTickCount() - time_start;
 				if (src_off + src_num * 2 - 1 >= read_num){
 					src_num = read_num - src_off;
 #ifdef TIMER
-					printf("lastC: src_off = %d, src_num = %d\n", src_off, src_num);
+					printf("CPU last: src_off = %d, src_num = %d\n", src_off, src_num);
 #endif
 				}
 				cpu_end += src_num;
@@ -2435,8 +2442,8 @@ time_read += GetTickCount() - time_start;
 						} else if (src_num > src_max * 2){	// ただし、CPUスレッド担当量の 2倍までに制限する
 							src_num = src_max * 2;
 						}
-					} else if (gpu_end < cpu_end / 2){	// GPU が遅い場合は最低負担量も減らす
-						if (gpu_end < cpu_end / 4){
+					} else if (gpu_end * 2 < cpu_end){	// GPU が遅い場合は最低負担量も減らす
+						if (gpu_end * 4 < cpu_end){
 							if (src_num < src_max / 4)
 								src_num = src_max / 4;
 						} else if (src_num < src_max / 2){
@@ -2455,8 +2462,15 @@ time_read += GetTickCount() - time_start;
 #endif
 				} else if (src_off + src_num + src_max > read_num){
 					src_num = read_num - src_off - src_max;
+					if ((src_num < src_max) && (src_num + src_max <= vram_max) && (gpu_end * 2 > cpu_end)){
+						src_num += src_max;	// GPU担当量が少なくて、余裕がある場合は、残りも全て任せる
 #ifdef TIMER
-					printf("GPU last 2: src_off = %d, src_num = %d\n", src_off, src_num);
+						printf("GPU last +: src_off = %d, src_num = %d + %d\n", src_off, src_num - src_max, src_max);
+					} else {
+						printf("GPU last 2: src_off = %d, src_num = %d\n", src_off, src_num);
+#endif
+					}
+#ifdef TIMER
 				} else {
 					printf("GPU: remain = %d, src_off = %d, src_num = %d\n", read_num - src_off, src_off, src_num);
 #endif
