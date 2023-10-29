@@ -1,5 +1,5 @@
 ﻿// md5_crc.c
-// Copyright : 2023-10-17 Yutaka Sawada
+// Copyright : 2023-10-29 Yutaka Sawada
 // License : GPL
 
 #ifndef _UNICODE
@@ -203,6 +203,8 @@ int file_md5_crc32_block(
 static unsigned int time_start, time1_start;
 static unsigned int time_total = 0, time2_total = 0, time3_total = 0;
 #endif
+
+#define MAX_BUF_SIZE	2097152	// ヒープ領域を使う場合の最大サイズ
 
 // ファイルのハッシュ値と各スライスのチェックサムを同時に計算する
 int file_hash_crc(
@@ -671,7 +673,7 @@ time1_start = GetTickCount();
 	}
 
 	// バッファー・サイズが大きいのでヒープ領域を使う
-	for (io_size = IO_SIZE; io_size <= 1048576; io_size += IO_SIZE){	// 1 MB までにする
+	for (io_size = IO_SIZE; io_size <= MAX_BUF_SIZE; io_size += IO_SIZE){	// IO_SIZE の倍数にする
 		if ((io_size + IO_SIZE > (cpu_cache & 0xFFFE0000)) || ((__int64)(io_size + IO_SIZE) * 4 > file_left))
 			break;
 	}
@@ -866,7 +868,7 @@ DWORD WINAPI file_hash_crc2(LPVOID lpParameter)
 
 	// バッファー・サイズが大きいのでヒープ領域を使う
 	prog_tick = 1;
-	for (io_size = IO_SIZE; io_size <= 1048576; io_size += IO_SIZE){	// IO_SIZE の倍数で 1 MB までにする
+	for (io_size = IO_SIZE; io_size <= MAX_BUF_SIZE; io_size += IO_SIZE){	// IO_SIZE の倍数にする
 		if ((io_size + IO_SIZE > (cpu_cache & 0xFFFE0000)) || ((__int64)(io_size + IO_SIZE) * 4 > file_left))
 			break;
 		prog_tick++;
@@ -1303,7 +1305,7 @@ DWORD WINAPI file_hash_background(LPVOID lpParameter)
 	find_next = files[num].b_off;	// 先頭ブロックの番号
 
 	// バッファー・サイズが大きいのでヒープ領域を使う
-	for (io_size = IO_SIZE; io_size <= 1048576; io_size += IO_SIZE){	// IO_SIZE の倍数で 1 MB までにする
+	for (io_size = IO_SIZE; io_size <= MAX_BUF_SIZE; io_size += IO_SIZE){	// IO_SIZE の倍数にする
 		if ((io_size + IO_SIZE > (cpu_cache & 0xFFFE0000)) || ((__int64)(io_size + IO_SIZE) * 4 > file_size))
 			break;
 	}
