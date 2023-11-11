@@ -1,6 +1,6 @@
 # MultiPar
 
-### v1.3.3.0 is public
+### v1.3.3.1 is public
 
 &nbsp; This is a testing version to improve speed of PAR2 calculation. 
 Because the new method isn't tested so much, there may be a bug, failure, or mistake. 
@@ -9,60 +9,55 @@ When you don't want to test by yourself, you should not use this yet.
 If you see a problem, please report the incident. 
 I will try to solve as possible as I can.
 
-&nbsp; The PAR2 calculation speed may be 10% ~ 50% faster than old version. 
-The optimization depends on hardware environment. 
-I don't know what is the best setting on which PC. 
-From [many tests of debug versions](https://github.com/Yutaka-Sawada/MultiPar/issues/99), 
-it will select maybe better setting automatically. 
-Thanks testers for many trials. 
-If you want to compare speed of different settings on your PC, you may try those debug versions.
+&nbsp; CPU's L3 cache optimization depends on hardware environment. 
+It's difficult to guess the best setting for unknown type. 
+It seems to work well on Intel and AMD 's most CPUs. 
+Thanks Anime Tosho and MikeSW17 for long tests. 
+But, I'm not sure the perfomance of rare strange kind CPUs. 
+If you want to compare speed of different settings on your CPU, 
+you may try samples (TestBlock_2023-08-31.zip) in "MultiPar_sample" folder 
+on [OneDrive](https://1drv.ms/u/s!AtGhNMUyvbWOg0cF2UHcs709Icv4).
 
-&nbsp; I changed GPU implementation largely, too. 
-To adopt CPU optimization, it will process smaller tasks on GPU. 
-Because GPU don't use CPU's cache, it's inefficient for GPU's task. 
-I don't know that new method is faster than old version or not.
+&nbsp; I improved GPU implementation very much. 
+Thanks [Slava46 and K2M74 for many tests](https://github.com/Yutaka-Sawada/MultiPar/issues/99). 
+While I almost gave up to increase speed, their effort encouraged me to try many ways. 
+Without their aid, I could not implement this GPU function. 
+OpenCL perfomance is varied in every graphics boards. 
+If you have a fast graphics board, enabling "GPU acceleration" would be faster. 
+If it's not so fast (or is slow) on your PC, just un-check the feature.
 
-Threshold to use GPU:
-- Data size must be larger than 200 MB.
-- Block size must be larger than 64 KB.
-- Number of source blocks must be more than 192.
-- Number of recovery blocks must be more than 8.
-
-&nbsp; Because [a user requested](https://github.com/Yutaka-Sawada/MultiPar/issues/102), 
-I implemented a way to add 5th item in "Media size" on Create window. 
-Write this line `MediaList4=name:size` under `[Option]` section in `MultiPar.ini`. 
-Currently, you cannot change the item on Option window.
+&nbsp; I saw a new feature of Inno Setup 6, which changes install mode. 
+It shows a dialog to ask which install mode. 
+Then, a user can install MultiPar in "Program Files" directory by selecting "Install for all users". 
+This method may be easier than starting installer by "Run as administrator". 
+I test the selection dialog at this version. 
+If there is no problem nor complaint from users, I use this style in later versions, too.
 
 
-[ Changes from 1.3.2.9 to 1.3.3.0 ]  
+[ Changes from 1.3.3.0 to 1.3.3.1 ]  
 
-GUI update
-- Change
-  - Option adapted to new "lc" settings.
-  - It's possible to add 5th item in "Media size" on Create window.
+Installer update
+- It shows dialog to select "per user" or "per machine" installation.
 
 PAR2 client update
 - Change
-  - Max number of using threads is increased to 32.
-  - Threshold to use GPU was decreased.
+  - Max number of threads to read files on SSD was increased to 6.
 
 - Improvement
-  - Matrix inversion may use more threads.
-  - L3 cache optimization was improved for recent CPUs.
+  - GPU acceleration would become faster.
 
 
 [ Hash value ]  
 
-MultiPar1330.zip  
-MD5: 79570F84B74ECF8E5100561F7AAC3803  
-SHA1: ACF7F164001708789C5D94003ED6B5C172235D54  
+MultiPar1331.zip  
+MD5: ECFC1570C839DD30A2492A7B05C2AD6E  
+SHA1: 5E0E4CC38DAA995294A93ECA10AEB3AE84596170  
 
-MultiPar1330_setup.exe  
-MD5: D1F1A5A4DF1C9EDD698C9A017AF31039  
-SHA1: 4C3314B909572A303EBBE8E015A2E813841CFA33  
+MultiPar1331_setup.exe  
+MD5: A55E6FA5A6853CB42E3410F35706BAD9  
+SHA1: 8D46BD6702E82ABA9ACCFA5223B2763B4DCEFE9E  
 &nbsp; To install under "Program Files" or "Program Files (x86)" directory, 
-you must start the installer with administrative privileges by selecting 
-"Run as administrator" on right-click menu.
+you must select "Install for all users" at the first dialog.
 
 &nbsp; Old versions and source code packages are available at 
 [GitHub](https://github.com/Yutaka-Sawada/MultiPar/releases) or 
