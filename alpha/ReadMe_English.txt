@@ -71,14 +71,13 @@ Don't send current PAR3 files to others, who may not have the same version.
 
 [ How to install or uninstall with installer package ]
 
- Double click setup file ( MultiPar131_setup.exe or something like this name ),
+ Double click setup file ( MultiPar133_setup.exe or something like this name ),
 and follow the installer dialog.
 At version up, if you want to use previous setting, overwrite install is possible.
 Before overwrite install, you should un-check "Integrate MultiPar into Shell".
 You may need to re-start OS after overwrite install or uninstall rarely.
 To install under "Program Files" or "Program Files (x86)" directory,
-you must start the installer with administrative privileges by selecting
-"Run as administrator" on right-click menu.
+you must select "Install for all users" at the first dialog.
 
  You can uninstall through the Windows OS's Control Panel,
 or double click unins000.exe in a folder which MultiPar was installed.
@@ -100,7 +99,7 @@ In either case, user made icons and association are available for the user only.
 
 [ How to install with archive version ]
 
- Unpack compressed file ( MultiPar131.zip or something like this name ) in a folder.
+ Unpack compressed file ( MultiPar133.zip or something like this name ) in a folder.
 MultiPar.exe is the interface of MultiPar.
 
  You can create short-cut icon or send-to link at Option window later.
