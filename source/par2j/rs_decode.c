@@ -1,5 +1,5 @@
 ﻿// rs_decode.c
-// Copyright : 2023-11-25 Yutaka Sawada
+// Copyright : 2023-11-27 Yutaka Sawada
 // License : GPL
 
 #ifndef _UNICODE
@@ -2329,16 +2329,6 @@ time_read += GetTickCount() - time_start;
 #endif
 				} else if (src_off + src_num + src_max > read_num){
 					src_num = read_num - src_off - src_max;
-
-					if (src_num <= 0){
-						src_num = src_max / 4;	// src_num が 0にならないようにする
-#ifdef TIMER
-						printf("GPU last ?: src_off = %d, src_num = %d\n", src_off, src_num);
-#endif
-					} else 
-
-
-
 					if (src_num < src_max){
 						if ((src_num + src_max <= vram_max) && (gpu_end * 2 > cpu_end)){
 							src_num += src_max;	// GPU担当量が少なくて、余裕がある場合は、残りも全て任せる
