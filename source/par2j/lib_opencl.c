@@ -1,5 +1,5 @@
 ﻿// lib_opencl.c
-// Copyright : 2023-10-22 Yutaka Sawada
+// Copyright : 2023-11-27 Yutaka Sawada
 // License : GPL
 
 #ifndef _WIN32_WINNT
@@ -115,7 +115,7 @@ int init_OpenCL(int unit_size, int *src_max)
 {
 	char buf[2048], *p_source;
 	int err = 0, i, j;
-	int gpu_power, count;
+	int gpu_power, count, gpu_flag;
 	size_t data_size, alloc_max;
 	//FILE *fp;
 	HRSRC res;
@@ -138,7 +138,7 @@ int init_OpenCL(int unit_size, int *src_max)
 	API_clGetKernelWorkGroupInfo fn_clGetKernelWorkGroupInfo;
 	cl_int ret;
 	cl_uint num_platforms = 0, num_devices = 0, num_groups, param_value;
-	cl_ulong param_value8;
+	cl_ulong param_value8, param_value4;
 	cl_platform_id platform_id[MAX_DEVICE], selected_platform;	// Intel, AMD, Nvidia などドライバーの提供元
 	cl_device_id device_id[MAX_DEVICE], selected_device;	// CPU や GPU など
 	cl_program program;
@@ -265,44 +265,43 @@ int init_OpenCL(int unit_size, int *src_max)
 			ret = fn_clGetDeviceInfo(device_id[j], CL_DEVICE_VERSION, sizeof(buf), buf, NULL);
 			if (ret == CL_SUCCESS)
 				printf("Device version = %s\n", buf);
-			ret = fn_clGetDeviceInfo(device_id[j], CL_DEVICE_LOCAL_MEM_SIZE, sizeof(cl_ulong), &param_value8, NULL);
-			if (ret == CL_SUCCESS)
-				printf("LOCAL_MEM_SIZE = %I64d KB\n", param_value8 >> 10);
-
-			// 無理とは思うけど、一応チェックする
-//#define CL_DEVICE_SVM_CAPABILITIES                  0x1053
-//#define CL_DEVICE_SVM_COARSE_GRAIN_BUFFER           (1 << 0)
-//#define CL_DEVICE_SVM_FINE_GRAIN_BUFFER             (1 << 1)
-//#define CL_DEVICE_SVM_FINE_GRAIN_SYSTEM             (1 << 2)
-//#define CL_DEVICE_SVM_ATOMICS                       (1 << 3)
-//			ret = fn_clGetDeviceInfo(device_id[j], CL_DEVICE_SVM_CAPABILITIES, sizeof(cl_ulong), &param_value8, NULL);
-//			if (ret == CL_INVALID_VALUE)
-//				printf("Shared Virtual Memory is not supported\n");
-//			if (ret == CL_SUCCESS)
-//				printf("Shared Virtual Memory = 0x%I64X\n", param_value8);
 #endif
 
+			// 取得できなくてもエラーにしない
+			param_value = 0;	// CL_DEVICE_HOST_UNIFIED_MEMORY は OpenCL 2.0 以降で非推奨になった
+			ret = fn_clGetDeviceInfo(device_id[j], CL_DEVICE_HOST_UNIFIED_MEMORY, sizeof(cl_uint), &param_value, NULL);
+#ifdef DEBUG_OUTPUT
+			if (ret == CL_SUCCESS)
+				printf("HOST_UNIFIED_MEMORY = %d\n", param_value);
+#endif
+			if (param_value != 0)
+				param_value = 1;
+			param_value4 = 0;	// local memory が多い時だけ処理を変える
+			ret = fn_clGetDeviceInfo(device_id[j], CL_DEVICE_LOCAL_MEM_SIZE, sizeof(cl_ulong), &param_value4, NULL);
+#ifdef DEBUG_OUTPUT
+			if (ret == CL_SUCCESS)
+				printf("LOCAL_MEM_SIZE = %I64d KB\n", param_value4 >> 10);
+#endif
+
+			// 取得できない場合はエラーにする
 			ret = fn_clGetDeviceInfo(device_id[j], CL_DEVICE_MAX_MEM_ALLOC_SIZE, sizeof(cl_ulong), &param_value8, NULL);
 			if (ret != CL_SUCCESS)
 				continue;
 #ifdef DEBUG_OUTPUT
 			printf("MAX_MEM_ALLOC_SIZE = %I64d MB\n", param_value8 >> 20);
 #endif
-
 			ret = fn_clGetDeviceInfo(device_id[j], CL_DEVICE_MAX_COMPUTE_UNITS, sizeof(cl_uint), &num_groups, NULL);
 			if (ret != CL_SUCCESS)
 				continue;
 			ret = fn_clGetDeviceInfo(device_id[j], CL_DEVICE_MAX_WORK_GROUP_SIZE, sizeof(size_t), &data_size, NULL);
 			if (ret != CL_SUCCESS)
 				continue;
-			// CL_DEVICE_HOST_UNIFIED_MEMORY は OpenCL 2.0 以降で非推奨になったので、参照しない
-
 #ifdef DEBUG_OUTPUT
 			printf("MAX_COMPUTE_UNITS = %d\n", num_groups);
 			printf("MAX_WORK_GROUP_SIZE = %zd\n", data_size);
 #endif
-			// MAX_COMPUTE_UNITS * MAX_WORK_GROUP_SIZE で計算力を測る
-			count = (int)data_size * num_groups;
+			// MAX_COMPUTE_UNITS * MAX_WORK_GROUP_SIZE で計算力を測る、外付けGPUなら値を倍にする
+			count = (2 - param_value) * (int)data_size * num_groups;
 			count *= OpenCL_method;	// 符号を変える
 			//printf("prev = %d, now = %d\n", gpu_power, count);
 			if ((count > gpu_power) && (data_size >= 256) &&	// 256以上ないとテーブルを作れない
@@ -312,6 +311,9 @@ int init_OpenCL(int unit_size, int *src_max)
 				selected_platform = platform_id[i];
 				OpenCL_group_num = num_groups;	// ワークグループ数は COMPUTE_UNITS 数にする
 				alloc_max = (size_t)param_value8;
+				gpu_flag = param_value;	// 0 = discrete GPU, 1 = integrated GPU
+				if (param_value4 >= 32768)
+					gpu_flag |= 2;	// local memory が 32KB 以上あるかどうか
 
 				// AMD や Intel の GPU ではメモリー領域が全体の 1/4 とは限らない
 				ret = fn_clGetDeviceInfo(device_id[j], CL_DEVICE_GLOBAL_MEM_SIZE, sizeof(cl_ulong), &param_value8, NULL);
@@ -355,7 +357,11 @@ int init_OpenCL(int unit_size, int *src_max)
 
 	// 計算方式を選択する
 	if ((((cpu_flag & 0x101) == 1) || ((cpu_flag & 0x110) == 0x10)) && (sse_unit == 32)){
-		OpenCL_method = 2;	// SSSE3 & ALTMAP または AVX2 ならデータの並び替え対応版を使う
+		if (gpu_flag & 2){
+			OpenCL_method = 3;	// local memory が 32KB 以上あれば 16-byte ずつアクセスする
+		} else {
+			OpenCL_method = 2;	// SSSE3 & ALTMAP または AVX2 ならデータの並び替え対応版を使う
+		}
 	} else if (((cpu_flag & 128) != 0) && (sse_unit == 256)){
 		OpenCL_method = 4;	// JIT(SSE2) は bit ごとに上位から 16バイトずつ並ぶ
 		// ローカルのテーブルサイズが異なることに注意
@@ -369,6 +375,9 @@ int init_OpenCL(int unit_size, int *src_max)
 	if (OpenCL_method == 2){
 		// work item 一個が 8バイトずつ計算する、256個なら work group ごとに 2KB 担当する
 		data_size = unit_size / 2048;
+	} else if (OpenCL_method == 3){
+		// work item 一個が 32バイトずつ計算する、256個なら work group ごとに 8KB 担当する
+		data_size = unit_size / 8192;
 	} else {
 		// work item 一個が 4バイトずつ計算する、256個なら work group ごとに 1KB 担当する
 		data_size = unit_size / 1024;
@@ -376,6 +385,17 @@ int init_OpenCL(int unit_size, int *src_max)
 	if (OpenCL_group_num > data_size){
 		OpenCL_group_num = data_size;
 		printf("Number of work groups is reduced to %zd\n", OpenCL_group_num);
+	}
+
+	// データへのアクセス方法をデバイスによって変える
+	if (gpu_flag & 1){
+		OpenCL_method |= 8;	// Integrated GPU なら CL_MEM_USE_HOST_PTR を使う
+	} else {	// Discrete GPU なら NVIDIA のだけ flag を変える
+		ret = fn_clGetDeviceInfo(selected_device, CL_DEVICE_VERSION, sizeof(buf), buf, NULL);
+		if (ret == CL_SUCCESS){
+			if (strstr(buf, "CUDA") != NULL)
+				OpenCL_method |= 8;	// NVIDIA GPU なら CL_MEM_USE_HOST_PTR を使う
+		}
 	}
 
 	// 最大で何ブロック分のメモリー領域を保持できるのか（ここではまだ確保しない）
@@ -668,11 +688,19 @@ int gpu_copy_blocks(
 {
 	size_t data_size;
 	cl_int ret;
+	cl_mem_flags flags;
 
 	// Integrated GPU と Discrete GPU の違いに関係なく、使う分だけ毎回メモリー領域を確保する
 	data_size = (size_t)unit_size * src_num;
-	// Intel GPUならZeroCopyできる、GeForce GPUでもメモリー消費量が少なくてコピーが速い
-	OpenCL_src = gfn_clCreateBuffer(OpenCL_context, CL_MEM_READ_ONLY | CL_MEM_USE_HOST_PTR, data_size, data, &ret);
+	if (OpenCL_method & 8){	// AMD's APU や Integrated GPU なら ZeroCopy する
+		// 実際に比較してみると GeForce GPU でもメモリー消費量が少なくてコピーが速い
+		// NVIDIA GPU は CL_MEM_USE_HOST_PTR でも VRAM 上にキャッシュするので速いらしい
+		flags = CL_MEM_READ_ONLY | CL_MEM_USE_HOST_PTR;
+	} else {	// Discrete GPU ならデータを VRAM にコピーする
+		// AMD GPU は明示的にコピーするよう指定しないといけない
+		flags = CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR;
+	}
+	OpenCL_src = gfn_clCreateBuffer(OpenCL_context, flags, data_size, data, &ret);
 	if (ret != CL_SUCCESS)
 		return (ret << 8) | 1;
 #ifdef DEBUG_OUTPUT

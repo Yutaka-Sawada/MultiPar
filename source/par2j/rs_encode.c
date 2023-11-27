@@ -1,5 +1,5 @@
 ﻿// rs_encode.c
-// Copyright : 2023-10-29 Yutaka Sawada
+// Copyright : 2023-11-25 Yutaka Sawada
 // License : GPL
 
 #ifndef _UNICODE
@@ -1817,11 +1817,21 @@ skip_count++;
 #endif
 				} else if (src_off + src_num + src_max > source_num){
 					src_num = source_num - src_off - src_max;
-					// src_num が 0にならないように、src_num == src_max なら上の last1 にする
-					if ((src_num < src_max) && (src_num + src_max <= vram_max) && (gpu_end * 2 > cpu_end)){
-						src_num += src_max;	// GPU担当量が少なくて、余裕がある場合は、残りも全て任せる
+					if (src_num < src_max){
+						if ((src_num + src_max <= vram_max) && (gpu_end * 2 > cpu_end)){
+							src_num += src_max;	// GPU担当量が少なくて、余裕がある場合は、残りも全て任せる
 #ifdef TIMER
-						printf("GPU last +: src_off = %d, src_num = %d + %d\n", src_off, src_num - src_max, src_max);
+							printf("GPU last +: src_off = %d, src_num = %d + %d\n", src_off, src_num - src_max, src_max);
+#endif
+						} else if (src_num < src_max / 4){
+							src_num = src_max / 4;	// src_num が小さくなり過ぎないようにする
+#ifdef TIMER
+							printf("GPU last ?: src_off = %d, src_num = %d\n", src_off, src_num);
+						} else {
+							printf("GPU last -: src_off = %d, src_num = %d\n", src_off, src_num);
+#endif
+						}
+#ifdef TIMER
 					} else {
 						printf("GPU last 2: src_off = %d, src_num = %d\n", src_off, src_num);
 #endif
@@ -2462,10 +2472,21 @@ time_read += GetTickCount() - time_start;
 #endif
 				} else if (src_off + src_num + src_max > read_num){
 					src_num = read_num - src_off - src_max;
-					if ((src_num < src_max) && (src_num + src_max <= vram_max) && (gpu_end * 2 > cpu_end)){
-						src_num += src_max;	// GPU担当量が少なくて、余裕がある場合は、残りも全て任せる
+					if (src_num < src_max){
+						if ((src_num + src_max <= vram_max) && (gpu_end * 2 > cpu_end)){
+							src_num += src_max;	// GPU担当量が少なくて、余裕がある場合は、残りも全て任せる
 #ifdef TIMER
-						printf("GPU last +: src_off = %d, src_num = %d + %d\n", src_off, src_num - src_max, src_max);
+							printf("GPU last +: src_off = %d, src_num = %d + %d\n", src_off, src_num - src_max, src_max);
+#endif
+						} else if (src_num < src_max / 4){
+							src_num = src_max / 4;	// src_num が小さくなり過ぎないようにする
+#ifdef TIMER
+							printf("GPU last ?: src_off = %d, src_num = %d\n", src_off, src_num);
+						} else {
+							printf("GPU last -: src_off = %d, src_num = %d\n", src_off, src_num);
+#endif
+						}
+#ifdef TIMER
 					} else {
 						printf("GPU last 2: src_off = %d, src_num = %d\n", src_off, src_num);
 #endif

@@ -370,8 +370,8 @@ The format is "/lc#" (# is from 1 to 32 as the number of using threads).
 255: It tries to use more threads than number of physical Cores.
 
  You may set additional combinations;
-+1024 to disable CLMUL (and use slower SSSE3 code), 
-+2048 to disable JIT (for SSE2), 
++1024 to disable CLMUL (and use slower SSSE3 code),
++2048 to disable JIT (for SSE2),
 +4096 to disable SSSE3,
 +8192 to disable AVX2,
 +256 or +512 (slower device) to enable GPU acceleration.

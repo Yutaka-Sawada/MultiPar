@@ -86,6 +86,48 @@ __kernel void method2(
 	}
 }
 
+__kernel void method3(
+	__global uint4 *src,
+	__global uint4 *dst,
+	__global ushort *factors,
+	int blk_num)
+{
+	__local uint mtab[512];
+	int i, blk;
+	uchar4 r0, r1, r2, r3, r4, r5, r6, r7;
+	uchar16 lo, hi;
+	const int work_id = get_global_id(0) * 2;
+	const int work_size = get_global_size(0) * 2;
+	const int table_id = get_local_id(0);
+
+	for (i = work_id; i < BLK_SIZE / 4; i += work_size){
+		dst[i    ] = 0;
+		dst[i + 1] = 0;
+	}
+
+	for (blk = 0; blk < blk_num; blk++){
+		calc_table(mtab, table_id, factors[blk]);
+		barrier(CLK_LOCAL_MEM_FENCE);
+
+		for (i = work_id; i < BLK_SIZE / 4; i += work_size){
+			lo = as_uchar16(src[i    ]);
+			hi = as_uchar16(src[i + 1]);
+			r0 = (uchar4)(as_uchar2((ushort)(mtab[lo.s0] ^ mtab[256 + hi.s0])), as_uchar2((ushort)(mtab[lo.s1] ^ mtab[256 + hi.s1])));
+			r1 = (uchar4)(as_uchar2((ushort)(mtab[lo.s2] ^ mtab[256 + hi.s2])), as_uchar2((ushort)(mtab[lo.s3] ^ mtab[256 + hi.s3])));
+			r2 = (uchar4)(as_uchar2((ushort)(mtab[lo.s4] ^ mtab[256 + hi.s4])), as_uchar2((ushort)(mtab[lo.s5] ^ mtab[256 + hi.s5])));
+			r3 = (uchar4)(as_uchar2((ushort)(mtab[lo.s6] ^ mtab[256 + hi.s6])), as_uchar2((ushort)(mtab[lo.s7] ^ mtab[256 + hi.s7])));
+			r4 = (uchar4)(as_uchar2((ushort)(mtab[lo.s8] ^ mtab[256 + hi.s8])), as_uchar2((ushort)(mtab[lo.s9] ^ mtab[256 + hi.s9])));
+			r5 = (uchar4)(as_uchar2((ushort)(mtab[lo.sa] ^ mtab[256 + hi.sa])), as_uchar2((ushort)(mtab[lo.sb] ^ mtab[256 + hi.sb])));
+			r6 = (uchar4)(as_uchar2((ushort)(mtab[lo.sc] ^ mtab[256 + hi.sc])), as_uchar2((ushort)(mtab[lo.sd] ^ mtab[256 + hi.sd])));
+			r7 = (uchar4)(as_uchar2((ushort)(mtab[lo.se] ^ mtab[256 + hi.se])), as_uchar2((ushort)(mtab[lo.sf] ^ mtab[256 + hi.sf])));
+			dst[i    ] ^= as_uint4((uchar16)(r0.x, r0.z, r1.x, r1.z, r2.x, r2.z, r3.x, r3.z, r4.x, r4.z, r5.x, r5.z, r6.x, r6.z, r7.x, r7.z));
+			dst[i + 1] ^= as_uint4((uchar16)(r0.y, r0.w, r1.y, r1.w, r2.y, r2.w, r3.y, r3.w, r4.y, r4.w, r5.y, r5.w, r6.y, r6.w, r7.y, r7.w));
+		}
+		src += BLK_SIZE / 4;
+		barrier(CLK_LOCAL_MEM_FENCE);
+	}
+}
+
 __kernel void method4(
 	__global uint *src,
 	__global uint *dst,
