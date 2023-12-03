@@ -56,7 +56,6 @@ def search_par_set(one_path):
             else:
                 pendings.add(par_path)
             # Add found unique PAR sets
-            
             listbox_list1.insert(tk.END, par_path)
             
     item_count = listbox_list1.size()
