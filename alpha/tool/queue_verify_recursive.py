@@ -27,8 +27,11 @@ def search_par_set(one_path):
     # Clear list-box at first
     listbox_list1.delete(0, tk.END)
     listbox_list2.delete(0, tk.END)
+    label_head2.config(text= "?" + " bad sets")
     listbox_list3.delete(0, tk.END)
+    label_head3.config(text= "?" + " complete sets")
     button_start.config(state=tk.DISABLED)
+    label_status.config(text="Searching for PAR sets.")
     
     pendings = set(s_list1.get())
     one_path_len = len(one_path)
@@ -67,8 +70,9 @@ def search_par_set(one_path):
         button_open2.config(state=tk.DISABLED)
         button_open3.config(state=tk.DISABLED)
     else:
-        label_head1.config(text= str(item_count) + " sets in " + one_path + ". Click Start button to verfy them.")
+        label_head1.config(text= str(item_count) + " sets in " + one_path)
         button_start.config(state=tk.NORMAL)
+        label_status.config(text="Click Start button to verify PAR sets.")
         # Do not start automatically
         #button_folder.config(state=tk.DISABLED)
         #button_stop.config(state=tk.NORMAL)
