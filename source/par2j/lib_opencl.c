@@ -1,5 +1,5 @@
 ﻿// lib_opencl.c
-// Copyright : 2023-11-27 Yutaka Sawada
+// Copyright : 2023-12-26 Yutaka Sawada
 // License : GPL
 
 #ifndef _WIN32_WINNT
@@ -84,7 +84,7 @@ cl_command_queue OpenCL_command = NULL;
 cl_kernel OpenCL_kernel = NULL;
 cl_mem OpenCL_src = NULL, OpenCL_dst = NULL, OpenCL_buf = NULL;
 size_t OpenCL_group_num;
-int OpenCL_method = 0;	// 正=速い機器を選ぶ, 負=遅い機器を選ぶ
+int OpenCL_method = 0;	// 標準では GPU を使わず、動作は自動選択される
 
 API_clCreateBuffer gfn_clCreateBuffer;
 API_clReleaseMemObject gfn_clReleaseMemObject;
@@ -100,7 +100,11 @@ API_clEnqueueNDRangeKernel gfn_clEnqueueNDRangeKernel;
 
 /*
 入力
-OpenCL_method : どのデバイスを選ぶか
+OpenCL_method : どのデバイスや関数を選ぶか
+    0x100 = 速い機器を選ぶ,          0x200 = 遅い機器を選ぶ
+  0x10000 = 1ブロックずつ計算する, 0x20000 = 2ブロックずつ計算しようとする
+  0x40000 = 4-byte memory access,  0x80000 = try 16-byte memory access
+ 0x100000 = CL_MEM_COPY_HOST_PTR, 0x200000 = CL_MEM_USE_HOST_PTR
 unit_size : ブロックの単位サイズ
 src_max : ソース・ブロック個数
 
@@ -111,11 +115,12 @@ OpenCL_method : 動作フラグいろいろ
 */
 
 // 0=成功, 1～エラー番号
-int init_OpenCL(int unit_size, int *src_max)
+int init_OpenCL(unsigned int unit_size, int *src_max)
 {
 	char buf[2048], *p_source;
 	int err = 0, i, j;
-	int gpu_power, count, gpu_flag;
+	int gpu_power, count;
+	int unified_memory;	// non zero = Integrated GPU
 	size_t data_size, alloc_max;
 	//FILE *fp;
 	HRSRC res;
@@ -136,9 +141,10 @@ int init_OpenCL(int unit_size, int *src_max)
 	API_clReleaseProgram fn_clReleaseProgram;
 	API_clCreateKernel fn_clCreateKernel;
 	API_clGetKernelWorkGroupInfo fn_clGetKernelWorkGroupInfo;
+	API_clReleaseKernel fn_clReleaseKernel;
 	cl_int ret;
 	cl_uint num_platforms = 0, num_devices = 0, num_groups, param_value;
-	cl_ulong param_value8, param_value4;
+	cl_ulong param_value8;
 	cl_platform_id platform_id[MAX_DEVICE], selected_platform;	// Intel, AMD, Nvidia などドライバーの提供元
 	cl_device_id device_id[MAX_DEVICE], selected_device;	// CPU や GPU など
 	cl_program program;
@@ -215,6 +221,9 @@ int init_OpenCL(int unit_size, int *src_max)
 	fn_clGetKernelWorkGroupInfo = (API_clGetKernelWorkGroupInfo)GetProcAddress(hLibOpenCL, "clGetKernelWorkGroupInfo");
 	if (fn_clGetKernelWorkGroupInfo == NULL)
 		return err;
+	fn_clReleaseKernel = (API_clReleaseKernel)GetProcAddress(hLibOpenCL, "clReleaseKernel");
+	if (fn_clReleaseKernel == NULL)
+		return err;
 	gfn_clFinish = (API_clFinish)GetProcAddress(hLibOpenCL, "clFinish");
 	if (gfn_clFinish == NULL)
 		return err;
@@ -226,12 +235,10 @@ int init_OpenCL(int unit_size, int *src_max)
 	ret = fn_clGetPlatformIDs(MAX_DEVICE, platform_id, &num_platforms);
 	if (ret != CL_SUCCESS)
 		return (ret << 8) | 10;
-	if (OpenCL_method >= 0){	// 選択する順序と初期値を変える
-		OpenCL_method = 1;
-		gpu_power = 0;
-	} else {
-		OpenCL_method = -1;
+	if (OpenCL_method & 0x200){	// 選択する順序と初期値を変える
 		gpu_power = INT_MIN;
+	} else {
+		gpu_power = 0;
 	}
 	alloc_max = 0;
 
@@ -268,20 +275,17 @@ int init_OpenCL(int unit_size, int *src_max)
 #endif
 
 			// 取得できなくてもエラーにしない
-			param_value = 0;	// CL_DEVICE_HOST_UNIFIED_MEMORY は OpenCL 2.0 以降で非推奨になった
 			ret = fn_clGetDeviceInfo(device_id[j], CL_DEVICE_HOST_UNIFIED_MEMORY, sizeof(cl_uint), &param_value, NULL);
+			if (ret == CL_SUCCESS){
+				if (param_value != 0){
 #ifdef DEBUG_OUTPUT
-			if (ret == CL_SUCCESS)
-				printf("HOST_UNIFIED_MEMORY = %d\n", param_value);
+					printf("HOST_UNIFIED_MEMORY = %d\n", param_value);
 #endif
-			if (param_value != 0)
-				param_value = 1;
-			param_value4 = 0;	// local memory が多い時だけ処理を変える
-			ret = fn_clGetDeviceInfo(device_id[j], CL_DEVICE_LOCAL_MEM_SIZE, sizeof(cl_ulong), &param_value4, NULL);
-#ifdef DEBUG_OUTPUT
-			if (ret == CL_SUCCESS)
-				printf("LOCAL_MEM_SIZE = %I64d KB\n", param_value4 >> 10);
-#endif
+					param_value = 1;
+				}
+			} else {	// CL_DEVICE_HOST_UNIFIED_MEMORY は OpenCL 2.0 以降で非推奨になった
+				param_value = 0;
+			}
 
 			// 取得できない場合はエラーにする
 			ret = fn_clGetDeviceInfo(device_id[j], CL_DEVICE_MAX_MEM_ALLOC_SIZE, sizeof(cl_ulong), &param_value8, NULL);
@@ -302,7 +306,8 @@ int init_OpenCL(int unit_size, int *src_max)
 #endif
 			// MAX_COMPUTE_UNITS * MAX_WORK_GROUP_SIZE で計算力を測る、外付けGPUなら値を倍にする
 			count = (2 - param_value) * (int)data_size * num_groups;
-			count *= OpenCL_method;	// 符号を変える
+			if (OpenCL_method & 0x200)	// Prefer slower device
+				count *= -1;	// 符号を変える
 			//printf("prev = %d, now = %d\n", gpu_power, count);
 			if ((count > gpu_power) && (data_size >= 256) &&	// 256以上ないとテーブルを作れない
 					(param_value8 / 8 > (cl_ulong)unit_size)){	// CL_DEVICE_MAX_MEM_ALLOC_SIZE に収まるか
@@ -311,9 +316,7 @@ int init_OpenCL(int unit_size, int *src_max)
 				selected_platform = platform_id[i];
 				OpenCL_group_num = num_groups;	// ワークグループ数は COMPUTE_UNITS 数にする
 				alloc_max = (size_t)param_value8;
-				gpu_flag = param_value;	// 0 = discrete GPU, 1 = integrated GPU
-				if (param_value4 >= 32768)
-					gpu_flag |= 2;	// local memory が 32KB 以上あるかどうか
+				unified_memory = param_value;	// 0 = discrete GPU, 1 = integrated GPU
 
 				// AMD や Intel の GPU ではメモリー領域が全体の 1/4 とは限らない
 				ret = fn_clGetDeviceInfo(device_id[j], CL_DEVICE_GLOBAL_MEM_SIZE, sizeof(cl_ulong), &param_value8, NULL);
@@ -355,49 +358,6 @@ int init_OpenCL(int unit_size, int *src_max)
 	if (ret != CL_SUCCESS)
 		return (ret << 8) | 12;
 
-	// 計算方式を選択する
-	if ((((cpu_flag & 0x101) == 1) || ((cpu_flag & 0x110) == 0x10)) && (sse_unit == 32)){
-		if (gpu_flag & 2){
-			OpenCL_method = 3;	// local memory が 32KB 以上あれば 16-byte ずつアクセスする
-		} else {
-			OpenCL_method = 2;	// SSSE3 & ALTMAP または AVX2 ならデータの並び替え対応版を使う
-		}
-	} else if (((cpu_flag & 128) != 0) && (sse_unit == 256)){
-		OpenCL_method = 4;	// JIT(SSE2) は bit ごとに上位から 16バイトずつ並ぶ
-		// ローカルのテーブルサイズが異なることに注意
-		// XOR 方式以外は 2KB (4バイト * 256項目 * 2個) 使う
-		// XOR (JIT) は 64バイト (4バイト * 16項目) 使う
-	} else {
-		OpenCL_method = 1;	// 並び替えられてないデータ用
-	}
-
-	// work group 数が必要以上に多い場合は減らす
-	if (OpenCL_method == 2){
-		// work item 一個が 8バイトずつ計算する、256個なら work group ごとに 2KB 担当する
-		data_size = unit_size / 2048;
-	} else if (OpenCL_method == 3){
-		// work item 一個が 32バイトずつ計算する、256個なら work group ごとに 8KB 担当する
-		data_size = unit_size / 8192;
-	} else {
-		// work item 一個が 4バイトずつ計算する、256個なら work group ごとに 1KB 担当する
-		data_size = unit_size / 1024;
-	}
-	if (OpenCL_group_num > data_size){
-		OpenCL_group_num = data_size;
-		printf("Number of work groups is reduced to %zd\n", OpenCL_group_num);
-	}
-
-	// データへのアクセス方法をデバイスによって変える
-	if (gpu_flag & 1){
-		OpenCL_method |= 8;	// Integrated GPU なら CL_MEM_USE_HOST_PTR を使う
-	} else {	// Discrete GPU なら NVIDIA のだけ flag を変える
-		ret = fn_clGetDeviceInfo(selected_device, CL_DEVICE_VERSION, sizeof(buf), buf, NULL);
-		if (ret == CL_SUCCESS){
-			if (strstr(buf, "CUDA") != NULL)
-				OpenCL_method |= 8;	// NVIDIA GPU なら CL_MEM_USE_HOST_PTR を使う
-		}
-	}
-
 	// 最大で何ブロック分のメモリー領域を保持できるのか（ここではまだ確保しない）
 	// 後で実際に確保する量はこれよりも少なくなる
 	count = (int)(alloc_max / unit_size);	// 確保できるメモリー量から逆算する
@@ -407,25 +367,6 @@ int init_OpenCL(int unit_size, int *src_max)
 #ifdef DEBUG_OUTPUT
 	data_size = (size_t)unit_size * count;
 	printf("src buf : %zd KB (%d blocks), possible\n", data_size >> 10, count);
-#endif
-
-	// 出力先は1ブロック分だけあればいい
-	// CL_MEM_ALLOC_HOST_PTRを使えばpinned memoryになるらしい
-	data_size = unit_size;
-	OpenCL_dst = gfn_clCreateBuffer(OpenCL_context, CL_MEM_WRITE_ONLY | CL_MEM_ALLOC_HOST_PTR, data_size, NULL, &ret);
-	if (ret != CL_SUCCESS)
-		return (ret << 8) | 13;
-#ifdef DEBUG_OUTPUT
-	printf("dst buf : %zd KB (%zd Bytes), OK\n", data_size >> 10, data_size);
-#endif
-
-	// factor は最大個数分 (src_max個)
-	data_size = sizeof(unsigned short) * (*src_max);
-	OpenCL_buf = gfn_clCreateBuffer(OpenCL_context, CL_MEM_READ_ONLY, data_size, NULL, &ret);
-	if (ret != CL_SUCCESS)
-		return (ret << 8) | 14;
-#ifdef DEBUG_OUTPUT
-	printf("factor buf : %zd Bytes (%d factors), OK\n", data_size, (*src_max));
 #endif
 
 /*
@@ -528,18 +469,208 @@ int init_OpenCL(int unit_size, int *src_max)
 		return (ret << 8) | 21;
 	}
 
-	// カーネル関数を抽出する
-	wsprintfA(buf, "method%d", OpenCL_method & 7);
-	OpenCL_kernel = fn_clCreateKernel(program, buf, &ret);
-	if (ret != CL_SUCCESS)
-		return (ret << 8) | 22;
+	// 計算方式を選択する
+	if ((((cpu_flag & 0x101) == 1) || ((cpu_flag & 0x110) == 0x10)) && (sse_unit == 32)){
+		int select_method;	// SSSE3 & ALTMAP または AVX2 ならデータの並び替え対応版を使う
+		if (OpenCL_method & 0x80000){	// 16-byte and 2 blocks
+			select_method = 12;
+		} else if (OpenCL_method & 0x40000){	// 4-byte and 2 blocks
+			select_method = 10;
+		} else if (OpenCL_method & 0x20000){	// 16-byte
+			select_method = 4;
+		} else if (OpenCL_method & 0x10000){	// 4-byte
+			select_method = 2;
+		} else {	// kernel を作って詳細を確かめる
+			size_t item2, item4, item10, item12;
+			cl_kernel kernel2, kernel4, kernel10, kernel12;
+			item2 = item4 = item10 = item12 = 0;
+			// まずは一番重くて速い奴を調べる
+			wsprintfA(buf, "method%d", 12);
+			kernel12 = fn_clCreateKernel(program, buf, &ret);
+			if (ret == CL_SUCCESS){
+				ret = fn_clGetKernelWorkGroupInfo(kernel12, selected_device, CL_KERNEL_PREFERRED_WORK_GROUP_SIZE_MULTIPLE, sizeof(size_t), &item12, NULL);
+				if (ret == CL_SUCCESS){
 #ifdef DEBUG_OUTPUT
-	printf("CreateKernel : %s\n", buf);
+					printf("\nTesting %s\n", buf);
+					printf("PREFERRED_WORK_GROUP_SIZE_MULTIPLE = %zu\n", item12);
 #endif
+				}
+			}
+			if (item12 >= 32){	// 32以上あれば余裕で動くとみなす
+				select_method = 12;
+				OpenCL_kernel = kernel12;
+#ifdef DEBUG_OUTPUT
+				printf("\nSelected method%d\n", select_method);
+#endif
+			} else {	// 他の奴と比較する
+				wsprintfA(buf, "method%d", 2);
+				kernel2 = fn_clCreateKernel(program, buf, &ret);
+				if (ret == CL_SUCCESS){
+					ret = fn_clGetKernelWorkGroupInfo(kernel2, selected_device, CL_KERNEL_PREFERRED_WORK_GROUP_SIZE_MULTIPLE, sizeof(size_t), &item2, NULL);
+					if (ret == CL_SUCCESS){
+#ifdef DEBUG_OUTPUT
+						printf("\nTesting %s\n", buf);
+						printf("PREFERRED_WORK_GROUP_SIZE_MULTIPLE = %zu\n", item2);
+#endif
+					}
+				}
+				if (item12 >= item2){
+					select_method = 12;
+					OpenCL_kernel = kernel12;
+					ret = fn_clReleaseKernel(kernel2);
+#ifdef DEBUG_OUTPUT
+					if (ret != CL_SUCCESS)
+						printf("clReleaseKernel : Failed\n");
+					printf("\nSelected method%d\n", select_method);
+#endif
+				} else {
+					ret = fn_clReleaseKernel(kernel12);
+#ifdef DEBUG_OUTPUT
+					if (ret != CL_SUCCESS)
+						printf("clReleaseKernel : Failed\n");
+#endif
+					wsprintfA(buf, "method%d", 10);
+					kernel10 = fn_clCreateKernel(program, buf, &ret);
+					if (ret == CL_SUCCESS){
+						ret = fn_clGetKernelWorkGroupInfo(kernel10, selected_device, CL_KERNEL_PREFERRED_WORK_GROUP_SIZE_MULTIPLE, sizeof(size_t), &item10, NULL);
+						if (ret == CL_SUCCESS){
+#ifdef DEBUG_OUTPUT
+							printf("\nTesting %s\n", buf);
+							printf("PREFERRED_WORK_GROUP_SIZE_MULTIPLE = %zu\n", item10);
+#endif
+						}
+					}
+					if (item10 >= item2){
+						select_method = 10;
+						OpenCL_kernel = kernel10;
+						ret = fn_clReleaseKernel(kernel2);
+#ifdef DEBUG_OUTPUT
+						if (ret != CL_SUCCESS)
+							printf("clReleaseKernel : Failed\n");
+						printf("\nSelected method%d\n", select_method);
+#endif
+					} else {
+						wsprintfA(buf, "method%d", 4);
+						kernel4 = fn_clCreateKernel(program, buf, &ret);
+						if (ret == CL_SUCCESS){
+							ret = fn_clGetKernelWorkGroupInfo(kernel4, selected_device, CL_KERNEL_PREFERRED_WORK_GROUP_SIZE_MULTIPLE, sizeof(size_t), &item4, NULL);
+							if (ret == CL_SUCCESS){
+#ifdef DEBUG_OUTPUT
+								printf("\nTesting %s\n", buf);
+								printf("PREFERRED_WORK_GROUP_SIZE_MULTIPLE = %zu\n", item4);
+#endif
+							}
+						}
+						if (item4 >= item2){
+							select_method = 4;
+							OpenCL_kernel = kernel4;
+							ret = fn_clReleaseKernel(kernel2);
+#ifdef DEBUG_OUTPUT
+							if (ret != CL_SUCCESS)
+								printf("clReleaseKernel : Failed\n");
+							printf("\nSelected method%d\n", select_method);
+#endif
+						} else {
+							select_method = 2;
+							OpenCL_kernel = kernel2;
+							ret = fn_clReleaseKernel(kernel4);
+#ifdef DEBUG_OUTPUT
+							if (ret != CL_SUCCESS)
+								printf("clReleaseKernel : Failed\n");
+							printf("\nSelected method%d\n", select_method);
+#endif
+						}
+					}
+				}
+			}
+		}
+		OpenCL_method |= select_method;
+	} else if (((cpu_flag & 128) != 0) && (sse_unit == 256)){
+		OpenCL_method |= 16;	// JIT(SSE2) は bit ごとに上位から 16バイトずつ並ぶ
+		// ローカルのテーブルサイズが異なることに注意
+		// XOR 方式以外は 2KB (4バイト * 256項目 * 2個) 使う
+		// XOR (JIT) は 64バイト (4バイト * 16項目) 使う
+	} else {
+		int select_method;	// 並び替えられてないデータ用
+		if (OpenCL_method & 0x40000){	// 4-byte and 2 blocks
+			select_method = 9;
+		} else if (OpenCL_method & 0x10000){	// 4-byte
+			select_method = 1;
+		} else {	// kernel を作って詳細を確かめる
+			size_t item1, item9;
+			cl_kernel kernel1, kernel9;
+			item1 = item9 = 0;
+			// まずは一番重くて速い奴を調べる
+			wsprintfA(buf, "method%d", 9);
+			kernel9 = fn_clCreateKernel(program, buf, &ret);
+			if (ret == CL_SUCCESS){
+				ret = fn_clGetKernelWorkGroupInfo(kernel9, selected_device, CL_KERNEL_PREFERRED_WORK_GROUP_SIZE_MULTIPLE, sizeof(size_t), &item9, NULL);
+				if (ret == CL_SUCCESS){
+#ifdef DEBUG_OUTPUT
+					printf("\nTesting %s\n", buf);
+					printf("PREFERRED_WORK_GROUP_SIZE_MULTIPLE = %zu\n", item9);
+#endif
+				}
+			}
+			if (item9 >= 32){	// 32以上あれば余裕で動くとみなす
+				select_method = 9;
+				OpenCL_kernel = kernel9;
+#ifdef DEBUG_OUTPUT
+				printf("\nSelected method%d\n", select_method);
+#endif
+			} else {	// 他の奴と比較する
+				wsprintfA(buf, "method%d", 1);
+				kernel1 = fn_clCreateKernel(program, buf, &ret);
+				if (ret == CL_SUCCESS){
+					ret = fn_clGetKernelWorkGroupInfo(kernel1, selected_device, CL_KERNEL_PREFERRED_WORK_GROUP_SIZE_MULTIPLE, sizeof(size_t), &item1, NULL);
+					if (ret == CL_SUCCESS){
+#ifdef DEBUG_OUTPUT
+						printf("\nTesting %s\n", buf);
+						printf("PREFERRED_WORK_GROUP_SIZE_MULTIPLE = %zu\n", item1);
+#endif
+					}
+				}
+				if (item9 >= item1){
+					select_method = 9;
+					OpenCL_kernel = kernel9;
+					ret = fn_clReleaseKernel(kernel1);
+#ifdef DEBUG_OUTPUT
+					if (ret != CL_SUCCESS)
+						printf("clReleaseKernel : Failed\n");
+					printf("\nSelected method%d\n", select_method);
+#endif
+				} else {
+					select_method = 1;
+					OpenCL_kernel = kernel1;
+					ret = fn_clReleaseKernel(kernel9);
+#ifdef DEBUG_OUTPUT
+					if (ret != CL_SUCCESS)
+						printf("clReleaseKernel : Failed\n");
+					printf("\nSelected method%d\n", select_method);
+#endif
+				}
+			}
+		}
+		OpenCL_method |= select_method;
+	}
+
+	// カーネル関数を抽出する
+	if (OpenCL_kernel == NULL){
+		wsprintfA(buf, "method%d", OpenCL_method & 31);
+		OpenCL_kernel = fn_clCreateKernel(program, buf, &ret);
+		if (ret != CL_SUCCESS)
+			return (ret << 8) | 22;
+#ifdef DEBUG_OUTPUT
+		printf("CreateKernel : %s\n", buf);
+		ret = fn_clGetKernelWorkGroupInfo(OpenCL_kernel, selected_device, CL_KERNEL_PREFERRED_WORK_GROUP_SIZE_MULTIPLE, sizeof(size_t), &data_size, NULL);
+		if (ret == CL_SUCCESS)
+			printf("PREFERRED_WORK_GROUP_SIZE_MULTIPLE = %zu\n", data_size);
+#endif
+	}
 
 	// カーネルが実行できる work item 数を調べる
-	ret = fn_clGetKernelWorkGroupInfo(OpenCL_kernel, NULL, CL_KERNEL_WORK_GROUP_SIZE, sizeof(size_t), &data_size, NULL);
-	if ((ret == CL_SUCCESS) && (data_size < 256)){	// 最低でも 256以上は必要
+	ret = fn_clGetKernelWorkGroupInfo(OpenCL_kernel, selected_device, CL_KERNEL_WORK_GROUP_SIZE, sizeof(size_t), &data_size, NULL);
+	if ((ret == CL_SUCCESS) && (data_size < 256)){	// 最低でも 256 以上は必要
 #ifdef DEBUG_OUTPUT
 		printf("KERNEL_WORK_GROUP_SIZE = %zd\n", data_size);
 #endif
@@ -558,6 +689,60 @@ int init_OpenCL(int unit_size, int *src_max)
 		fn_clUnloadCompiler();
 	}
 
+	// work group 数が必要以上に多い場合は減らす
+	if (OpenCL_method & 4){
+		// work item 一個が 32バイトずつ計算する、256個なら work group ごとに 8KB 担当する
+		data_size = unit_size / 8192;
+	} else if (OpenCL_method & 2){
+		// work item 一個が 8バイトずつ計算する、256個なら work group ごとに 2KB 担当する
+		data_size = unit_size / 2048;
+	} else {
+		// work item 一個が 4バイトずつ計算する、256個なら work group ごとに 1KB 担当する
+		data_size = unit_size / 1024;
+	}
+	if (OpenCL_group_num > data_size){
+		OpenCL_group_num = data_size;
+		printf("Number of work groups is reduced to %zd\n", OpenCL_group_num);
+	}
+
+	// データへのアクセス方法をデバイスによって変える
+	if (OpenCL_method & 0x200000){
+		OpenCL_method |= 32;
+	} else if ((OpenCL_method & 0x100000) == 0){
+		if (unified_memory){
+			OpenCL_method |= 32;	// Integrated GPU なら CL_MEM_USE_HOST_PTR を使う
+		} else {	// Discrete GPU でも Nvidia のは動作を変える
+			ret = fn_clGetDeviceInfo(selected_device, CL_DEVICE_VERSION, sizeof(buf), buf, NULL);
+			if (ret == CL_SUCCESS){
+				if (strstr(buf, "CUDA") != NULL)
+					OpenCL_method |= 32;	// NVIDIA GPU なら CL_MEM_USE_HOST_PTR を使う
+			}
+		}
+	}
+
+	// 出力先は1ブロック分だけあればいい
+	// CL_MEM_ALLOC_HOST_PTRを使えばpinned memoryになるらしい
+	data_size = unit_size;
+	if (OpenCL_method & 8)
+		data_size *= 2;	// 2ブロックずつ計算できるように、2倍確保しておく
+	OpenCL_dst = gfn_clCreateBuffer(OpenCL_context, CL_MEM_ALLOC_HOST_PTR, data_size, NULL, &ret);
+	if (ret != CL_SUCCESS)
+		return (ret << 8) | 13;
+#ifdef DEBUG_OUTPUT
+	printf("dst buf : %zd KB (%zd Bytes), OK\n", data_size >> 10, data_size);
+#endif
+
+	// factor は最大個数分 (src_max個)
+	data_size = sizeof(unsigned short) * (*src_max);
+	if (OpenCL_method & 8)
+		data_size *= 2;	// 2ブロックずつ計算できるように、2倍確保しておく
+	OpenCL_buf = gfn_clCreateBuffer(OpenCL_context, CL_MEM_READ_ONLY, data_size, NULL, &ret);
+	if (ret != CL_SUCCESS)
+		return (ret << 8) | 14;
+#ifdef DEBUG_OUTPUT
+	printf("factor buf : %zd Bytes (%d factors), OK\n", data_size, (*src_max));
+#endif
+
 	// カーネル引数を指定する
 	ret = gfn_clSetKernelArg(OpenCL_kernel, 1, sizeof(cl_mem), &OpenCL_dst);
 	if (ret != CL_SUCCESS)
@@ -565,13 +750,12 @@ int init_OpenCL(int unit_size, int *src_max)
 	ret = gfn_clSetKernelArg(OpenCL_kernel, 2, sizeof(cl_mem), &OpenCL_buf);
 	if (ret != CL_SUCCESS)
 		return (ret << 8) | 102;
-	if (ret != CL_SUCCESS)
-		return (ret << 8) | 103;
 
 #ifdef DEBUG_OUTPUT
 	// ワークアイテム数
 	printf("\nMax number of work items = %zd (256 * %zd)\n", OpenCL_group_num * 256, OpenCL_group_num);
 #endif
+	OpenCL_method &= 0xFF;	// 最後に選択設定を消去する
 
 	return 0;
 }
@@ -683,7 +867,7 @@ void info_OpenCL(char *buf, int buf_size)
 // ソース・ブロックをデバイス側にコピーする
 int gpu_copy_blocks(
 	unsigned char *data,	// ブロックのバッファー (境界は 4096にすること)
-	int unit_size,			// 4096の倍数にすること
+	unsigned int unit_size,	// 4096の倍数にすること
 	int src_num)			// 何ブロックをコピーするのか
 {
 	size_t data_size;
@@ -692,7 +876,7 @@ int gpu_copy_blocks(
 
 	// Integrated GPU と Discrete GPU の違いに関係なく、使う分だけ毎回メモリー領域を確保する
 	data_size = (size_t)unit_size * src_num;
-	if (OpenCL_method & 8){	// AMD's APU や Integrated GPU なら ZeroCopy する
+	if (OpenCL_method & 32){	// AMD's APU や Integrated GPU なら ZeroCopy する
 		// 実際に比較してみると GeForce GPU でもメモリー消費量が少なくてコピーが速い
 		// NVIDIA GPU は CL_MEM_USE_HOST_PTR でも VRAM 上にキャッシュするので速いらしい
 		flags = CL_MEM_READ_ONLY | CL_MEM_USE_HOST_PTR;
@@ -719,17 +903,31 @@ int gpu_copy_blocks(
 int gpu_multiply_blocks(
 	int src_num,			// Number of multiplying source blocks
 	unsigned short *mat,	// Matrix of numbers to multiply by
+	unsigned short *mat2,	// Set to calculate 2 blocks at once
 	unsigned char *buf,		// Products go here
-	int len)				// Byte length
+	unsigned int len)		// Byte length
 {
 	unsigned __int64 *vram, *src, *dst;
 	size_t global_size, local_size;
 	cl_int ret;
 
 	// 倍率の配列をデバイス側に書き込む
-	ret = gfn_clEnqueueWriteBuffer(OpenCL_command, OpenCL_buf, CL_FALSE, 0, sizeof(short) * src_num, mat, 0, NULL, NULL);
+	if (mat2 == NULL){	// 1ブロック分だけコピーする
+		ret = gfn_clEnqueueWriteBuffer(OpenCL_command, OpenCL_buf, CL_FALSE, 0, sizeof(short) * src_num, mat, 0, NULL, NULL);
+	} else {	// 2ブロックずつ計算する場合は、配列のサイズも２倍になる
+		if ((size_t)mat2 == 1){	// アドレスが 1 になることはあり得ないので、識別できる
+			ret = gfn_clEnqueueWriteBuffer(OpenCL_command, OpenCL_buf, CL_FALSE, 0, sizeof(short) * src_num * 2, mat, 0, NULL, NULL);
+		} else {	// 2回コピーする
+			size_t data_size = sizeof(short) * src_num;
+			ret = gfn_clEnqueueWriteBuffer(OpenCL_command, OpenCL_buf, CL_FALSE, 0, data_size, mat, 0, NULL, NULL);
+			if (ret != CL_SUCCESS)
+				return (ret << 8) | 10;
+			// もう一つの配列は違う場所からコピーする
+			ret = gfn_clEnqueueWriteBuffer(OpenCL_command, OpenCL_buf, CL_FALSE, data_size, data_size, mat2, 0, NULL, NULL);
+		}
+	}
 	if (ret != CL_SUCCESS)
-		return (ret << 8) | 10;
+		return (ret << 8) | 11;
 
 	// 引数を指定する
 	ret = gfn_clSetKernelArg(OpenCL_kernel, 3, sizeof(int), &src_num);
@@ -737,17 +935,17 @@ int gpu_multiply_blocks(
 		return (ret << 8) | 103;
 
 	// カーネル並列実行
-	local_size = 256;	// テーブルやキャッシュのため、work item 数は 256に固定する
+	local_size = 256;	// テーブルやキャッシュのため、work item 数は 256 に固定する
 	global_size = OpenCL_group_num * 256;
-	//printf("group num = %d, global size = %d, local size = 256 \n", OpenCL_group_num, global_size);
+	//printf("group num = %d, global size = %d, local size = %d \n", OpenCL_group_num, global_size, local_size);
 	ret = gfn_clEnqueueNDRangeKernel(OpenCL_command, OpenCL_kernel, 1, NULL, &global_size, &local_size, 0, NULL, NULL);
 	if (ret != CL_SUCCESS)
-		return (ret << 8) | 11;
+		return (ret << 8) | 12;
 
 	// 出力内容をホスト側に反映させる
 	vram = gfn_clEnqueueMapBuffer(OpenCL_command, OpenCL_dst, CL_TRUE, CL_MAP_READ, 0, len, 0, NULL, NULL, &ret);
 	if (ret != CL_SUCCESS)
-		return (ret << 8) | 12;
+		return (ret << 8) | 13;
 
 	// 8バイトごとに XOR する (SSE2 で XOR しても速くならず)
 	src = vram;
@@ -762,7 +960,7 @@ int gpu_multiply_blocks(
 	// ホスト側でデータを変更しなくても、clEnqueueMapBufferと対で呼び出さないといけない
 	ret = gfn_clEnqueueUnmapMemObject(OpenCL_command, OpenCL_dst, vram, 0, NULL, NULL);
 	if (ret != CL_SUCCESS)
-		return (ret << 8) | 13;
+		return (ret << 8) | 14;
 
 	return 0;
 }
@@ -775,12 +973,12 @@ int gpu_finish(void)
 	// 全ての処理が終わるのを待つ
 	ret = gfn_clFinish(OpenCL_command);
 	if (ret != CL_SUCCESS)
-		return (ret << 8) | 20;
+		return (ret << 8) | 30;
 
 	if (OpenCL_src != NULL){	// 確保されてる場合は解除する
 		ret = gfn_clReleaseMemObject(OpenCL_src);
 		if (ret != CL_SUCCESS)
-			return (ret << 8) | 21;
+			return (ret << 8) | 31;
 		OpenCL_src = NULL;
 	}
 

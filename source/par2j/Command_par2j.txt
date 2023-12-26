@@ -1,4 +1,4 @@
-[ par2j.exe - version 1.3.3.1 or later ]
+[ par2j.exe - version 1.3.3.2 or later ]
 
 Type "par2j.exe" to see version, test integrity, and show usage below.
 
@@ -369,14 +369,22 @@ The format is "/lc#" (# is from 1 to 32 as the number of using threads).
   0: It uses the number of physical Cores.
 255: It tries to use more threads than number of physical Cores.
 
- You may set additional combinations;
-+1024 to disable CLMUL (and use slower SSSE3 code),
-+2048 to disable JIT (for SSE2),
-+4096 to disable SSSE3,
-+8192 to disable AVX2,
-+256 or +512 (slower device) to enable GPU acceleration.
+ You may set additional combinations for CPU feature;
++1024 to disable CLMUL (and use slower SSSE3 code)
++2048 to disable JIT (for SSE2)
++4096 to disable SSSE3
++8192 to disable AVX2
 
- for example,  /lc1 to use single Core, /lc45 to use half Cores and GPU
+ You may set additional combinations for GPU control;
++256 or +512 (slower device) to enable GPU acceleration
++65536 for classic method
++131072 for 16-byte memory access
++262144 for 4-byte memory access and calculate 2 blocks at once
++524288 for 16-byte memory access and calculate 2 blocks at once
++1048576 for CL_MEM_COPY_HOST_PTR or +2097152 for CL_MEM_USE_HOST_PTR
+(When you set exclusive bits, larger value will be used.)
+
+ for example,  /lc1 to use single Core, /lc508 to use half Cores and GPU
 
  /m :
  Set this, if you want to set memory usage.

@@ -1,5 +1,5 @@
 ﻿// create.c
-// Copyright : 2023-10-22 Yutaka Sawada
+// Copyright : 2023-12-12 Yutaka Sawada
 // License : GPL
 
 #ifndef _UNICODE
@@ -25,6 +25,11 @@
 #include "create.h"
 
 //#define TIMER // 実験用
+
+#ifdef TIMER
+#include <time.h>
+static double time_sec, time_speed;
+#endif
 
 // ソート時に項目を比較する
 static int sort_cmp(const void *elem1, const void *elem2)
@@ -196,7 +201,7 @@ int set_common_packet(
 	__int64 prog_now = 0;
 
 #ifdef TIMER
-unsigned int time_start = GetTickCount();
+clock_t time_start = clock();
 #endif
 	print_progress_text(0, "Computing file hash");
 
@@ -305,14 +310,14 @@ unsigned int time_start = GetTickCount();
 	off += (64 + main_packet_size);
 
 #ifdef TIMER
-time_start = GetTickCount() - time_start;
-printf("hash %d.%03d sec", time_start / 1000, time_start % 1000);
-if (time_start > 0){
-	time_start = (int)((total_file_size * 125) / ((__int64)time_start * 131072));
-	printf(", %d MB/s\n", time_start);
+time_start = clock() - time_start;
+time_sec = (double)time_start / CLOCKS_PER_SEC;
+if (time_sec > 0){
+	time_speed = (double)total_file_size / (time_sec * 1048576);
 } else {
-	printf("\n");
+	time_speed = 0;
 }
+printf("hash %.3f sec, %.0f MB/s\n", time_sec, time_speed);
 #endif
 
 error_end:
@@ -341,7 +346,7 @@ int set_common_packet_multi(
 	FILE_HASH_TH th[MAX_MULTI_READ];
 
 #ifdef TIMER
-unsigned int time_start = GetTickCount();
+clock_t time_start = clock();
 #endif
 
 	memset(hSub, 0, sizeof(HANDLE) * MAX_MULTI_READ);
@@ -545,14 +550,14 @@ unsigned int time_start = GetTickCount();
 	}
 	print_progress_done();	// 改行して行の先頭に戻しておく
 #ifdef TIMER
-time_start = GetTickCount() - time_start;
-printf("hash %d.%03d sec", time_start / 1000, time_start % 1000);
-if (time_start > 0){
-	time_start = (int)((total_file_size * 125) / ((__int64)time_start * 131072));
-	printf(", %d MB/s\n", time_start);
+time_start = clock() - time_start;
+time_sec = (double)time_start / CLOCKS_PER_SEC;
+if (time_sec > 0){
+	time_speed = (double)total_file_size / (time_sec * 1048576);
 } else {
-	printf("\n");
+	time_speed = 0;
 }
+printf("hash %.3f sec, %.0f MB/s\n", time_sec, time_speed);
 #endif
 
 error_end:
@@ -700,7 +705,7 @@ int set_common_packet_hash(
 	__int64 prog_now = 0;
 
 #ifdef TIMER
-unsigned int time_start = GetTickCount();
+clock_t time_start = clock();
 #endif
 	print_progress_text(0, "Computing file hash");
 
@@ -740,8 +745,8 @@ unsigned int time_start = GetTickCount();
 	print_progress_done();	// 改行して行の先頭に戻しておく
 
 #ifdef TIMER
-time_start = GetTickCount() - time_start;
-printf("hash %d.%03d sec\n", time_start / 1000, time_start % 1000);
+time_start = clock() - time_start;
+printf("hash %.3f sec\n", (double)time_start / CLOCKS_PER_SEC);
 #endif
 	return 0;
 }
@@ -1065,7 +1070,7 @@ int create_recovery_file(
 #endif
 
 #ifdef TIMER
-unsigned int time_start = GetTickCount();
+clock_t time_start = clock();
 #endif
 	print_progress_text(0, "Constructing recovery file");
 	time_last = GetTickCount();
@@ -1258,8 +1263,8 @@ unsigned int time_start = GetTickCount();
 	print_progress_done();	// 改行して行の先頭に戻しておく
 
 #ifdef TIMER
-time_start = GetTickCount() - time_start;
-printf("write %d.%03d sec\n", time_start / 1000, time_start % 1000);
+time_start = clock() - time_start;
+printf("write %.3f sec\n", (double)time_start / CLOCKS_PER_SEC);
 #endif
 
 	return 0;

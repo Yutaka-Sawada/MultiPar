@@ -1,5 +1,5 @@
 ﻿// md5_crc.c
-// Copyright : 2023-10-29 Yutaka Sawada
+// Copyright : 2023-12-12 Yutaka Sawada
 // License : GPL
 
 #ifndef _UNICODE
@@ -20,7 +20,6 @@
 #include "crc.h"
 #include "phmd5.h"
 #include "md5_crc.h"
-
 
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
@@ -200,8 +199,10 @@ int file_md5_crc32_block(
 //#define TIMER // 実験用
 
 #ifdef TIMER
-static unsigned int time_start, time1_start;
-static unsigned int time_total = 0, time2_total = 0, time3_total = 0;
+#include <time.h>
+static double time_sec, time_speed;
+static clock_t time_start, time1_start;
+static clock_t time_total = 0, time2_total = 0, time3_total = 0;
 #endif
 
 #define MAX_BUF_SIZE	2097152	// ヒープ領域を使う場合の最大サイズ
@@ -224,7 +225,7 @@ int file_hash_crc(
 	HANDLE hFile;
 	OVERLAPPED ol;
 #ifdef TIMER
-time1_start = GetTickCount();
+time1_start = clock();
 #endif
 
 	// ソース・ファイルを開く
@@ -251,11 +252,11 @@ time1_start = GetTickCount();
 	if (file_left < IO_SIZE)
 		read_size = (unsigned int)file_left;
 #ifdef TIMER
-time_start = GetTickCount();
+time_start = clock();
 #endif
 	off = ReadFile(hFile, buf1, read_size, NULL, &ol);
 #ifdef TIMER
-time2_total += GetTickCount() - time_start;
+time2_total += clock() - time_start;
 #endif
 	if ((off == 0) && (GetLastError() != ERROR_IO_PENDING)){
 		print_win32_err();
@@ -281,11 +282,11 @@ time2_total += GetTickCount() - time_start;
 			ol.OffsetHigh = (unsigned int)(file_off >> 32);
 			file_off += IO_SIZE;
 #ifdef TIMER
-time_start = GetTickCount();
+time_start = clock();
 #endif
 			off = ReadFile(hFile, buf, read_size, NULL, &ol);
 #ifdef TIMER
-time2_total += GetTickCount() - time_start;
+time2_total += clock() - time_start;
 #endif
 			if ((off == 0) && (GetLastError() != ERROR_IO_PENDING)){
 				print_win32_err();
@@ -301,7 +302,7 @@ time2_total += GetTickCount() - time_start;
 		}
 
 #ifdef TIMER
-time_start = GetTickCount();
+time_start = clock();
 #endif
 		off = 0;	// チェックサム計算
 		if (block_left > 0){	// 前回足りなかった分を追加する
@@ -338,7 +339,7 @@ time_start = GetTickCount();
 			}
 		}
 #ifdef TIMER
-time3_total += GetTickCount() - time_start;
+time3_total += clock() - time_start;
 #endif
 
 		// 経過表示
@@ -369,16 +370,17 @@ error_end:
 		CloseHandle(ol.hEvent);
 
 #ifdef TIMER
-time_total += GetTickCount() - time1_start;
+time_total += clock() - time1_start;
 if (*prog_now == total_file_size){
-	printf("\nread  %d.%03d sec\n", time2_total / 1000, time2_total % 1000);
-	printf("main  %d.%03d sec\n", time3_total / 1000, time3_total % 1000);
-	if (time_total > 0){
-		time_start = (int)((total_file_size * 125) / ((__int64)time_total * 131072));
+	printf("\nread  %.3f sec\n", (double)time2_total / CLOCKS_PER_SEC);
+	printf("main  %.3f sec\n", (double)time3_total / CLOCKS_PER_SEC);
+	time_sec = (double)time_total / CLOCKS_PER_SEC;
+	if (time_sec > 0){
+		time_speed = (double)total_file_size / (time_sec * 1048576);
 	} else {
-		time_start = 0;
+		time_speed = 0;
 	}
-	printf("total %d.%03d sec, %d MB/s\n", time_total / 1000, time_total % 1000, time_start);
+	printf("total %.3f sec, %.0f MB/s\n", time_sec, time_speed);
 }
 #endif
 	return err;
@@ -403,7 +405,7 @@ int file_hash_crc(
 	HANDLE hFile;
 	OVERLAPPED ol;
 #ifdef TIMER
-time1_start = GetTickCount();
+time1_start = clock();
 #endif
 
 	// ソース・ファイルを開く
@@ -442,11 +444,11 @@ error_retry_read:
 	if (file_left < IO_SIZE)
 		read_size = (unsigned int)file_left;
 #ifdef TIMER
-time_start = GetTickCount();
+time_start = clock();
 #endif
 	off = ReadFile(hFile, buf1, read_size, NULL, &ol);
 #ifdef TIMER
-time2_total += GetTickCount() - time_start;
+time2_total += clock() - time_start;
 #endif
 	if ((off == 0) && (GetLastError() != ERROR_IO_PENDING)){
 		print_win32_err();
@@ -536,11 +538,11 @@ error_retry_pause:
 			ol.OffsetHigh = (unsigned int)(file_off >> 32);
 			file_off += IO_SIZE;
 #ifdef TIMER
-time_start = GetTickCount();
+time_start = clock();
 #endif
 			off = ReadFile(hFile, buf, read_size, NULL, &ol);
 #ifdef TIMER
-time2_total += GetTickCount() - time_start;
+time2_total += clock() - time_start;
 #endif
 			if ((off == 0) && (GetLastError() != ERROR_IO_PENDING)){
 				print_win32_err();
@@ -557,7 +559,7 @@ time2_total += GetTickCount() - time_start;
 		}
 
 #ifdef TIMER
-time_start = GetTickCount();
+time_start = clock();
 #endif
 		off = 0;	// チェックサム計算
 		if (block_left > 0){	// 前回足りなかった分を追加する
@@ -594,7 +596,7 @@ time_start = GetTickCount();
 			}
 		}
 #ifdef TIMER
-time3_total += GetTickCount() - time_start;
+time3_total += clock() - time_start;
 #endif
 
 		// 経過表示
@@ -625,16 +627,17 @@ error_end:
 		CloseHandle(ol.hEvent);
 
 #ifdef TIMER
-time_total += GetTickCount() - time1_start;
+time_total += clock() - time1_start;
 if (*prog_now == total_file_size){
-	printf("\nread  %d.%03d sec\n", time2_total / 1000, time2_total % 1000);
-	printf("main  %d.%03d sec\n", time3_total / 1000, time3_total % 1000);
-	if (time_total > 0){
-		time_start = (int)((total_file_size * 125) / ((__int64)time_total * 131072));
+	printf("\nread  %.3f sec\n", (double)time2_total / CLOCKS_PER_SEC);
+	printf("main  %.3f sec\n", (double)time3_total / CLOCKS_PER_SEC);
+	time_sec = (double)time_total / CLOCKS_PER_SEC;
+	if (time_sec > 0){
+		time_speed = (double)total_file_size / (time_sec * 1048576);
 	} else {
-		time_start = 0;
+		time_speed = 0;
 	}
-	printf("total %d.%03d sec, %d MB/s\n", time_total / 1000, time_total % 1000, time_start);
+	printf("total %.3f sec, %.0f MB/s\n", time_sec, time_speed);
 }
 #endif
 	return err;
@@ -660,7 +663,7 @@ int file_hash_crc(
 	HANDLE hFile;
 	OVERLAPPED ol;
 #ifdef TIMER
-time1_start = GetTickCount();
+time1_start = clock();
 #endif
 
 	// ソース・ファイルを開く
@@ -699,11 +702,11 @@ time1_start = GetTickCount();
 	if (file_left < io_size)
 		read_size = (unsigned int)file_left;
 #ifdef TIMER
-time_start = GetTickCount();
+time_start = clock();
 #endif
 	off = ReadFile(hFile, buf1, read_size, NULL, &ol);
 #ifdef TIMER
-time2_total += GetTickCount() - time_start;
+time2_total += clock() - time_start;
 #endif
 	if ((off == 0) && (GetLastError() != ERROR_IO_PENDING)){
 		print_win32_err();
@@ -729,11 +732,11 @@ time2_total += GetTickCount() - time_start;
 			ol.OffsetHigh = (unsigned int)(file_off >> 32);
 			file_off += io_size;
 #ifdef TIMER
-time_start = GetTickCount();
+time_start = clock();
 #endif
 			off = ReadFile(hFile, buf, read_size, NULL, &ol);
 #ifdef TIMER
-time2_total += GetTickCount() - time_start;
+time2_total += clock() - time_start;
 #endif
 			if ((off == 0) && (GetLastError() != ERROR_IO_PENDING)){
 				print_win32_err();
@@ -749,7 +752,7 @@ time2_total += GetTickCount() - time_start;
 		}
 
 #ifdef TIMER
-time_start = GetTickCount();
+time_start = clock();
 #endif
 		off = 0;	// チェックサム計算
 		if (block_left > 0){	// 前回足りなかった分を追加する
@@ -786,7 +789,7 @@ time_start = GetTickCount();
 			}
 		}
 #ifdef TIMER
-time3_total += GetTickCount() - time_start;
+time3_total += clock() - time_start;
 #endif
 
 		// 経過表示
@@ -819,16 +822,17 @@ error_end:
 		_aligned_free(buf1);
 
 #ifdef TIMER
-time_total += GetTickCount() - time1_start;
+time_total += clock() - time1_start;
 if (*prog_now == total_file_size){
-	printf("\nread  %d.%03d sec\n", time2_total / 1000, time2_total % 1000);
-	printf("main  %d.%03d sec\n", time3_total / 1000, time3_total % 1000);
-	if (time_total > 0){
-		time_start = (int)((total_file_size * 125) / ((__int64)time_total * 131072));
+	printf("\nread  %.3f sec\n", (double)time2_total / CLOCKS_PER_SEC);
+	printf("main  %.3f sec\n", (double)time3_total / CLOCKS_PER_SEC);
+	time_sec = (double)time_total / CLOCKS_PER_SEC;
+	if (time_sec > 0){
+		time_speed = (double)total_file_size / (time_sec * 1048576);
 	} else {
-		time_start = 0;
+		time_speed = 0;
 	}
-	printf("total %d.%03d sec, %d MB/s\n", time_total / 1000, time_total % 1000, time_start);
+	printf("total %.3f sec, %.0f MB/s\n", time_sec, time_speed);
 }
 #endif
 	return err;
@@ -1038,7 +1042,7 @@ int file_hash_check(
 	PHMD5 hash_ctx, block_ctx;
 	OVERLAPPED ol;
 #ifdef TIMER
-time1_start = GetTickCount();
+time1_start = clock();
 #endif
 
 	prog_last = -1;	// 検証中のファイル名を毎回表示する
@@ -1062,11 +1066,11 @@ time1_start = GetTickCount();
 		file_left = file_size - 16384;	// 本来のファイル・サイズまでしか検査しない
 	}
 #ifdef TIMER
-time_start = GetTickCount();
+time_start = clock();
 #endif
 	off = ReadFile(hFile, buf, len, NULL, &ol);
 #ifdef TIMER
-time2_total += GetTickCount() - time_start;
+time2_total += clock() - time_start;
 #endif
 	if ((off == 0) && (GetLastError() != ERROR_IO_PENDING)){
 		print_win32_err();
@@ -1141,11 +1145,11 @@ time2_total += GetTickCount() - time_start;
 	if (file_left < IO_SIZE)
 		read_size = (unsigned int)file_left;
 #ifdef TIMER
-time_start = GetTickCount();
+time_start = clock();
 #endif
 	off = ReadFile(hFile, buf1, read_size, NULL, &ol);
 #ifdef TIMER
-time2_total += GetTickCount() - time_start;
+time2_total += clock() - time_start;
 #endif
 	if ((off == 0) && (GetLastError() != ERROR_IO_PENDING)){
 		print_win32_err();
@@ -1168,11 +1172,11 @@ time2_total += GetTickCount() - time_start;
 			ol.OffsetHigh = (unsigned int)(file_off >> 32);
 			file_off += IO_SIZE;
 #ifdef TIMER
-time_start = GetTickCount();
+time_start = clock();
 #endif
 			off = ReadFile(hFile, buf, read_size, NULL, &ol);
 #ifdef TIMER
-time2_total += GetTickCount() - time_start;
+time2_total += clock() - time_start;
 #endif
 			if ((off == 0) && (GetLastError() != ERROR_IO_PENDING)){
 				print_win32_err();
@@ -1187,7 +1191,7 @@ time2_total += GetTickCount() - time_start;
 		}
 
 #ifdef TIMER
-time_start = GetTickCount();
+time_start = clock();
 #endif
 		if (s_blk != NULL){
 			off = 0;
@@ -1230,7 +1234,7 @@ time_start = GetTickCount();
 			Phmd5Process(&hash_ctx, buf, len);	// MD5 計算
 		}
 #ifdef TIMER
-time3_total += GetTickCount() - time_start;
+time3_total += clock() - time_start;
 #endif
 
 		// 経過表示
@@ -1267,15 +1271,16 @@ error_end:
 		CloseHandle(ol.hEvent);
 
 #ifdef TIMER
-time_total += GetTickCount() - time1_start;
-	printf("\nread  %d.%03d sec\n", time2_total / 1000, time2_total % 1000);
-	printf("main  %d.%03d sec\n", time3_total / 1000, time3_total % 1000);
-	if (time_total > 0){
-		time_start = (int)((file_size * 125) / ((__int64)time_total * 131072));
+time_total += clock() - time1_start;
+	printf("\nread  %.3f sec\n", (double)time2_total / CLOCKS_PER_SEC);
+	printf("main  %.3f sec\n", (double)time3_total / CLOCKS_PER_SEC);
+	time_sec = (double)time_total / CLOCKS_PER_SEC;
+	if (time_sec > 0){
+		time_speed = (double)file_size / (time_sec * 1048576);
 	} else {
-		time_start = 0;
+		time_speed = 0;
 	}
-	printf("total %d.%03d sec, %d MB/s\n", time_total / 1000, time_total % 1000, time_start);
+	printf("total %.3f sec, %.0f MB/s\n", time_sec, time_speed);
 #endif
 	return comp_num;
 }
@@ -1536,7 +1541,7 @@ int file_hash_direct(
 	HANDLE hFile;
 	OVERLAPPED ol;
 #ifdef TIMER
-time1_start = GetTickCount();
+time1_start = clock();
 #endif
 
 	prog_last = -1;	// 検証中のファイル名を毎回表示する
@@ -1592,11 +1597,11 @@ time1_start = GetTickCount();
 		file_left = file_size - 16384;	// 本来のファイル・サイズまでしか検査しない
 	}
 #ifdef TIMER
-time_start = GetTickCount();
+time_start = clock();
 #endif
 	off = ReadFile(hFile, buf, read_size, NULL, &ol);
 #ifdef TIMER
-time2_total += GetTickCount() - time_start;
+time2_total += clock() - time_start;
 #endif
 	if ((off == 0) && (GetLastError() != ERROR_IO_PENDING)){
 		comp_num = -1;
@@ -1679,11 +1684,11 @@ time2_total += GetTickCount() - time_start;
 		read_size = (read_size + 4095) & ~4095;	// 4KB の倍数にする
 	}
 #ifdef TIMER
-time_start = GetTickCount();
+time_start = clock();
 #endif
 	off = ReadFile(hFile, buf1, read_size, NULL, &ol);
 #ifdef TIMER
-time2_total += GetTickCount() - time_start;
+time2_total += clock() - time_start;
 #endif
 	if ((off == 0) && (GetLastError() != ERROR_IO_PENDING)){
 		print_win32_err();
@@ -1710,11 +1715,11 @@ time2_total += GetTickCount() - time_start;
 			ol.OffsetHigh = (unsigned int)(file_off >> 32);
 			file_off += IO_SIZE;
 #ifdef TIMER
-time_start = GetTickCount();
+time_start = clock();
 #endif
 			off = ReadFile(hFile, buf, read_size, NULL, &ol);
 #ifdef TIMER
-time2_total += GetTickCount() - time_start;
+time2_total += clock() - time_start;
 #endif
 			if ((off == 0) && (GetLastError() != ERROR_IO_PENDING)){
 				print_win32_err();
@@ -1729,7 +1734,7 @@ time2_total += GetTickCount() - time_start;
 		}
 
 #ifdef TIMER
-time_start = GetTickCount();
+time_start = clock();
 #endif
 		if (s_blk != NULL){
 			off = 0;
@@ -1771,7 +1776,7 @@ time_start = GetTickCount();
 			Phmd5Process(&hash_ctx, buf, len);	// MD5 計算
 		}
 #ifdef TIMER
-time3_total += GetTickCount() - time_start;
+time3_total += clock() - time_start;
 #endif
 
 		// 経過表示
@@ -1812,10 +1817,16 @@ error_end:
 		_aligned_free(buf1);
 
 #ifdef TIMER
-time_total += GetTickCount() - time1_start;
-	printf("\nread  %d.%03d sec\n", time2_total / 1000, time2_total % 1000);
-	printf("main  %d.%03d sec\n", time3_total / 1000, time3_total % 1000);
-	printf("total %d.%03d sec\n", time_total / 1000, time_total % 1000);
+time_total += clock() - time1_start;
+	printf("\nread  %.3f sec\n", (double)time2_total / CLOCKS_PER_SEC);
+	printf("main  %.3f sec\n", (double)time3_total / CLOCKS_PER_SEC);
+	time_sec = (double)time_total / CLOCKS_PER_SEC;
+	if (time_sec > 0){
+		time_speed = (double)file_size / (time_sec * 1048576);
+	} else {
+		time_speed = 0;
+	}
+	printf("total %.3f sec, %.0f MB/s\n", time_sec, time_speed);
 #endif
 	return comp_num;
 }

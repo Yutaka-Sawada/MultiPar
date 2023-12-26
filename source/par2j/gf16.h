@@ -6,7 +6,7 @@ extern "C" {
 #endif
 
 
-extern unsigned short *galois_log_table;
+//extern unsigned short *galois_log_table;
 extern unsigned int cpu_flag;
 
 int galois_create_table(void);	// Returns 0 on success, -1 on failure

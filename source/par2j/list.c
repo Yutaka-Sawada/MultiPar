@@ -1,5 +1,5 @@
 ﻿// list.c
-// Copyright : 2023-10-15 Yutaka Sawada
+// Copyright : 2023-12-12 Yutaka Sawada
 // License : GPL
 
 #ifndef _UNICODE
@@ -25,6 +25,11 @@
 #include "list.h"
 
 //#define TIMER // 実験用
+
+#ifdef TIMER
+#include <time.h>
+static double time_sec, time_speed;
+#endif
 
 // recovery set のファイルのハッシュ値を調べる (空のファイルは除く)
 // 0x00 = ファイルが存在して完全である
@@ -296,7 +301,7 @@ int check_file_complete(
 {
 	int i, rv;
 #ifdef TIMER
-unsigned int time_start = GetTickCount();
+clock_t time_start = clock();
 #endif
 
 	printf("\nVerifying Input File   :\n");
@@ -332,14 +337,14 @@ unsigned int time_start = GetTickCount();
 	}
 
 #ifdef TIMER
-time_start = GetTickCount() - time_start;
-printf("\n hash %d.%03d sec", time_start / 1000, time_start % 1000);
-if (time_start > 0){
-	time_start = (int)((total_file_size * 125) / ((__int64)time_start * 131072));
-	printf(", %d MB/s\n", time_start);
+time_start = clock() - time_start;
+time_sec = (double)time_start / CLOCKS_PER_SEC;
+if (time_sec > 0){
+	time_speed = (double)total_file_size / (time_sec * 1048576);
 } else {
-	printf("\n");
+	time_speed = 0;
 }
+printf("\n hash %.3f sec, %.0f MB/s\n", time_sec, time_speed);
 #endif
 	return 0;
 }
@@ -364,7 +369,7 @@ int check_file_complete_multi(
 	HANDLE hSub[MAX_READ_NUM];
 	FILE_CHECK_TH th[MAX_READ_NUM];
 #ifdef TIMER
-unsigned int time_start = GetTickCount();
+clock_t time_start = clock();
 #endif
 
 	memset(hSub, 0, sizeof(HANDLE) * MAX_READ_NUM);
@@ -630,14 +635,14 @@ unsigned int time_start = GetTickCount();
 	}
 
 #ifdef TIMER
-time_start = GetTickCount() - time_start;
-printf("\n hash %d.%03d sec", time_start / 1000, time_start % 1000);
-if (time_start > 0){
-	time_start = (int)((total_file_size * 125) / ((__int64)time_start * 131072));
-	printf(", %d MB/s\n", time_start);
+time_start = clock() - time_start;
+time_sec = (double)time_start / CLOCKS_PER_SEC;
+if (time_sec > 0){
+	time_speed = (double)total_file_size / (time_sec * 1048576);
 } else {
-	printf("\n");
+	time_speed = 0;
 }
+printf("\n hash %.3f sec, %.0f MB/s\n", time_sec, time_speed);
 #endif
 
 error_end:

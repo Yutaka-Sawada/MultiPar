@@ -1,5 +1,5 @@
 ﻿// par2_cmd.c
-// Copyright : 2023-10-15 Yutaka Sawada
+// Copyright : 2023-12-09 Yutaka Sawada
 // License : GPL
 
 #ifndef _UNICODE
@@ -1479,14 +1479,12 @@ ri= switch_set & 0x00040000
 			} else if (wcsncmp(tmp_p, L"lc", 2) == 0){
 				k = 0;
 				j = 2;
-				while ((j < 2 + 5) && (tmp_p[j] >= '0') && (tmp_p[j] <= '9')){
+				while ((j < 2 + 7) && (tmp_p[j] >= '0') && (tmp_p[j] <= '9')){
 					k = (k * 10) + (tmp_p[j] - '0');
 					j++;
 				}
-				if (k & 256){	// GPU を使う
-					OpenCL_method = 1;	// Faster GPU
-				} else if (k & 512){
-					OpenCL_method = -1;	// Slower GPU
+				if (k & 0x300){	// GPU を使う
+					OpenCL_method = k & 0x003F0300;
 				}
 				if (k & 1024)	// CLMUL と ALTMAP を使わない
 					cpu_flag = (cpu_flag & 0xFFFFFFF7) | 256;

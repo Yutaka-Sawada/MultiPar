@@ -2795,7 +2795,7 @@ void galois_align_xor(
 void galois_align16_multiply(
 	unsigned char *r1,	// Region to multiply (must be aligned by 16)
 	unsigned char *r2,	// Products go here
-	unsigned int len,	// Byte length (must be multiple of 32)
+	unsigned int len,	// Byte length (must be multiple of 16)
 	int factor)			// Number to multiply by
 {
 	if (factor <= 1){

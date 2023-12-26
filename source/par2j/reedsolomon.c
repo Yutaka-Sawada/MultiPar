@@ -1,5 +1,5 @@
 ﻿// reedsolomon.c
-// Copyright : 2023-10-26 Yutaka Sawada
+// Copyright : 2023-12-12 Yutaka Sawada
 // License : GPL
 
 #ifndef _UNICODE
@@ -27,6 +27,9 @@
 #include "rs_decode.h"
 #include "reedsolomon.h"
 
+#ifdef TIMER
+#include <time.h>
+#endif
 
 // GPU を使う最小データサイズ (MB 単位)
 // GPU の起動には時間がかかるので、データが小さすぎると逆に遅くなる
@@ -739,7 +742,7 @@ int rs_encode(
 	int err = 0;
 	unsigned int len;
 #ifdef TIMER
-unsigned int time_total = GetTickCount();
+clock_t time_total = clock();
 #endif
 
 	if (galois_create_table()){
@@ -755,7 +758,7 @@ unsigned int time_total = GetTickCount();
 	// パリティ計算用の行列演算の準備をする
 	len = sizeof(unsigned short) * source_num;
 	if (OpenCL_method != 0)
-		len *= 2;	// GPU の作業領域も確保しておく
+		len *= 3;	// GPU の作業領域も確保しておく
 	constant = malloc(len);
 	if (constant == NULL){
 		printf("malloc, %d\n", len);
@@ -799,8 +802,8 @@ unsigned int time_total = GetTickCount();
 		err = encode_method2(file_path, header_buf, rcv_hFile, files, s_blk, p_blk, constant);
 #ifdef TIMER
 	if (err != 1){
-		time_total = GetTickCount() - time_total;
-		printf("total  %d.%03d sec\n", time_total / 1000, time_total % 1000);
+		time_total = clock() - time_total;
+		printf("total  %.3f sec\n", (double)time_total / CLOCKS_PER_SEC);
 	}
 #endif
 
@@ -830,7 +833,7 @@ int rs_encode_1pass(
 	int err = 0;
 	unsigned int len;
 #ifdef TIMER
-unsigned int time_total = GetTickCount();
+clock_t time_total = clock();
 #endif
 
 	if (galois_create_table()){
@@ -841,7 +844,7 @@ unsigned int time_total = GetTickCount();
 	// パリティ計算用の行列演算の準備をする
 	len = sizeof(unsigned short) * source_num;
 	if (OpenCL_method != 0)
-		len *= 2;	// GPU の作業領域も確保しておく
+		len *= 3;	// GPU の作業領域も確保しておく
 	constant = malloc(len);
 	if (constant == NULL){
 		printf("malloc, %d\n", len);
@@ -888,8 +891,8 @@ unsigned int time_total = GetTickCount();
 	if (err < 0){
 		printf("switching to 2-pass processing, %d\n", err);
 	} else if (err != 1){
-		time_total = GetTickCount() - time_total;
-		printf("total  %d.%03d sec\n", time_total / 1000, time_total % 1000);
+		time_total = clock() - time_total;
+		printf("total  %.3f sec\n", (double)time_total / CLOCKS_PER_SEC);
 	}
 #endif
 
@@ -913,7 +916,7 @@ int rs_decode(
 	int err = 0, i, j, k;
 	unsigned int len;
 #ifdef TIMER
-unsigned int time_matrix = 0, time_total = GetTickCount();
+clock_t time_matrix = 0, time_total = clock();
 #endif
 
 	if (galois_create_table()){
@@ -948,7 +951,7 @@ unsigned int time_matrix = 0, time_total = GetTickCount();
 	id = mat + (block_lost * source_num);
 
 #ifdef TIMER
-time_matrix = GetTickCount();
+time_matrix = clock();
 #endif
 	// 復元用の行列を計算する
 	print_progress_text(0, "Computing matrix");
@@ -989,7 +992,7 @@ time_matrix = GetTickCount();
 	//for (i = 0; i < block_lost; i++)
 	//	printf("id[%d] = %d\n", i, id[i]);
 #ifdef TIMER
-time_matrix = GetTickCount() - time_matrix;
+time_matrix = clock() - time_matrix;
 #endif
 
 #ifdef TIMER
@@ -1032,9 +1035,9 @@ time_matrix = GetTickCount() - time_matrix;
 		err = decode_method2(file_path, block_lost, rcv_hFile, files, s_blk, p_blk, mat);
 #ifdef TIMER
 	if (err != 1){
-		time_total = GetTickCount() - time_total;
-		printf("total  %d.%03d sec\n", time_total / 1000, time_total % 1000);
-		printf("matrix %d.%03d sec\n", time_matrix / 1000, time_matrix % 1000);
+		time_total = clock() - time_total;
+		printf("total  %.3f sec\n", (double)time_total / CLOCKS_PER_SEC);
+		printf("matrix %.3f sec\n", (double)time_matrix / CLOCKS_PER_SEC);
 	}
 #endif
 

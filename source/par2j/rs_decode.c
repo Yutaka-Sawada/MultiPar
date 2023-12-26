@@ -1,5 +1,5 @@
 ﻿// rs_decode.c
-// Copyright : 2023-11-27 Yutaka Sawada
+// Copyright : 2023-12-13 Yutaka Sawada
 // License : GPL
 
 #ifndef _UNICODE
@@ -28,7 +28,9 @@
 
 
 #ifdef TIMER
-static unsigned int time_start, time_read = 0, time_write = 0, time_calc = 0;
+#include <time.h>
+static double time_sec, time_speed;
+static clock_t time_start, time_read = 0, time_write = 0, time_calc = 0;
 static unsigned int read_count, write_count = 0, skip_count;
 #endif
 
@@ -60,7 +62,7 @@ static DWORD WINAPI thread_decode2(LPVOID lpParameter)
 	RS_TH *th;
 #ifdef TIMER
 unsigned int loop_count2a = 0, loop_count2b = 0;
-unsigned int time_start2, time_encode2a = 0, time_encode2b = 0;
+clock_t time_start2, time_encode2a = 0, time_encode2b = 0;
 #endif
 
 	th = (RS_TH *)lpParameter;
@@ -78,7 +80,7 @@ unsigned int time_start2, time_encode2a = 0, time_encode2b = 0;
 	WaitForSingleObject(hRun, INFINITE);	// 計算開始の合図を待つ
 	while (th->now < INT_MAX / 2){
 #ifdef TIMER
-time_start2 = GetTickCount();
+time_start2 = clock();
 #endif
 		s_buf = th->buf;
 		factor = th->mat;
@@ -95,7 +97,7 @@ loop_count2a++;
 #endif
 			}
 #ifdef TIMER
-time_encode2a += GetTickCount() - time_start2;
+time_encode2a += clock() - time_start2;
 #endif
 		} else {	// 消失ブロックを部分的に保持する場合
 			// スレッドごとに復元する消失ブロックの chunk を変える
@@ -136,7 +138,7 @@ loop_count2b += src_num;
 #endif
 			}
 #ifdef TIMER
-time_encode2b += GetTickCount() - time_start2;
+time_encode2b += clock() - time_start2;
 #endif
 		}
 		//_mm_sfence();	// メモリーへの書き込みを完了する
@@ -146,19 +148,21 @@ time_encode2b += GetTickCount() - time_start2;
 #ifdef TIMER
 loop_count2b /= chunk_num;	// chunk数で割ってブロック数にする
 printf("sub-thread : total loop = %d\n", loop_count2a + loop_count2b);
-if (time_encode2a > 0){
-	i = (int)((__int64)loop_count2a * unit_size * 125 / ((__int64)time_encode2a * 131072));
+time_sec = (double)time_encode2a / CLOCKS_PER_SEC;
+if (time_sec > 0){
+	time_speed = ((double)loop_count2a * unit_size) / (time_sec * 1048576);
 } else {
-	i = 0;
+	time_speed = 0;
 }
 if (loop_count2a > 0)
-	printf(" 1st decode %d.%03d sec, %d loop, %d MB/s\n", time_encode2a / 1000, time_encode2a % 1000, loop_count2a, i);
-if (time_encode2b > 0){
-	i = (int)((__int64)loop_count2b * unit_size * 125 / ((__int64)time_encode2b * 131072));
+	printf(" 1st decode %.3f sec, %d loop, %.0f MB/s\n", time_sec, loop_count2a, time_speed);
+time_sec = (double)time_encode2b / CLOCKS_PER_SEC;
+if (time_sec > 0){
+	time_speed = ((double)loop_count2b * unit_size) / (time_sec * 1048576);
 } else {
-	i = 0;
+	time_speed = 0;
 }
-printf(" 2nd decode %d.%03d sec, %d loop, %d MB/s\n", time_encode2b / 1000, time_encode2b % 1000, loop_count2b, i);
+printf(" 2nd decode %.3f sec, %d loop, %.0f MB/s\n", time_sec, loop_count2b, time_speed);
 #endif
 
 	// 終了処理
@@ -178,7 +182,7 @@ static DWORD WINAPI thread_decode3(LPVOID lpParameter)
 	RS_TH *th;
 #ifdef TIMER
 unsigned int loop_count2a = 0, loop_count2b = 0;
-unsigned int time_start2, time_encode2a = 0, time_encode2b = 0;
+clock_t time_start2, time_encode2a = 0, time_encode2b = 0;
 #endif
 
 	th = (RS_TH *)lpParameter;
@@ -197,7 +201,7 @@ unsigned int time_start2, time_encode2a = 0, time_encode2b = 0;
 	WaitForSingleObject(hRun, INFINITE);	// 計算開始の合図を待つ
 	while (th->now < INT_MAX / 2){
 #ifdef TIMER
-time_start2 = GetTickCount();
+time_start2 = clock();
 #endif
 		s_buf = th->buf;
 		factor = th->mat;
@@ -214,7 +218,7 @@ loop_count2a++;
 #endif
 			}
 #ifdef TIMER
-time_encode2a += GetTickCount() - time_start2;
+time_encode2a += clock() - time_start2;
 #endif
 		} else {	// 全ての消失ブロックを保持する場合
 			// スレッドごとに復元する消失ブロックの chunk を変える
@@ -250,7 +254,7 @@ loop_count2b += src_num;
 #endif
 			}
 #ifdef TIMER
-time_encode2b += GetTickCount() - time_start2;
+time_encode2b += clock() - time_start2;
 #endif
 		}
 		//_mm_sfence();	// メモリーへの書き込みを完了する
@@ -260,19 +264,21 @@ time_encode2b += GetTickCount() - time_start2;
 #ifdef TIMER
 loop_count2b /= chunk_num;	// chunk数で割ってブロック数にする
 printf("sub-thread : total loop = %d\n", loop_count2a + loop_count2b);
-if (time_encode2a > 0){
-	i = (int)((__int64)loop_count2a * unit_size * 125 / ((__int64)time_encode2a * 131072));
+time_sec = (double)time_encode2a / CLOCKS_PER_SEC;
+if (time_sec > 0){
+	time_speed = ((double)loop_count2a * unit_size) / (time_sec * 1048576);
 } else {
-	i = 0;
+	time_speed = 0;
 }
 if (loop_count2a > 0)
-	printf(" 1st decode %d.%03d sec, %d loop, %d MB/s\n", time_encode2a / 1000, time_encode2a % 1000, loop_count2a, i);
-if (time_encode2b > 0){
-	i = (int)((__int64)loop_count2b * unit_size * 125 / ((__int64)time_encode2b * 131072));
+	printf(" 1st decode %.3f sec, %d loop, %.0f MB/s\n", time_sec, loop_count2a, time_speed);
+time_sec = (double)time_encode2b / CLOCKS_PER_SEC;
+if (time_sec > 0){
+	time_speed = ((double)loop_count2b * unit_size) / (time_sec * 1048576);
 } else {
-	i = 0;
+	time_speed = 0;
 }
-printf(" 2nd decode %d.%03d sec, %d loop, %d MB/s\n", time_encode2b / 1000, time_encode2b % 1000, loop_count2b, i);
+printf(" 2nd decode %.3f sec, %d loop, %.0f MB/s\n", time_sec, loop_count2b, time_speed);
 #endif
 
 	// 終了処理
@@ -292,7 +298,8 @@ static DWORD WINAPI thread_decode_gpu(LPVOID lpParameter)
 	HANDLE hRun, hEnd;
 	RS_TH *th;
 #ifdef TIMER
-unsigned int time_start2, time_encode2 = 0, loop_count2 = 0;
+unsigned int loop_count2 = 0;
+clock_t time_start2, time_encode2 = 0;
 #endif
 
 	th = (RS_TH *)lpParameter;
@@ -307,7 +314,7 @@ unsigned int time_start2, time_encode2 = 0, loop_count2 = 0;
 	WaitForSingleObject(hRun, INFINITE);	// 計算開始の合図を待つ
 	while (th->now < INT_MAX / 2){
 #ifdef TIMER
-time_start2 = GetTickCount();
+time_start2 = clock();
 #endif
 		// GPUはソース・ブロック読み込み中に呼ばれない
 		s_buf = th->buf;
@@ -321,22 +328,58 @@ time_start2 = GetTickCount();
 			InterlockedExchange(&(th->now), INT_MAX / 3);	// サブ・スレッドの計算を中断する
 		}
 
-		// スレッドごとに復元する消失ブロックを変える
-		while ((j = InterlockedIncrement(&(th->now))) < block_lost){	// j = ++th_now
-			// 倍率は逆行列から部分的にコピーする
-			i = gpu_multiply_blocks(src_num, factor + source_num * j, g_buf + (size_t)unit_size * j, unit_size);
-			if (i != 0){
-				th->len = i;
-				InterlockedExchange(&(th->now), INT_MAX / 3);	// サブ・スレッドの計算を中断する
-				break;
-			}
+		// 一つの GPUスレッドが全ての消失ブロックを処理する
+		if (OpenCL_method & 8){	// ２ブロックずつ計算する
+			// 消失ブロック数が奇数なら、最初の一個だけ別に計算する
+			if (block_lost & 1){
+				InterlockedIncrement(&(th->now));	// 常に j = 0 となる
+
+				// 倍率は逆行列から部分的にコピーする
+				i = gpu_multiply_blocks(src_num, factor, NULL, g_buf, unit_size);
+				if (i != 0){
+					th->len = i;
+					InterlockedExchange(&(th->now), INT_MAX / 3);	// サブ・スレッドの計算を中断する
+					break;
+				}
 
 #ifdef TIMER
 loop_count2 += src_num;
 #endif
+			}
+
+			// 残りのブロックは二個ずつ計算する
+			while ((j = InterlockedAdd(&(th->now), 2)) < block_lost){	// th_now += 2, j = th_now
+				j--;	// +2 してるから、最初のブロックは -1 する
+
+				// 倍率は逆行列から部分的に２回コピーする
+				i = gpu_multiply_blocks(src_num, factor + source_num * j, factor + source_num * (j + 1), g_buf + (size_t)unit_size * j, unit_size * 2);
+				if (i != 0){
+					th->len = i;
+					InterlockedExchange(&(th->now), INT_MAX / 3);	// サブ・スレッドの計算を中断する
+					break;
+				}
+#ifdef TIMER
+loop_count2 += src_num * 2;
+#endif
+			}
+
+		} else {	// 以前からの１ブロックずつ計算する方式
+			while ((j = InterlockedIncrement(&(th->now))) < block_lost){	// j = ++th_now
+				// 倍率は逆行列から部分的にコピーする（２ブロックずつの場合はブロック数をマイナスにする）
+				i = gpu_multiply_blocks(src_num, factor + source_num * j, NULL, g_buf + (size_t)unit_size * j, unit_size);
+				if (i != 0){
+					th->len = i;
+					InterlockedExchange(&(th->now), INT_MAX / 3);	// サブ・スレッドの計算を中断する
+					break;
+				}
+
+#ifdef TIMER
+loop_count2 += src_num;
+#endif
+			}
 		}
 #ifdef TIMER
-time_encode2 += GetTickCount() - time_start2;
+time_encode2 += clock() - time_start2;
 #endif
 		// 最後にVRAMを解放する
 		i = gpu_finish();
@@ -349,12 +392,13 @@ time_encode2 += GetTickCount() - time_start2;
 	}
 #ifdef TIMER
 printf("gpu-thread :\n");
-if (time_encode2 > 0){
-	i = (int)((__int64)loop_count2 * unit_size * 125 / ((__int64)time_encode2 * 131072));
+time_sec = (double)time_encode2 / CLOCKS_PER_SEC;
+if (time_sec > 0){
+	time_speed = ((double)loop_count2 * unit_size) / (time_sec * 1048576);
 } else {
-	i = 0;
+	time_speed = 0;
 }
-printf(" 2nd decode %d.%03d sec, %d loop, %d MB/s\n", time_encode2 / 1000, time_encode2 % 1000, loop_count2, i);
+printf(" 2nd decode %.3f sec, %d loop, %.0f MB/s\n", time_sec, loop_count2, time_speed);
 #endif
 
 	// 終了処理
@@ -430,7 +474,7 @@ int decode_method1(	// ソース・ブロックが一個だけの場合
 	block_off = 0;
 	while (block_off < block_size){
 #ifdef TIMER
-time_start = GetTickCount();
+time_start = clock();
 #endif
 		// パリティ・ブロックを読み込む
 		len = block_size - block_off;
@@ -447,18 +491,18 @@ time_start = GetTickCount();
 		// パリティ・ブロックのチェックサムを計算する
 		checksum16_altmap(buf, buf + io_size, io_size);
 #ifdef TIMER
-time_read += GetTickCount() - time_start;
+time_read += clock() - time_start;
 #endif
 
 #ifdef TIMER
-time_start = GetTickCount();
+time_start = clock();
 #endif
 		// 失われたソース・ブロックを復元する
 		memset(work_buf, 0, unit_size);
 		// factor で割ると元に戻る
 		galois_align_multiply(buf, work_buf, unit_size, galois_divide(1, galois_power(2, id)));
 #ifdef TIMER
-time_calc += GetTickCount() - time_start;
+time_calc += clock() - time_start;
 #endif
 
 		// 経過表示
@@ -472,7 +516,7 @@ time_calc += GetTickCount() - time_start;
 		}
 
 #ifdef TIMER
-time_start = GetTickCount();
+time_start = clock();
 #endif
 		// 復元されたソース・ブロックのチェックサムを検証する
 		checksum16_return(work_buf, hash, io_size);
@@ -491,7 +535,7 @@ time_start = GetTickCount();
 			goto error_end;
 		}
 #ifdef TIMER
-time_write += GetTickCount() - time_start;
+time_write += clock() - time_start;
 #endif
 
 		block_off += io_size;
@@ -499,9 +543,9 @@ time_write += GetTickCount() - time_start;
 	print_progress_done();	// 末尾ブロックの断片化によっては 100% で完了するとは限らない
 
 #ifdef TIMER
-printf("read   %d.%03d sec\n", time_read / 1000, time_read % 1000);
-printf("write  %d.%03d sec\n", time_write / 1000, time_write % 1000);
-printf("decode %d.%03d sec\n", time_calc / 1000, time_calc % 1000);
+printf("read   %.3f sec\n", (double)time_read / CLOCKS_PER_SEC);
+printf("write  %.3f sec\n", (double)time_write / CLOCKS_PER_SEC);
+printf("decode %.3f sec\n", (double)time_calc / CLOCKS_PER_SEC);
 #endif
 
 error_end:
@@ -623,7 +667,7 @@ int decode_method2(	// ソース・データを全て読み込む場合
 #ifdef TIMER
 read_count = 0;
 skip_count = 0;
-time_start = GetTickCount();
+time_start = clock();
 #endif
 		last_file = -1;
 		recv_now = 0;	// 何番目の代替ブロックか
@@ -760,7 +804,7 @@ skip_count++;
 			hFile = NULL;
 		}
 #ifdef TIMER
-time_read += GetTickCount() - time_start;
+time_read += clock() - time_start;
 #endif
 
 		WaitForMultipleObjects(cpu_num1, hEnd, TRUE, INFINITE);	// サブ・スレッドの計算終了の合図を待つ
@@ -845,7 +889,7 @@ skip_count++;
 			}
 
 #ifdef TIMER
-time_start = GetTickCount();
+time_start = clock();
 #endif
 			// 復元されたブロックを書き込む
 			work_buf = p_buf;
@@ -916,7 +960,7 @@ write_count++;
 				}
 			}
 #ifdef TIMER
-time_write += GetTickCount() - time_start;
+time_write += clock() - time_start;
 #endif
 
 			part_off += part_num;	// 次の消失ブロック位置にする
@@ -930,9 +974,9 @@ time_write += GetTickCount() - time_start;
 	print_progress_done();
 
 #ifdef TIMER
-printf("read   %d.%03d sec\n", time_read / 1000, time_read % 1000);
+printf("read   %.3f sec\n", (double)time_read / CLOCKS_PER_SEC);
 j = ((block_size + io_size - 1) / io_size) * block_lost;
-printf("write  %d.%03d sec, count = %d/%d\n", time_write / 1000, time_write % 1000, write_count, j);
+printf("write  %.3f sec, count = %d/%d\n", (double)time_write / CLOCKS_PER_SEC, write_count, j);
 if (prog_num != prog_base)
 	printf(" prog_num = %I64d, prog_base = %I64d\n", prog_num, prog_base);
 #endif
@@ -1063,7 +1107,7 @@ int decode_method3(	// 復元するブロックを全て保持できる場合
 
 #ifdef TIMER
 read_count = 0;
-time_start = GetTickCount();
+time_start = clock();
 #endif
 		last_file = -1;
 		for (i = 0; i < read_num; i++){	// スライスを一個ずつ読み込んでメモリー上に配置していく
@@ -1173,7 +1217,7 @@ read_count++;
 			hFile = NULL;
 		}
 #ifdef TIMER
-time_read += GetTickCount() - time_start;
+time_read += clock() - time_start;
 #endif
 
 		WaitForMultipleObjects(cpu_num1, hEnd, TRUE, INFINITE);	// サブ・スレッドの計算終了の合図を待つ
@@ -1238,7 +1282,7 @@ time_read += GetTickCount() - time_start;
 	}
 
 #ifdef TIMER
-time_start = GetTickCount();
+time_start = clock();
 #endif
 	// 復元されたブロックを書き込む
 	work_buf = p_buf;
@@ -1297,7 +1341,7 @@ time_start = GetTickCount();
 		}
 	}
 #ifdef TIMER
-time_write += GetTickCount() - time_start;
+time_write += clock() - time_start;
 #endif
 	// 最後の書き込みファイルを閉じる
 	CloseHandle(hFile);
@@ -1305,8 +1349,8 @@ time_write += GetTickCount() - time_start;
 	print_progress_done();
 
 #ifdef TIMER
-printf("read   %d.%03d sec\n", time_read / 1000, time_read % 1000);
-printf("write  %d.%03d sec\n", time_write / 1000, time_write % 1000);
+printf("read   %.3f sec\n", (double)time_read / CLOCKS_PER_SEC);
+printf("write  %.3f sec\n", (double)time_write / CLOCKS_PER_SEC);
 if (prog_num != prog_base)
 	printf(" prog_num = %I64d, prog_base = %I64d\n", prog_num, prog_base);
 #endif
@@ -1463,7 +1507,7 @@ int decode_method4(	// 全てのブロックを断片的に保持する場合 (G
 #ifdef TIMER
 read_count = 0;
 skip_count = 0;
-time_start = GetTickCount();
+time_start = clock();
 #endif
 		last_file = -1;
 		recv_now = 0;	// 何番目の代替ブロックか
@@ -1600,7 +1644,7 @@ skip_count++;
 			hFile = NULL;
 		}
 #ifdef TIMER
-time_read += GetTickCount() - time_start;
+time_read += clock() - time_start;
 #endif
 
 		memset(g_buf, 0, (size_t)unit_size * block_lost);	// 待機中に GPU用の領域をゼロ埋めしておく
@@ -1845,7 +1889,7 @@ skip_count++;
 			prog_num += th->size * block_lost;
 
 #ifdef TIMER
-time_start = GetTickCount();
+time_start = clock();
 #endif
 		// 復元されたブロックを書き込む
 		work_buf = p_buf;
@@ -1918,7 +1962,7 @@ write_count++;
 			}
 		}
 #ifdef TIMER
-time_write += GetTickCount() - time_start;
+time_write += clock() - time_start;
 #endif
 
 		block_off += io_size;
@@ -1929,9 +1973,9 @@ time_write += GetTickCount() - time_start;
 	print_progress_done();
 
 #ifdef TIMER
-printf("read   %d.%03d sec\n", time_read / 1000, time_read % 1000);
+printf("read   %.3f sec\n", (double)time_read / CLOCKS_PER_SEC);
 j = ((block_size + io_size - 1) / io_size) * block_lost;
-printf("write  %d.%03d sec, count = %d/%d\n", time_write / 1000, time_write % 1000, write_count, j);
+printf("write  %.3f sec, count = %d/%d\n", (double)time_write / CLOCKS_PER_SEC, write_count, j);
 if (prog_num != prog_base)
 	printf(" prog_num = %I64d, prog_base = %I64d\n", prog_num, prog_base);
 #endif
@@ -2096,7 +2140,7 @@ int decode_method5(	// 復元するブロックだけ保持する場合 (GPU対�
 
 #ifdef TIMER
 read_count = 0;
-time_start = GetTickCount();
+time_start = clock();
 #endif
 		last_file = -1;
 		for (i = 0; i < read_num; i++){	// スライスを一個ずつ読み込んでメモリー上に配置していく
@@ -2206,7 +2250,7 @@ read_count++;
 			hFile = NULL;
 		}
 #ifdef TIMER
-time_read += GetTickCount() - time_start;
+time_read += clock() - time_start;
 #endif
 
 		if (source_off == 0)
@@ -2446,7 +2490,7 @@ time_read += GetTickCount() - time_start;
 	}
 
 #ifdef TIMER
-time_start = GetTickCount();
+time_start = clock();
 #endif
 	// 復元されたブロックを書き込む
 	work_buf = p_buf;
@@ -2507,7 +2551,7 @@ time_start = GetTickCount();
 		}
 	}
 #ifdef TIMER
-time_write += GetTickCount() - time_start;
+time_write += clock() - time_start;
 #endif
 	// 最後の書き込みファイルを閉じる
 	CloseHandle(hFile);
@@ -2515,8 +2559,8 @@ time_write += GetTickCount() - time_start;
 	print_progress_done();
 
 #ifdef TIMER
-printf("read   %d.%03d sec\n", time_read / 1000, time_read % 1000);
-printf("write  %d.%03d sec\n", time_write / 1000, time_write % 1000);
+printf("read   %.3f sec\n", (double)time_read / CLOCKS_PER_SEC);
+printf("write  %.3f sec\n", (double)time_write / CLOCKS_PER_SEC);
 if (prog_num != prog_base)
 	printf(" prog_num = %I64d, prog_base = %I64d\n", prog_num, prog_base);
 #endif
