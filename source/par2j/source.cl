@@ -1,14 +1,11 @@
 void calc_table(__local uint *mtab, int id, int factor)
 {
-	int i, sum, mask;
+	int i, sum;
 
-	mask = (id & 1) ? 0xFFFF : 0;
-	sum = mask & factor;
+	sum = ((id << 31) >> 31) & factor;
 	for (i = 1; i < 8; i++){
-		mask = (factor & 0x8000) ? 0x1100B : 0;
-		factor = (factor << 1) ^ mask;
-		mask = (id & (1 << i)) ? 0xFFFF : 0;
-		sum ^= mask & factor;
+		factor = (factor << 1) ^ (((factor << 16) >> 31) & 0x1100B);
+		sum ^= ((id << (31 - i)) >> 31) & factor;
 	}
 	mtab[id] = sum;
 
@@ -22,15 +19,13 @@ void calc_table2(__local uint *mtab, int id, int factor, int factor2)
 {
 	int i, sum, sum2, mask;
 
-	mask = (id & 1) ? 0xFFFF : 0;
+	mask = (id << 31) >> 31;
 	sum = mask & factor;
 	sum2 = mask & factor2;
 	for (i = 1; i < 8; i++){
-		mask = (factor & 0x8000) ? 0x1100B : 0;
-		factor = (factor << 1) ^ mask;
-		mask = (factor2 & 0x8000) ? 0x1100B : 0;
-		factor2 = (factor2 << 1) ^ mask;
-		mask = (id & (1 << i)) ? 0xFFFF : 0;
+		factor = (factor << 1) ^ (((factor << 16) >> 31) & 0x1100B);
+		factor2 = (factor2 << 1) ^ (((factor2 << 16) >> 31) & 0x1100B);
+		mask = (id << (31 - i)) >> 31;
 		sum ^= mask & factor;
 		sum2 ^= mask & factor2;
 	}
@@ -200,7 +195,7 @@ __kernel void method10(
 {
 	__local uint mtab[512];
 	int i, blk, pos;
-	uint lo, hi, sum1, sum2, sum3, sum4;
+	uint lo, hi, t0, t1, t2, t3;
 	const int work_id = get_global_id(0) * 2;
 	const int work_size = get_global_size(0) * 2;
 	const int table_id = get_local_id(0);
@@ -221,14 +216,14 @@ __kernel void method10(
 			pos = (i & ~7) + ((i & 7) >> 1);
 			lo = src[pos    ];
 			hi = src[pos + 4];
-			sum1 = mtab[(uchar)lo] ^ mtab[256 + (uchar)hi];
-			sum2 = mtab[(uchar)(lo >> 8)] ^ mtab[256 + (uchar)(hi >> 8)];
-			sum3 = mtab[(uchar)(lo >> 16)] ^ mtab[256 + (uchar)(hi >> 16)];
-			sum4 = mtab[lo >> 24] ^ mtab[256 + (hi >> 24)];
-			dst[pos    ] ^= (sum1 & 0xFF) | ((sum2 & 0xFF) << 8) | ((sum3 & 0xFF) << 16) | (sum4 << 24);
-			dst[pos + 4] ^= ((sum1 >> 8) & 0xFF) | (sum2 & 0xFF00) | ((sum3 & 0xFF00) << 8) | ((sum4 & 0xFF00) << 16);
-			dst[pos + BLK_SIZE    ] ^= ((sum1 >> 16) & 0xFF) | ((sum2 >> 8) & 0xFF00) | (sum3 & 0xFF0000) | ((sum4 & 0xFF0000) << 8);
-			dst[pos + BLK_SIZE + 4] ^= (sum1 >> 24) | ((sum2 >> 16) & 0xFF00) | ((sum3 >> 8) & 0xFF0000) | (sum4 & 0xFF000000);
+			t0 = mtab[(uchar)lo] ^ mtab[256 + (uchar)hi];
+			t1 = mtab[(uchar)(lo >> 8)] ^ mtab[256 + (uchar)(hi >> 8)];
+			t2 = mtab[(uchar)(lo >> 16)] ^ mtab[256 + (uchar)(hi >> 16)];
+			t3 = mtab[lo >> 24] ^ mtab[256 + (hi >> 24)];
+			dst[pos    ] ^= (uchar)t0 | ((t1 << 8) & 0xFF00) | ((t2 << 16) & 0xFF0000) | (t3 << 24);
+			dst[pos + 4] ^= (uchar)(t0 >> 8) | (t1 & 0xFF00) | ((t2 << 8) & 0xFF0000) | ((t3 << 16) & 0xFF000000);
+			dst[pos + BLK_SIZE    ] ^= (uchar)(t0 >> 16) | ((t1 >> 8) & 0xFF00) | (t2 & 0xFF0000) | ((t3 << 8) & 0xFF000000);
+			dst[pos + BLK_SIZE + 4] ^= (t0 >> 24) | ((t1 >> 16) & 0xFF00) | ((t2 >> 8) & 0xFF0000) | (t3 & 0xFF000000);
 		}
 		src += BLK_SIZE;
 	}

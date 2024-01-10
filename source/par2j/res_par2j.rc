@@ -11,7 +11,7 @@ BLOCK "StringFileInfo"
 	BLOCK "040904B0"
 	{
 		VALUE "FileDescription", "PAR2 client"
-		VALUE "LegalCopyright", "Copyright (C) 2023 Yutaka Sawada"
+		VALUE "LegalCopyright", "Copyright (C) 2024 Yutaka Sawada"
 		VALUE "ProductName", "par2j"
 		VALUE "FileVersion", "1.3.3.2"
 		VALUE "ProductVersion", "1.3.3.0"
