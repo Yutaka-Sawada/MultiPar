@@ -242,7 +242,7 @@ int init_OpenCL(unsigned int unit_size, int *src_max)
 	}
 	alloc_max = 0;
 
-	for (i = 0; i < (int)num_platforms; i++){
+	for (i = 0; i < (int)min(num_platforms, MAX_DEVICE); i++){
 #ifdef DEBUG_OUTPUT
 		// 環境の情報表示
 		if (fn_clGetPlatformInfo(platform_id[i], CL_PLATFORM_NAME, sizeof(buf), buf, NULL) == CL_SUCCESS)
