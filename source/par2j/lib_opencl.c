@@ -1,5 +1,5 @@
 ﻿// lib_opencl.c
-// Copyright : 2023-12-26 Yutaka Sawada
+// Copyright : 2024-01-21 Yutaka Sawada
 // License : GPL
 
 #ifndef _WIN32_WINNT
@@ -75,7 +75,7 @@ typedef cl_int (CL_API_CALL *API_clEnqueueNDRangeKernel)(cl_command_queue, cl_ke
 extern unsigned int cpu_flag;	// declared in common2.h
 extern int cpu_num;
 
-#define MAX_DEVICE 3
+#define MAX_DEVICE 8
 
 HMODULE hLibOpenCL = NULL;
 
@@ -235,6 +235,8 @@ int init_OpenCL(unsigned int unit_size, int *src_max)
 	ret = fn_clGetPlatformIDs(MAX_DEVICE, platform_id, &num_platforms);
 	if (ret != CL_SUCCESS)
 		return (ret << 8) | 10;
+	if (num_platforms > MAX_DEVICE)
+		num_platforms = MAX_DEVICE;
 	if (OpenCL_method & 0x200){	// 選択する順序と初期値を変える
 		gpu_power = INT_MIN;
 	} else {
@@ -242,7 +244,7 @@ int init_OpenCL(unsigned int unit_size, int *src_max)
 	}
 	alloc_max = 0;
 
-	for (i = 0; i < (int)min(num_platforms, MAX_DEVICE); i++){
+	for (i = 0; i < (int)num_platforms; i++){
 #ifdef DEBUG_OUTPUT
 		// 環境の情報表示
 		if (fn_clGetPlatformInfo(platform_id[i], CL_PLATFORM_NAME, sizeof(buf), buf, NULL) == CL_SUCCESS)
@@ -254,6 +256,8 @@ int init_OpenCL(unsigned int unit_size, int *src_max)
 		// 環境内の OpenCL 対応機器の数
 		if (fn_clGetDeviceIDs(platform_id[i], CL_DEVICE_TYPE_GPU, MAX_DEVICE, device_id, &num_devices) != CL_SUCCESS)
 			continue;
+		if (num_devices > MAX_DEVICE)
+			num_devices = MAX_DEVICE;
 
 		for (j = 0; j < (int)num_devices; j++){
 			// デバイスが利用可能か確かめる
