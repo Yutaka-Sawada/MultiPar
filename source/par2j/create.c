@@ -1,5 +1,5 @@
 ﻿// create.c
-// Copyright : 2023-12-12 Yutaka Sawada
+// Copyright : 2024-02-09 Yutaka Sawada
 // License : GPL
 
 #ifndef _UNICODE
@@ -1829,10 +1829,12 @@ int split_files(
 		}
 		if (ext_len > 0){	// 全て数字の拡張子を持つソース・ファイルがあるなら
 			//printf_cp("\n risky name = %s \n", file_name);
+			wcscpy(file_path, file_name);	// 比較用に拡張子を取り除く
+			file_path[name_len] = 0;
 			for (num2 = 0; num2 < file_num; num2++){
 				if (num2 == num)
 					continue;
-				if (_wcsnicmp(list_buf + files[num2].name, file_name, name_len) == 0){
+				if (_wcsicmp(list_buf + files[num2].name, file_path) == 0){
 					//printf_cp(" match name = %s \n", list_buf + files[num2].name);
 					num8 = (files[num2].size + (__int64)split_size - 1) / split_size;
 					split_max = (int)num8;
@@ -1843,7 +1845,7 @@ int split_files(
 					if (((split_max < 1000) && (ext_len >= 5)) || ((split_max < 10000) && (ext_len >= 6)))
 						continue;	// 拡張子の桁数が異なる
 					// 上書きする危険性があるのでエラーにする
-					printf_cp("split bad file, %s\n", file_name);
+					printf_cp("split bad file, %s\n", list_buf + files[num2].name);
 					*cur_num = -1;
 					*cur_id = 0;
 					return 1;
