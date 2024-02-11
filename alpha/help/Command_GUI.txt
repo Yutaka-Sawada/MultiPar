@@ -98,7 +98,6 @@ To return normal behavior (disable sorting), just erase the line.
 write a line of "RecoveryFileLimit=1" under "[Option]" section.
 It's same as an option:
 "Variable (limited to size of largest data file)" on QuickPar.
-Recovery Files will be same or smaller size than the largest source file.
 
  If you want to limit size of Recovery Files by a specific value,
 write a line of "RecoveryFileLimit=2" under "[Option]" section.
