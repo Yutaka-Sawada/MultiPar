@@ -1,4 +1,4 @@
-[ MultiPar GUI - version 1.3.3.0 or later ]
+[ MultiPar GUI - version 1.3.3.3 or later ]
 
 Usage: MultiPar.exe [command] [/base path] [/list path] [files]
 
@@ -98,6 +98,12 @@ To return normal behavior (disable sorting), just erase the line.
 write a line of "RecoveryFileLimit=1" under "[Option]" section.
 It's same as an option:
 "Variable (limited to size of largest data file)" on QuickPar.
+Recovery Files will be same or smaller size than the largest source file.
+
+ If you want to limit size of Recovery Files by a specific value,
+write a line of "RecoveryFileLimit=2" under "[Option]" section.
+"Limit Size to" value is enabled, even when "Split Files" isn't checked.
+This setting is useful, if you don't want to split source files.
 
  If you want to enable "Most Resent Used List",
 write this line "MRUMax=5" under "[Path]" section.
