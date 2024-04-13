@@ -16,7 +16,7 @@ textarea{width:100%;}
 
 <p>&nbsp
 Because MultiPar consists of PAR clients and GUI, 
-it is possible to use a PAR client on Command prompt. 
+it is possible to use a PAR client on Command Prompt. 
 Read a manual of command line for the details of command and option. 
 It's available by batch file (or command script).
 </p>
@@ -27,13 +27,57 @@ Modify the options for PAR2 files, and set the path of <tt>par2j.exe</tt>.
 Write absolute path like;<br>
 <code>SET par2_path="C:\something directory\MultiPar\par2j.exe"</code><br>
 Read manuals (<tt>Command_***.txt</tt>) to know the detail of options. 
-Read Windows OS 's help for Command prompt's usage.
+Read Windows OS 's help for Command Prompt's usage.
 </p>
 <p>&nbsp
 Save a sample script to a file like <tt>batch.bat</tt> or <tt>batch.cmd</tt>. 
-To specify path of files or folders, Drag & Drop them on the batch file. 
-When you put a shortcut icon of the batch file in "SendTo" menu, 
-you can call the batch file by selecting files then Righ-Click & SendTo.
+There are some ways to specify a file or folder.<br>
+<ol>
+<li>Type everytime by keyboard on Command Prompt
+<p>&nbsp
+If you use the batch file at Command Prompt, change directory to the batch file at first. 
+Next, type <tt>batch.bat "path of the file or folder"</tt>. 
+If there is no space in the path, no need to cover by <tt>""</tt>. 
+The path may be absolute path or relative path from the batch file. 
+Normally absolute path would be safe.
+</p>
+<p>&nbsp
+If you want to specify multiple files or folders, 
+type <tt>batch.bat "path of the first file or folder" "path of second file or folder" "path of third file or folder"</tt>. 
+You may add some pathes after a script filename.
+</p>
+</li>
+<li>Drag & Drop a file or folder by mouse
+<p>&nbsp
+On Windows Explorer, drag a file or folder and drop it on your batch file. 
+If you put the batch file on Desktop, it will be easy to Drag & Drop.
+</p>
+<p>&nbsp
+If you want to specify multiple files or folders, 
+select them at once on Windows Explorer, and Drag & Drop the group on the batch file. 
+While dragging, number of items may be shown.
+</p>
+</li>
+<li>Select SendTo at Windows Explorer's right click menu
+<p>&nbsp
+At first, create Short-cut icon of your batch file. 
+Name it to be something easy to understand like "Create PAR2". 
+Then, put the Short-cut icon in your <tt>SendTo</tt> folder. 
+You can open the <tt>SendTo</tt> folder by typing <tt>shell:sendto</tt> on path-box of Windows Explorer.
+</p>
+<p>&nbsp
+After you select a file or folder on Windows Explorer, click mouse's right button. 
+Select "SendTo" item on the right-click menu. 
+As your created Short-cut item will exist in the SendTo sub-menu, select the Short-cut icon.
+</p>
+<p>&nbsp
+If you want to specify multiple files or folders, 
+select them at once on Windows Explorer. 
+While mouse cursor over there, click mouse's right button. 
+Later action is same as single item.
+</p>
+</li>
+</ol>
 </p>
 <p>&nbsp
 If you want to confirm the result of scripting, 
