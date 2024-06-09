@@ -4,12 +4,13 @@ Release note of v1.3.3 tree
 
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-[ Changes from 1.3.3.2 to 1.3.3.3 ] (2024/02/11)
+[ Changes from 1.3.3.2 to 1.3.3.3 ] (2024/06/09)
 
 PAR2 client update
  Bug fix
   Fixed a bug in GPU acceleration, when there are many OpenCL devices.
   Failure of splitting source files with numerical extension was fixed.
+  Faulty prediction of the last block in a file with repeated data was fixed.
 
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
