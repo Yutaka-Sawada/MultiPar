@@ -1,5 +1,5 @@
 ﻿// verify.c
-// Copyright : 2022-10-14 Yutaka Sawada
+// Copyright : 2024-06-09 Yutaka Sawada
 // License : GPL
 
 #ifndef _UNICODE
@@ -1253,21 +1253,22 @@ static int search_block_slide(
 	slice_ctx *sc)
 {
 	unsigned char *buf, hash[16], hash2[16], err_mag, *short_use;
-	int i, j, find_num, find_flag, find_next, find_last, short_next;
+	int i, j, find_num, find_flag, find_next, find_last, short_next, short2_next, tmp_next;
 	int block_count, short_count, tiny_count, tiny_skip, num, i1, i2, i3, i4;
 	int *order, *index, index_shift;
 	unsigned int len, off, end_off, err_off;
 	unsigned int prev_crc, fail_count, rear_off, overlap_count;
 	unsigned int crc, *crcs, *short_crcs;
 	unsigned int time_last, time_slide;
-	__int64 file_off, file_next, short_off, fail_off;
+	__int64 file_off, file_next, short_off, short2_off, tmp_off, fail_off;
 
 	if (file_size + 1 < last_off + (__int64)(sc->min_size))
 		return 0;	// 小さすぎるファイルは調べない
 	find_num = 0;	// このファイル内で何ブロック見つけたか
 	find_next = -1;	// 次に見つかると予想したブロックの番号
 	find_last = -1;	// 最後に見つけたブロックの番号 (-1=不明)
-	short_next = -1;
+	short_next = -1;	// 予想される末尾ブロックの番号
+	short2_next = -1;
 	fail_count = 0;	// CRC は一致したけど MD5 が違った回数
 	fail_off = 0;
 	rear_off = 0;
@@ -1278,24 +1279,32 @@ static int search_block_slide(
 			find_last = find_next - 1;	// 最後に見つけたブロックの番号
 		if ((last_off >= files[num1].size) || (last_off + block_size > file_size + 1))
 			find_next = -1;	// 予想位置がファイル・サイズを超えると駄目
-		if ((last_size < block_size) && (files[num1].b_num >= 2) &&	// 末尾の半端なブロックの番号と想定位置
-				(last_off < files[num1].size) && (files[num1].size <= file_size + 1)){
-			short_next = files[num1].b_off + files[num1].b_num - 1;	// 末尾ブロックの番号
-			if (find_next == short_next)
+		if ((last_size < block_size) && (last_off < files[num1].size)){	// 末尾の半端なブロックの番号と想定位置
+			tmp_next = files[num1].b_off + files[num1].b_num - 1;	// 末尾ブロックの番号
+			if (find_next == tmp_next)
 				find_next = -1;	// 予想が重複したら末尾ブロックとして探す
-			short_off = files[num1].size - last_size;
-		// ファイルサイズが1ブロック未満でも、同じサイズならエラー訂正を試みる
-		} else if ((last_off == 0) && (file_size == files[num1].size) && (file_size < (__int64)block_size)){
-			short_off = 0;
-			short_next = files[num1].b_off;
+			if ((files[num1].b_num >= 2) && (files[num1].size <= file_size + 1)){	// 本来の位置を調べる
+				short_next = tmp_next;
+				short_off = files[num1].size - last_size;
+			} else if ((last_off == 0) && (file_size == last_size)){	// ファイルが1ブロック未満でも、同じサイズならエラー訂正を試みる
+				short_next = tmp_next;
+				short_off = 0;
+			}
+			if (last_size < file_size){	// 末尾を調べる
+				short2_next = tmp_next;
+				short2_off = file_size - last_size;
+			}
 		}
 		if (file_size > files[num1].size){
 			rear_off = (unsigned int)((file_size - files[num1].size) % (__int64)block_size);
 		} else if (file_size < files[num1].size){
 			rear_off = block_size - (unsigned int)((files[num1].size - file_size) % (__int64)block_size);
 		}
-		//printf("file = %d, find_next = %d, find_last = %d\n", num1, find_next, find_last);
-		//printf("short_off = %I64d, short_next = %d, rear_off = %d\n", short_off, short_next, rear_off);
+/*		printf("file = %d, find_next = %d, find_last = %d, rear_off = %d\n", num1, find_next, find_last, rear_off);
+		if (short_next >= 0)
+			printf("short_off  = %I64d, short_next  = %d\n", short_off, short_next);
+		if (short2_next >= 0)
+			printf("short2_off = %I64d, short2_next = %d\n", short2_off, short2_next);*/
 	}
 	file_off = last_off;	// 検査開始位置から調べる
 	buf = sc->buf;
@@ -1374,8 +1383,11 @@ static int search_block_slide(
 						if (last_off < file_off + last_size)
 							last_off = file_off + last_size;	// 一番大きな半端なブロックの終端
 						find_next = -2;	// 小さなファイルが見つかった = ブロック検出の予想が外れた
-						if (i == short_next)
-							short_next = -1;	// 末尾ブロックは検出済み
+						if (i == short_next){	// この末尾ブロックは検出済み
+							short_next = -1;
+						} else if (i == short2_next){
+							short2_next = -1;
+						}
 
 						// 経過表示
 						if (GetTickCount() - time_last >= UPDATE_TIME){
@@ -1416,7 +1428,7 @@ static int search_block_slide(
 
 	// ブロック・サイズごとに探す
 	if (((block_count > 0) && ((file_off + (__int64)block_size <= file_size)
-			|| (find_next >= 0))) || (short_next >= 0)){	// ブロックの位置を予想して探す
+			|| (find_next >= 0))) || (short_next >= 0) || (short2_next >= 0)){	// ブロックの位置を予想して探す
 		// 前からスライドさせながらチェックサムを比較する
 		//printf("slide search from %I64d, file %d, next = %d\n", file_off, num1, find_next);
 		off = 0;	// buf 内でのオフセット
@@ -1445,8 +1457,13 @@ static int search_block_slide(
 			while (off < end_off){
 				find_flag = -2;
 				// 次の番号のブロックがその位置にあるかを先に調べる (発見済みでも)
-				if ((short_next >= 0) && (file_off + off == short_off)){	// 半端なブロックなら
-					i = short_next;
+				if (((short_next >= 0) && (file_off + off == short_off)) ||
+						((short2_next >= 0) && (file_off + off == short2_off))){	// 半端なブロックなら
+					if ((short_next >= 0) && (file_off + off == short_off)){
+						i = short_next;
+					} else {
+						i = short2_next;
+					}
 					num = s_blk[i].file;
 					if ((short_use[num] & 4) == 0){	// パディング部分を取り除いた CRC-32 を逆算する
 						short_crcs[num] = crc_reverse_zero(s_blk[i].crc, block_size - s_blk[i].size);
@@ -1456,7 +1473,8 @@ static int search_block_slide(
 					find_flag = correct_error(buf + off, s_blk[i].size, s_blk[i].hash, short_crcs[num], &err_off, &err_mag);
 					if (find_flag == 0)
 						find_flag = 2;
-				} else if ((find_next >= 0) && (file_off + off == last_off)){	// フルサイズのブロックなら
+				}
+				if ((find_flag < 0) && (find_next >= 0) && (file_off + off == last_off)){	// フルサイズのブロックなら
 					i = find_next;
 					if (crc == s_blk[i].crc){
 						data_md5(buf + off, block_size, hash);
@@ -1661,20 +1679,81 @@ static int search_block_slide(
 					find_next = i + 1;
 					if ((find_next >= source_num) || (s_blk[find_next].file != num)){
 						// 最後までいった、またはファイルが異なる
-						short_next = -1;
 						find_next = -1;
+						if ((short_next >= 0) && ((s_blk[short_next].exist & 0x1000) != 0))
+							short_next = -1;
+						if ((short2_next >= 0) && ((s_blk[short2_next].exist & 0x1000) != 0))
+							short2_next = -1;
 					} else if (s_blk[find_next].size < block_size){	// 半端なブロックは別に調べる
-						short_next = find_next;
-						short_off = file_off + off + block_size;
-						//printf("short_off = %I64d, short_next = %d, file = %d\n", short_off, short_next, num);
+						if (file_off + off + block_size + s_blk[find_next].size <= file_size){	// ファイル内に収まってる時だけ
+							tmp_next = find_next;
+							tmp_off = file_off + off + block_size;
+							if (find_flag <= 3){	// 順当な位置で見つけた場合
+								if ((tmp_next == short_next) && (tmp_off == short_off)){
+									// 予測済みのと一致するなら何もしない
+								} else if ((short_next >= 0) && (short2_next < 0)){	// 予測と異なるけど、別のが空いてるなら、そっちに記録する
+									//printf("short2_off = %I64d, short2_next = %d, file = %d\n", tmp_off, tmp_next, num);
+									short2_next = tmp_next;
+									short2_off = tmp_off;
+								} else {
+									if ((short_next >= 0) && (tmp_next == short2_next) && (tmp_off == short2_off)){	// 既に予測済みのと一致するなら入れ替える
+										short2_next = short_next;
+										short2_off = short_off;
+										//printf("exchange short2_off = %I64d, short2_next = %d\n", short2_off, short2_next);
+									}
+									//printf("short_off = %I64d, short_next = %d, file = %d\n", tmp_off, tmp_next, num);
+									short_next = tmp_next;
+									short_off = tmp_off;
+								}
+							} else if ((short_next < 0) &&
+									(((__int64)block_size * (__int64)(tmp_next - files[num].b_off) == tmp_off) ||
+									(tmp_off + s_blk[tmp_next].size == file_size))){
+								// 検出ブロックが順当でなくても、末尾ブロックの開始位置や末端がファイル・サイズに一致すれば
+								//printf("short_off = %I64d, short_next = %d, file = %d\n", tmp_off, tmp_next, num);
+								short_next = tmp_next;
+								short_off = tmp_off;
+							} else {
+								//printf("short2_off = %I64d, short2_next = %d, file = %d\n", tmp_off, tmp_next, num);
+								short2_next = tmp_next;
+								short2_off = tmp_off;
+							}
+						}
 						find_next = -1;
 					} else {
-						short_next = files[num].b_off + files[num].b_num - 1;	// 末尾ブロックの番号
-						if (s_blk[short_next].size < block_size){	// 半端なブロックは別に調べる
-							short_off = file_off + off + (__int64)(short_next - i) * (__int64)block_size;
-							//printf("short_off = %I64d, short_next = %d, file = %d\n", short_off, short_next, num);
-						} else {
-							short_next = -1;
+						tmp_next = files[num].b_off + files[num].b_num - 1;	// 末尾ブロックの番号
+						if (s_blk[tmp_next].size < block_size){	// 半端なブロックは別に調べる
+							tmp_off = file_off + off + (__int64)(tmp_next - i) * (__int64)block_size;
+							if (tmp_off + s_blk[tmp_next].size <= file_size){	// ファイル内に収まってる時だけ
+								if (find_flag <= 3){	// 順当な位置で見つけた場合
+									if ((tmp_next == short_next) && (tmp_off == short_off)){
+										// 予測済みのと一致するなら何もしない
+									} else if ((short_next >= 0) && (short2_next < 0)){	// 予測と異なるけど、別のが空いてるなら、そっちに記録する
+										//printf("far short2_off = %I64d, short2_next = %d, file = %d\n", tmp_off, tmp_next, num);
+										short2_next = tmp_next;
+										short2_off = tmp_off;
+									} else {
+										if ((short_next >= 0) && (tmp_next == short2_next) && (tmp_off == short2_off)){	// 既に予測済みのと一致するなら入れ替える
+											short2_next = short_next;
+											short2_off = short_off;
+											//printf("exchange short2_off = %I64d, short2_next = %d\n", short2_off, short2_next);
+										}
+										//printf("far short_off = %I64d, short_next = %d, file = %d\n", tmp_off, tmp_next, num);
+										short_next = tmp_next;
+										short_off = tmp_off;
+									}
+								} else if ((short_next < 0) &&
+										(((__int64)block_size * (__int64)(tmp_next - files[num].b_off) == tmp_off) ||
+										(tmp_off + s_blk[tmp_next].size == file_size))){
+									// 検出ブロックが順当でなくても、末尾ブロックの開始位置や末端がファイル・サイズに一致すれば
+									//printf("far short_off = %I64d, short_next = %d, file = %d\n", tmp_off, tmp_next, num);
+									short_next = tmp_next;
+									short_off = tmp_off;
+								} else if ((short2_next != tmp_next) || (short2_off != tmp_off)){
+									//printf("far short2_off = %I64d, short2_next = %d, file = %d\n", tmp_off, tmp_next, num);
+									short2_next = tmp_next;
+									short2_off = tmp_off;
+								}
+							}
 						}
 					}
 					tiny_skip = 0;	// 小さなファイルをブロック直後に一回だけ探す
