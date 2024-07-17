@@ -146,9 +146,6 @@ so you need to move "MultiPar.ini" into the folder, too.
 They are written by Yutaka Sawada.
 Though console applications are open source (PAR clients are GPL),
 GUI application is closed source.
-Some article are available at my web site.
-(URL: "https://hp.vector.co.jp/authors/VA021385/")
-If you want source code, contact with me by e-mail.
 
 
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
@@ -174,10 +171,8 @@ mail server may delete it automatically, and I won't see it.
 
 [ Link ]
 
- I use Vector 's author page to introduce MultiPar.
-(URL: "https://hp.vector.co.jp/authors/VA021385/")
-Because there is another official download page,
+ You may download the latest version of MultiPar on GitHub.
+(URL: "https://github.com/Yutaka-Sawada/MultiPar")
+There is a Japanese download page on Vector.
 (URL: "https://www.vector.co.jp/soft/dl/winnt/util/se460801.html")
-using direct link to files on the page isn't preferable.
-When you write a link on somewhere, please don't include filename.
 

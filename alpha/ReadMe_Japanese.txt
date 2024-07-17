@@ -219,9 +219,9 @@ GitHubのissueページに書き込んでもいいです。
 
 [ リンク ]
 
-　ベクターの作者ページでは外国人向けに MultiPar を紹介しています。
-(URL: "https://hp.vector.co.jp/authors/VA021385/")
-ベクターの正式なダウンロード・ページは別にあります。
+　MultiPar の最新版は GitHub からダウンロードできます。
+(URL: "https://github.com/Yutaka-Sawada/MultiPar")
+ベクターの日本語ダウンロード・ページもあります。
 (URL: "https://www.vector.co.jp/soft/dl/winnt/util/se460801.html")
 日本人向けにリンクを載せる際は、ベクターの作品紹介ページにしてください。
 (URL: "https://www.vector.co.jp/soft/winnt/util/se460801.html")
