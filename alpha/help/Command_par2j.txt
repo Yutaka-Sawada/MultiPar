@@ -1,4 +1,4 @@
-[ par2j.exe - version 1.3.3.2 or later ]
+[ par2j.exe - version 1.3.3.4 or later ]
 
 Type "par2j.exe" to see version, test integrity, and show usage below.
 
@@ -385,6 +385,25 @@ The format is "/lc#" (# is from 1 to 32 as the number of using threads).
 (When you set exclusive bits, larger value will be used.)
 
  for example,  /lc1 to use single Core, /lc508 to use half Cores and GPU
+
+ /lcb :
+ This is for Cache Blocking. (CPU cache optimization)
+By default, this value is set-associative size of CPU L2 cache.
+Maximum value is 32767. It will be multipled by 64 KB.
+To disable cache optimization, set "/lcb0".
+
+ /lcs :
+ This is for large buffer size at calculating multiple files' hashes.
+By default, this value is set-associative size of CPU L3 cache.
+Maximum value is 65535. It will be multipled by 64 KB.
+When you set "/lcs0", large buffer size will become 2 MB by default.
+
+ /lcm :
+ This is for max number of chunks to calculate at once. (CPU shared cache optimization)
+By default, this value may be rate of L3 cache size / L2 cache size.
+The value may be changed by some factors in experimental results.
+Maximum value is 32768. Lower values than 8 will be same as 32768.
+To disable cache optimization, set "/lcm0".
 
  /m :
  Set this, if you want to set memory usage.
