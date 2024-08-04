@@ -1,5 +1,5 @@
 ﻿// par2_cmd.c
-// Copyright : 2023-12-09 Yutaka Sawada
+// Copyright : 2024-07-28 Yutaka Sawada
 // License : GPL
 
 #ifndef _UNICODE
@@ -86,7 +86,7 @@ static void print_environment(void)
 
 	printf("CPU thread\t: %d / %d\n", cpu_num & 0xFFFF, cpu_num >> 24);
 	cpu_num &= 0xFFFF;	// 利用するコア数だけにしておく
-	printf("CPU cache limit : %d KB, %d KB\n", (cpu_flag & 0xFFFF0000) >> 10, (cpu_cache & 0xFFFE0000) >> 10);
+	printf("CPU cache limit : %d KB, %d KB (%d)\n", (cpu_flag & 0xFFFF0000) >> 10, (cpu_cache & 0xFFFF0000) >> 10, cpu_cache & 0xFFFF);
 #ifndef _WIN64	// 32-bit 版は MMX, SSE2, SSSE3, AVX2 のどれかを表示する
 	printf("CPU extra\t:");
 	if (((cpu_flag & 16) != 0) && ((cpu_flag & 256) == 0)){
@@ -1477,48 +1477,77 @@ ri= switch_set & 0x00040000
 					switch_v |= j;
 			// 共通のオプション (数値)
 			} else if (wcsncmp(tmp_p, L"lc", 2) == 0){
-				k = 0;
-				j = 2;
-				while ((j < 2 + 7) && (tmp_p[j] >= '0') && (tmp_p[j] <= '9')){
-					k = (k * 10) + (tmp_p[j] - '0');
-					j++;
-				}
-				if (k & 0x300){	// GPU を使う
-					OpenCL_method = k & 0x003F0300;
-				}
-				if (k & 1024)	// CLMUL と ALTMAP を使わない
-					cpu_flag = (cpu_flag & 0xFFFFFFF7) | 256;
-				if (k & 2048)	// JIT(SSE2) を使わない
-					cpu_flag &= 0xFFFFFF7F;
-				if (k & 4096)	// SSSE3 を使わない
-					cpu_flag &= 0xFFFFFFFE;
-				if (k & 8192)	// AVX2 を使わない
-					cpu_flag &= 0xFFFFFFEF;
-				if (k & 255){	// 使用するコア数を変更する
-					k &= 255;	// 1～255 の範囲
-					// printf("\n lc# = %d , logical = %d, physical = %d \n", k, cpu_num >> 24, (cpu_num & 0x00FF0000) >> 16);
-					if (k == 251){	// 物理コア数の 1/4 にする
-						k = ((cpu_num & 0x00FF0000) >> 16) / 4;
-					} else if (k == 252){	// 物理コア数の半分にする
-						k = ((cpu_num & 0x00FF0000) >> 16) / 2;
-					} else if (k == 253){	// 物理コア数の 3/4 にする
-						k = (((cpu_num & 0x00FF0000) >> 16) * 3) / 4;
-					} else if (k == 254){	// 物理コア数より減らす
-						k = ((cpu_num & 0x00FF0000) >> 16) - 1;
-					} else if (k == 255){	// 物理コア数より増やす
-						k = cpu_num >> 16;
-						k = ((k & 0xFF) + (k >> 8)) / 2;	// 物理コア数と論理コア数の中間にする？
-						// タスクマネージャーにおける CPU使用率は 100%になるけど、速くはならない・・・
-						// k = (k & 0xFF) + ((k >> 8) - (k & 0xFF)) / 4;	// 物理コア数の 5/4 にする？
+				if (tmp_p[2] == 'b'){	// Size of Cache Blocking (CPU's L2 cache optimization)
+					k = 0;
+					j = 3;
+					while ((j < 3 + 5) && (tmp_p[j] >= '0') && (tmp_p[j] <= '9')){
+						k = (k * 10) + (tmp_p[j] - '0');
+						j++;
 					}
-					if (k > MAX_CPU){
-						k = MAX_CPU;
-					} else if (k < 1){
-						k = 1;
-					} else if (k > (cpu_num >> 24)){
-						k = cpu_num >> 24;	// 論理コア数を超えないようにする
+					if (k <= 0x7FFF)	// 上位 16-bit に上書きする
+						cpu_flag = (cpu_flag & 0xFFFF) | (k << 16);
+				} else if (tmp_p[2] == 's'){	// Size of Shared Cache
+					k = 0;
+					j = 3;
+					while ((j < 3 + 5) && (tmp_p[j] >= '0') && (tmp_p[j] <= '9')){
+						k = (k * 10) + (tmp_p[j] - '0');
+						j++;
 					}
-					cpu_num = (cpu_num & 0xFFFF0000) | k;	// 指定されたコア数を下位に配置する
+					if (k <= 0xFFFF)	// 上位 16-bit に上書きする
+						cpu_cache = (cpu_cache & 0xFFFF) | (k << 16);
+				} else if (tmp_p[2] == 'm'){	// Max number of chunks (CPU's shared L3 cache optimization)
+					k = 0;
+					j = 3;
+					while ((j < 3 + 5) && (tmp_p[j] >= '0') && (tmp_p[j] <= '9')){
+						k = (k * 10) + (tmp_p[j] - '0');
+						j++;
+					}
+					if (k <= 0x8000)	// CACHE_MIN_NUM 未満なら 0x8000 になる
+						cpu_cache = (cpu_cache & 0xFFFF0000) | k;	// 下位 16-bit に上書きする
+				} else {	// Extra と GPU も別にしてもいいかも？
+					k = 0;
+					j = 2;
+					while ((j < 2 + 7) && (tmp_p[j] >= '0') && (tmp_p[j] <= '9')){
+						k = (k * 10) + (tmp_p[j] - '0');
+						j++;
+					}
+					if (k & 0x300){	// GPU を使う
+						OpenCL_method = k & 0x003F0300;
+					}
+					if (k & 1024)	// CLMUL と ALTMAP を使わない
+						cpu_flag = (cpu_flag & 0xFFFFFFF7) | 256;
+					if (k & 2048)	// JIT(SSE2) を使わない
+						cpu_flag &= 0xFFFFFF7F;
+					if (k & 4096)	// SSSE3 を使わない
+						cpu_flag &= 0xFFFFFFFE;
+					if (k & 8192)	// AVX2 を使わない
+						cpu_flag &= 0xFFFFFFEF;
+					if (k & 255){	// 使用するコア数を変更する
+						k &= 255;	// 1～255 の範囲
+						// printf("\n lc# = %d , logical = %d, physical = %d \n", k, cpu_num >> 24, (cpu_num & 0x00FF0000) >> 16);
+						if (k == 251){	// 物理コア数の 1/4 にする
+							k = ((cpu_num & 0x00FF0000) >> 16) / 4;
+						} else if (k == 252){	// 物理コア数の半分にする
+							k = ((cpu_num & 0x00FF0000) >> 16) / 2;
+						} else if (k == 253){	// 物理コア数の 3/4 にする
+							k = (((cpu_num & 0x00FF0000) >> 16) * 3) / 4;
+						} else if (k == 254){	// 物理コア数より減らす
+							k = ((cpu_num & 0x00FF0000) >> 16) - 1;
+						} else if (k == 255){	// 物理コア数より増やす
+							k = cpu_num >> 16;
+							k = ((k & 0xFF) + (k >> 8)) / 2;	// 物理コア数と論理コア数の中間にする？
+							// タスクマネージャーにおける CPU使用率は 100%になるけど、速くはならない・・・
+							// k = (k & 0xFF) + ((k >> 8) - (k & 0xFF)) / 4;	// 物理コア数の 5/4 にする？
+						}
+						if (k > MAX_CPU){
+							k = MAX_CPU;
+						} else if (k < 1){
+							k = 1;
+						} else if (k > (cpu_num >> 24)){
+							k = cpu_num >> 24;	// 論理コア数を超えないようにする
+						}
+						cpu_num = (cpu_num & 0xFFFF0000) | k;	// 指定されたコア数を下位に配置する
+					}
 				}
 			} else if (wcsncmp(tmp_p, L"m", 1) == 0){
 				memory_use = 0;

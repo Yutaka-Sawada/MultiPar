@@ -1,5 +1,5 @@
 ﻿// md5_crc.c
-// Copyright : 2023-12-12 Yutaka Sawada
+// Copyright : 2024-07-24 Yutaka Sawada
 // License : GPL
 
 #ifndef _UNICODE
@@ -677,7 +677,7 @@ time1_start = clock();
 
 	// バッファー・サイズが大きいのでヒープ領域を使う
 	for (io_size = IO_SIZE; io_size <= MAX_BUF_SIZE; io_size += IO_SIZE){	// IO_SIZE の倍数にする
-		if ((io_size + IO_SIZE > (cpu_cache & 0xFFFE0000)) || ((__int64)(io_size + IO_SIZE) * 4 > file_left))
+		if ((io_size + IO_SIZE > (cpu_cache & 0xFFFF0000)) || ((__int64)(io_size + IO_SIZE) * 4 > file_left))
 			break;
 	}
 	buf1 = _aligned_malloc(io_size * 2, 64);
@@ -873,7 +873,7 @@ DWORD WINAPI file_hash_crc2(LPVOID lpParameter)
 	// バッファー・サイズが大きいのでヒープ領域を使う
 	prog_tick = 1;
 	for (io_size = IO_SIZE; io_size <= MAX_BUF_SIZE; io_size += IO_SIZE){	// IO_SIZE の倍数にする
-		if ((io_size + IO_SIZE > (cpu_cache & 0xFFFE0000)) || ((__int64)(io_size + IO_SIZE) * 4 > file_left))
+		if ((io_size + IO_SIZE > (cpu_cache & 0xFFFF0000)) || ((__int64)(io_size + IO_SIZE) * 4 > file_left))
 			break;
 		prog_tick++;
 	}
@@ -1311,7 +1311,7 @@ DWORD WINAPI file_hash_background(LPVOID lpParameter)
 
 	// バッファー・サイズが大きいのでヒープ領域を使う
 	for (io_size = IO_SIZE; io_size <= MAX_BUF_SIZE; io_size += IO_SIZE){	// IO_SIZE の倍数にする
-		if ((io_size + IO_SIZE > (cpu_cache & 0xFFFE0000)) || ((__int64)(io_size + IO_SIZE) * 4 > file_size))
+		if ((io_size + IO_SIZE > (cpu_cache & 0xFFFF0000)) || ((__int64)(io_size + IO_SIZE) * 4 > file_size))
 			break;
 	}
 	//printf("\n io_size = %d\n", io_size);

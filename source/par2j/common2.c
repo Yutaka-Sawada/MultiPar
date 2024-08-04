@@ -1,5 +1,5 @@
 ﻿// common2.c
-// Copyright : 2023-10-13 Yutaka Sawada
+// Copyright : 2024-07-25 Yutaka Sawada
 // License : GPL
 
 #ifndef _UNICODE
@@ -2008,8 +2008,11 @@ void check_cpu(void)
 		if (cache3_size > 0){
 			//printf("L3 cache: %d KB (%d way)\n", cache3_size >> 10 , cache3_way);
 			cpu_cache = cache3_size / cache3_way;	// set-associative のサイズにする
-			if (cpu_cache < 131072)
+			if (cpu_cache < 131072){
 				cpu_cache = 128 << 10;	// 128 KB 以上にする
+			} else {
+				cpu_cache = (cpu_cache + 0xFFFF) & 0xFFFF0000;	// 64 KB の倍数にする
+			}
 		}
 		if (cache2_size > 0){
 			//printf("L2 cache: %d KB (%d way)\n", cache2_size >> 10, cache2_way);
@@ -2030,7 +2033,9 @@ void check_cpu(void)
 						returnLength += returnLength / 2;
 				}
 			}
-			cpu_cache |= returnLength & 0x1FFFF;
+			if (returnLength > 0x8000)
+				returnLength = 0x8000;
+			cpu_cache |= returnLength & 0xFFFF;
 		}
 	}
 
@@ -2038,7 +2043,7 @@ void check_cpu(void)
 		limit_size = 128 << 10;
 	//printf("Limit size of Cache Blocking: %d KB\n", limit_size >> 10);
 	// cpu_flag の上位 16-bit にキャッシュの制限サイズを置く
-	cpu_flag |= limit_size & 0xFFFF0000;	// 64 KB 未満は無視する
+	cpu_flag |= (limit_size + 0xFFFF) & 0xFFFF0000;	// 64 KB の倍数にする
 
 	if (core_count == 0){	// 物理コア数が不明なら、論理コア数と同じにする
 		core_count = cpu_num;
