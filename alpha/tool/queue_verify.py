@@ -43,25 +43,31 @@ def search_par_set(one_path):
             continue
         listbox_list1.insert(tk.END, base_name)
 
-
     # Add found PAR sets in sub-directories
-    # This searches 1 level child only, because recursive search may be slow.
-    for par_path in glob.glob(glob.escape(one_path) + "/*/*.par2"):
-    # If you want to search recursively, use below line instead of above line.
-    #for par_path in glob.glob(glob.escape(one_path) + "/**/*.par2", recursive=True):
-        # Get relative path and convert to UNIX style directory mark
-        rel_path = os.path.relpath(par_path, one_path)
-        rel_path = rel_path.replace('\\', '/')
-        # Remove extension ".par2"
-        one_name = os.path.splitext(rel_path)[0]
-        # Compare filename in case insensitive
-        base_name = one_name.lower()
-        # Remove ".vol#-#", ".vol#+#", or ".vol_#" at the last
-        base_name = re.sub(r'[.]vol\d*[-+_]\d+$', "", base_name)
-        # Ignore same base, if the name exists in the list already.
-        if "'" + base_name + "'" in s_list1.get():
-            continue
-        listbox_list1.insert(tk.END, base_name)
+    s_recursive = s_combo.get()
+    if s_recursive != "No child":
+        if s_recursive == "Recursive":
+            # This will search all sub-directories recursively.
+            search_path = glob.escape(one_path) + "/**/*.par2"
+            recursive_flag = True
+        else:
+            # This searches 1 level child only, because recursive search may be slow.
+            search_path = glob.escape(one_path) + "/*/*.par2"
+            recursive_flag = False
+        for par_path in glob.glob(search_path, recursive=recursive_flag):
+            # Get relative path and convert to UNIX style directory mark
+            rel_path = os.path.relpath(par_path, one_path)
+            rel_path = rel_path.replace('\\', '/')
+            # Remove extension ".par2"
+            one_name = os.path.splitext(rel_path)[0]
+            # Compare filename in case insensitive
+            base_name = one_name.lower()
+            # Remove ".vol#-#", ".vol#+#", or ".vol_#" at the last
+            base_name = re.sub(r'[.]vol\d*[-+_]\d+$', "", base_name)
+            # Ignore same base, if the name exists in the list already.
+            if "'" + base_name + "'" in s_list1.get():
+                continue
+            listbox_list1.insert(tk.END, base_name)
 
     item_count = listbox_list1.size()
     one_name = os.path.basename(one_path)
@@ -70,13 +76,14 @@ def search_par_set(one_path):
         label_status.config(text= "There are no PAR sets in \"" + one_path + "\".")
     else:
         button_folder.config(state=tk.DISABLED)
+        button_stop.config(state=tk.NORMAL)
         button_open2.config(state=tk.DISABLED)
         button_open3.config(state=tk.DISABLED)
+        combo_recursive.config(state=tk.DISABLED)
         # If you want to start manually, use these lines instead of below lines.
-        #label_status.config(text= str(item_count) + " sets were found in \"" + one_path + "\".")
+        label_status.config(text= str(item_count) + " sets were found in \"" + one_path + "\".")
         button_start.config(state=tk.NORMAL)
-        # If you want to start verification automatically, use these lines instead of above lines.
-        #button_stop.config(state=tk.NORMAL)
+        # If you want to start verification automatically, use this line instead of above lines.
         #root.after(100, queue_run)
 
 
@@ -105,6 +112,8 @@ def queue_run():
         button_start.config(state=tk.NORMAL)
         button_open2.config(state=tk.NORMAL)
         button_open3.config(state=tk.NORMAL)
+        combo_recursive.config(state=tk.NORMAL)
+        check_repair.config(state=tk.NORMAL)
         label_status.config(text= "Stopped queue")
         return
 
@@ -120,9 +129,14 @@ def queue_run():
     label_status.config(text= "Verifying " + base_name)
 
     # Set command-line
-    # Cover path by " for possible space   
-    cmd = "\"" + client_path + "\" v /fo /vs2 /vd\"" + save_path + "\" \"" + one_path + "\""
-    # If you want to repair a damaged set automatically, use "r" command instead of "v".
+    # Cover path by " for possible space
+    cmd = "\"" + client_path + "\" "
+    if i_check.get() == 0:
+        cmd += "v"
+    else:
+        # If you want to repair a damaged set automatically, use "r" command instead of "v".
+        cmd += "r"
+    cmd += " /fo /vs2 /vd\"" + save_path + "\" \"" + one_path + "\""
     #print(cmd)
 
     # Run PAR2 client
@@ -163,6 +177,8 @@ def queue_result():
         button_stop.config(state=tk.DISABLED)
         button_open2.config(state=tk.NORMAL)
         button_open3.config(state=tk.NORMAL)
+        combo_recursive.config(state=tk.NORMAL)
+        check_repair.config(state=tk.NORMAL)
         label_status.config(text= "Failed queue")
         return
 
@@ -173,6 +189,8 @@ def queue_result():
         button_stop.config(state=tk.DISABLED)
         button_open2.config(state=tk.NORMAL)
         button_open3.config(state=tk.NORMAL)
+        combo_recursive.config(state=tk.NORMAL)
+        check_repair.config(state=tk.NORMAL)
         label_status.config(text= "Canceled queue")
         return
 
@@ -194,6 +212,8 @@ def queue_result():
         button_stop.config(state=tk.DISABLED)
         button_open2.config(state=tk.NORMAL)
         button_open3.config(state=tk.NORMAL)
+        combo_recursive.config(state=tk.NORMAL)
+        check_repair.config(state=tk.NORMAL)
         label_status.config(text= "Verified all PAR sets")
 
     elif "disabled" in button_stop.state():
@@ -201,8 +221,10 @@ def queue_result():
         button_start.config(state=tk.NORMAL)
         button_open2.config(state=tk.NORMAL)
         button_open3.config(state=tk.NORMAL)
+        combo_recursive.config(state=tk.NORMAL)
+        check_repair.config(state=tk.NORMAL)
         label_status.config(text= "Interrupted queue")
- 
+
     else:
         root.after(100, queue_run)
 
@@ -216,6 +238,8 @@ def button_start_clicked():
     button_stop.config(state=tk.NORMAL)
     button_open2.config(state=tk.DISABLED)
     button_open3.config(state=tk.DISABLED)
+    combo_recursive.config(state=tk.DISABLED)
+    check_repair.config(state=tk.DISABLED)
 
     if sub_proc == None:
         queue_run()
@@ -225,8 +249,19 @@ def button_start_clicked():
 
 # Stop running queue
 def button_stop_clicked():
+    global sub_proc
+
     button_stop.config(state=tk.DISABLED)
-    if sub_proc != None:
+    if sub_proc is None:
+        # When verification was not started yet, it's possible to select another folder.
+        button_folder.config(state=tk.NORMAL)
+        button_start.config(state=tk.DISABLED)
+        combo_recursive.config(state=tk.NORMAL)
+        listbox_list1.delete(0, tk.END)
+        label_head1.config(text='? sets in a folder')
+        label_status.config(text='Select a folder to search PAR files.')
+    else:
+        # When it's verifying, it will stop next verification.
         label_status.config(text= "Waiting finish of current task")
 
 
@@ -293,7 +328,7 @@ frame_middle.columnconfigure(2, weight=1)
 frame_list1 = ttk.Frame(frame_middle, padding=(6,2,6,6), relief='groove')
 frame_list1.grid(row=0, column=0, padx=4, sticky=(tk.E,tk.W,tk.S,tk.N))
 frame_list1.columnconfigure(0, weight=1)
-frame_list1.rowconfigure(2, weight=1)
+frame_list1.rowconfigure(3, weight=1)
 
 frame_top1 = ttk.Frame(frame_list1, padding=(0,4,0,3))
 frame_top1.grid(row=0, column=0, columnspan=2, sticky=(tk.E,tk.W))
@@ -307,19 +342,31 @@ button_start.pack(side=tk.LEFT, padx=2)
 button_stop = ttk.Button(frame_top1, text="Stop", width=6, command=button_stop_clicked, state=tk.DISABLED)
 button_stop.pack(side=tk.LEFT, padx=2)
 
+frame_top11 = ttk.Frame(frame_list1, padding=(0,3,0,3))
+frame_top11.grid(row=1, column=0, columnspan=2, sticky=(tk.E,tk.W))
+
+s_combo = tk.StringVar()
+combo_recursive = ttk.Combobox(frame_top11, values=["No child", "Children", "Recursive"], textvariable=s_combo, state="readonly", width=9)
+combo_recursive.current(0)
+combo_recursive.pack(side=tk.LEFT, padx=4)
+
+i_check = tk.IntVar(value=0)
+check_repair = ttk.Checkbutton(frame_top11, text="Repair", variable=i_check)
+check_repair.pack(side=tk.LEFT, padx=10)
+
 label_head1 = ttk.Label(frame_list1, text='? sets in a folder')
-label_head1.grid(row=1, column=0, columnspan=2)
+label_head1.grid(row=2, column=0, columnspan=2)
 
 s_list1 = tk.StringVar()
 listbox_list1 = tk.Listbox(frame_list1, listvariable=s_list1, activestyle='none')
-listbox_list1.grid(row=2, column=0, sticky=(tk.E,tk.W,tk.S,tk.N))
+listbox_list1.grid(row=3, column=0, sticky=(tk.E,tk.W,tk.S,tk.N))
 
 scrollbar_list1 = ttk.Scrollbar(frame_list1, orient=tk.VERTICAL, command=listbox_list1.yview)
-scrollbar_list1.grid(row=2, column=1, sticky=(tk.N, tk.S))
+scrollbar_list1.grid(row=3, column=1, sticky=(tk.N, tk.S))
 listbox_list1["yscrollcommand"] = scrollbar_list1.set
 
 xscrollbar_list1 = ttk.Scrollbar(frame_list1, orient=tk.HORIZONTAL, command=listbox_list1.xview)
-xscrollbar_list1.grid(row=3, column=0, sticky=(tk.E, tk.W))
+xscrollbar_list1.grid(row=4, column=0, sticky=(tk.E, tk.W))
 listbox_list1["xscrollcommand"] = xscrollbar_list1.set
 
 # List of bad files
