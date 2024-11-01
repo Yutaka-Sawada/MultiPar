@@ -178,12 +178,15 @@ Furthermore, you must set proper <tt>save_path</tt> in the script.
 </table>
 </p>
 <p>&nbsp
-In this sample, it tries verification only. 
-If you want to repair a damaged set automatically, use <tt>repair</tt> command instead of <tt>verify</tt> of par2j. 
+In this sample, it tries verification at first. 
+If you want to repair a damaged set automatically, check "Repair" item on the GUI panel. 
 When you want to confirm result by MultiPar, select a PAR2 set and push "Open with MultiPar" button. 
-You may repair on the MultiPar GUI.
+You may repair on the MultiPar GUI manually.
 </p>
 <p>&nbsp
+After you start verification queue, you may stop next verification by pushing "Stop" button. 
+After the queue was stopped, you may re-start queue by pushing "Start" button again. 
+Or, you may select another folder by pushing "Folder" button. 
 While verification, it shows details on Command Prompt window. 
 You can control the progress by pushing a key on the Command Prompt. 
 You may pause the process by pushing P-key. 
@@ -194,7 +197,8 @@ Even when you stop the verification task, it may save result partially.
 <p>&nbsp
 When you push "Folder" button, it searches PAR2 sets in the selected folder. 
 By default, It doesn't search files recursively, because it may be slow. 
-If you want to search all sub-directories, you need to edit the script. 
+If you want to search all sub-directories, select "Recursive" item on the GUI panel. 
+While you don't start verification yet, you may select another folder by pushing "Stop" button. 
 You may change behavior of starting verification automatically or not by editing the script.
 </p>
 
