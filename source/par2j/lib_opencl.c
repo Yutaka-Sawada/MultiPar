@@ -1,5 +1,5 @@
 ﻿// lib_opencl.c
-// Copyright : 2024-01-21 Yutaka Sawada
+// Copyright : 2024-11-30 Yutaka Sawada
 // License : GPL
 
 #ifndef _WIN32_WINNT
@@ -706,7 +706,9 @@ int init_OpenCL(unsigned int unit_size, int *src_max)
 	}
 	if (OpenCL_group_num > data_size){
 		OpenCL_group_num = data_size;
+#ifdef DEBUG_OUTPUT
 		printf("Number of work groups is reduced to %zd\n", OpenCL_group_num);
+#endif
 	}
 
 	// データへのアクセス方法をデバイスによって変える
