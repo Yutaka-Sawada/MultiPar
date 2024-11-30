@@ -49,7 +49,7 @@ POSSIBILITY OF SUCH DAMAGE.
 
  */
 
-#define _WIN32_WINNT 0x0600	// Windows Vista or later
+#define _WIN32_WINNT 0x0601	// Windows 7 or later
 
 #include <stdlib.h>
 #include <stdio.h>

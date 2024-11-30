@@ -1,5 +1,5 @@
 ﻿// common2.c
-// Copyright : 2024-07-25 Yutaka Sawada
+// Copyright : 2024-11-30 Yutaka Sawada
 // License : GPL
 
 #ifndef _UNICODE
@@ -9,7 +9,7 @@
 #define UNICODE
 #endif
 #ifndef _WIN32_WINNT
-#define _WIN32_WINNT 0x0600	// Windows Vista or later
+#define _WIN32_WINNT 0x0601	// Windows 7 or later
 #endif
 
 #include <conio.h>

@@ -31,7 +31,7 @@ Parchive 2.0 client by Yutaka Sawada
  Verifying file use same memory as the file or double of block size.
  Recovering block use more memory as the number of block is many.
 
- This requires a PC of Windows Vista or later (Windows 7, 8, 10, 11).
+ This requires a PC of Windows 7 or later (Windows 8, 10, 11).
  This is developed with Visual Studio 2022 on Windows 10.
 
 

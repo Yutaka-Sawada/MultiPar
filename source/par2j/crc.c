@@ -1,9 +1,9 @@
 ﻿// crc.c
-// Copyright : 2022-02-09 Yutaka Sawada
+// Copyright : 2024-11-30 Yutaka Sawada
 // License : GPL
 
 #ifndef _WIN32_WINNT
-#define _WIN32_WINNT 0x0600	// Windows Vista or later
+#define _WIN32_WINNT 0x0601	// Windows 7 or later
 #endif
 
 #include <stdio.h>
