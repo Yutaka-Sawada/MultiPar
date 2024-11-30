@@ -18,7 +18,7 @@ Parchive 1.0 client by Yutaka Sawada
  You cannot specify Non-Recovery-Set files. (Empty files are set.)
  Number of recovery files are limited to 99.
 
- This requires a PC of Windows Vista or later (Windows 7, 8, 10, 11).
+ This requires a PC of Windows 7 or later (Windows 8, 10, 11).
  This is developed with Visual Studio 2022 on Windows 10.
 
 
