@@ -1,11 +1,11 @@
 Release note of v1.3.3 tree
 
  par2j's "lc" option was changed to support more threads.
- Windows Vista will be removed from supported OS.
+ Windows Vista was removed from supported OS.
 
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-[ Changes from 1.3.3.3 to 1.3.3.4 ] (2024/08/04)
+[ Changes from 1.3.3.3 to 1.3.3.4 ] (2024/11/30)
 
 Installer update
  Korean language is available at installation.

@@ -25,7 +25,7 @@ Be careful to use those special features.
 
 [ System requirement ]
 
- MultiPar requires a PC with Windows Vista or later (Windows 7, 8, 10, 11).
+ MultiPar requires a PC with Windows 7 or later (Windows 8, 10, 11).
 
 [ Usage manual or Help documents ]
 

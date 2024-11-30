@@ -1,6 +1,6 @@
-﻿v1.3.3 の更新情報 (2024/08/04)
+﻿v1.3.3 の更新情報 (2024/11/30)
 
-　Windows Vista を動作対象の OS から外す予定です。
+　Windows Vista を動作対象の OS から外しました。
 　Vector のページが無くなるので、GitHub のページを使ってください。
 https://github.com/Yutaka-Sawada/MultiPar
 
