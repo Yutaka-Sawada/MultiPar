@@ -103,6 +103,17 @@ It means that it is impossible to mix "/" and "-" in options of same command lin
 If PAR file's filename (or relative path) is started by "-",
 you need to use "/" for prefix of options to distinguish PAR file.
 
+ When a option has arbitary number or text,
+don't put space between the option and following part.
+For example, setting "/rr1" is good, but "/rr 1" is wrong.
+Setting "/dPath" is good, but "/d Path" is wrong.
+
+ To distinguish options from filenames,
+order of elements in command-line is important.
+Put all options before <par file>.
+Put <par file> before all [input files].
+
+
  /f, /fu :
  Set this, if you use file-list for file name or file path.
 The file-list is a text file, which contains filenames in each line.
