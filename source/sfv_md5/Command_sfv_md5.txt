@@ -94,6 +94,17 @@ It means that it is impossible to mix "/" and "-" in options of same command lin
 If checksum file's filename (or relative path) is started by "-",
 you need to use "/" for prefix of options to distinguish checksum file.
 
+ When a option has arbitary number or text,
+don't put space between the option and following part.
+For example, setting "/vs1" is good, but "/vs 1" is wrong.
+Setting "/dPath" is good, but "/d Path" is wrong.
+
+ To distinguish options from filenames,
+order of elements in command-line is important.
+Put all options before <checksum file>.
+Put <checksum file> before all [input files]
+
+
  /fo :
  Set this, if you want to ignore folders at wildcard matching search.
 This setting disable recursive search into folder also.
