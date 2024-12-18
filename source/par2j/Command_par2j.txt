@@ -150,11 +150,10 @@ you need to use "/" for prefix of options to distinguish PAR file.
 
  When a option has arbitary number or text,
 don't put space between the option and following part.
-For example, setting "/rr10" is good, but "/rr 10" is wrong.
-Setting "/dPath" is good, but "/d Path" is wrong.
+For example, setting "/rr10" is valid, but "/rr 10" is wrong.
+Setting "/dPath" is valid, but "/d Path" is wrong.
 
- To distinguish options from filenames,
-order of elements in command-line is important.
+ To distinguish options from filenames, order of command-line arguments is important.
 Put all options before <par file>.
 Put <par file> before all [input files] or [external files].
 
@@ -485,8 +484,10 @@ If you include space in comment, use "" to specify where is end.
 use this setting to set the path as base-directory.
 This is either absolute path or relative path from current directory.
 If you include space in path, use "" to specify where is end.
-Note, setting "/dC:" is same as setting current directory of C-drive.
-If you want to set direct root of C-drive, you must set "/dC:/".
+As you may omit the last "/" in path of a folder,
+both "/dC:/data/" and "/dC:/data" are valid.
+Note, setting "/dD:" is same as setting current directory of D-drive.
+If you want to set direct root of D-drive, you must set "/dD:/".
 
  for example, /dC:/data/ , /d"C:/Program Files/" , /d../data/
 
