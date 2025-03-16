@@ -1,5 +1,5 @@
 ﻿// par2_cmd.c
-// Copyright : 2024-11-30 Yutaka Sawada
+// Copyright : 2025-03-12 Yutaka Sawada
 // License : GPL
 
 #ifndef _UNICODE
@@ -1448,14 +1448,12 @@ ri= switch_set & 0x00040000
 			} else if (wcsncmp(tmp_p, L"lr", 2) == 0){
 				recovery_limit = 0;
 				j = 2;
-				while ((j < 2 + 6) && (tmp_p[j] >= '0') && (tmp_p[j] <= '9')){
+				while ((j < 2 + 10) && (tmp_p[j] >= '0') && (tmp_p[j] <= '9')){
 					recovery_limit = (recovery_limit * 10) + (tmp_p[j] - '0');
 					j++;
 				}
 				if (recovery_limit <= 0)	// -lr0 ならソース・ファイルの最大ブロック数と同じにする
 					recovery_limit = -1;
-				if (recovery_limit > MAX_PARITY_NUM)
-					recovery_limit = MAX_PARITY_NUM;
 			} else if (wcsncmp(tmp_p, L"ls", 2) == 0){
 				__int64 num8 = 0;
 				j = 2;
@@ -1977,6 +1975,14 @@ fclose(fp);
 					if (recovery_limit > j)
 						recovery_limit = j;
 				}
+			} else {
+				if (split_size == 2){	// 制限をブロック数ではなく、サイズとして認識する
+					recovery_limit /= block_size;
+					if (recovery_limit < 1)
+						recovery_limit = 1;
+				}
+				if (recovery_limit > MAX_PARITY_NUM)	// パリティ・ブロック数の最大値を超えない
+					recovery_limit = MAX_PARITY_NUM;
 			}
 			// パリティ・ブロックをリカバリ・ファイルに分配する方法
 			i = (switch_set & 0x30000) >> 16;

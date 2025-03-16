@@ -1,4 +1,4 @@
-[ par2j.exe - version 1.3.3.4 or later ]
+[ par2j.exe - version 1.3.3.5 or later ]
 
 Type "par2j.exe" to see version, test integrity, and show usage below.
 
@@ -312,7 +312,7 @@ Because it may be difficult to predict recovery file size,
 use trial command to see how is the size.
 When it's "/lr" or "/lr0", block count of the largest input file is used.
 (If the max file is 1000 KB and block size is 10 KB, /lr is same as /lr100.)
-When split size "/ls" is set with "/lr0",
+When both "/lr0" and "/ls(split size)" are set,
 block count of the splited file size is used instead of the largest input file.
 
  for example,  /lr , /lr10 , /lr2000
@@ -363,6 +363,13 @@ Other small copied files don't have extra extension.
 This is possible, only when there is one input file of .ZIP or .7z format.
 When recovery files are created in a different directory,
 the protected archive file is made in the directory.
+
+ /ls2 has a special feature to set limit size of recovery files directly.
+When both "/ls2" and "/lr(limit size)" are set,
+setting number of /lr is recognizned as file size instead of number of blocks.
+In this usage, setting limit size must be less than 2 GB.
+If you want max 100 MB each file size, set like these; /ls2 /lr102400000
+Because the calculation ignores packets, you may set a bit smaller size.
 
  for example,  /ls10000 , /ls1048576, /ls1
 
