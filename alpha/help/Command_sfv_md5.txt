@@ -1,4 +1,4 @@
-[ sfv_md5.exe - version 1.3.2.8 or later ]
+[ sfv_md5.exe - version 1.3.3.6 or later ]
 
 Type "sfv_md5.exe" to see version and show usage below.
 
@@ -32,7 +32,7 @@ exit code (bit-wise OR) :
 
 specifying <checksum file> :
  <checksum file> is either absolute path or relative path from current directory.
-Note, it is not relative path from the SFV client's directory.
+Note, it's not relative path from the SFV client's directory.
 
  <checksum file> can be a NTFS "alternate data stream".
 It is like a normal file path and ":something stream name".
@@ -47,6 +47,11 @@ To specify a checksum file, <checksum file> cannot contain "*" or "?".
 You must specify extension ".sfv" or ".md5" to select file format.
 CRC-32 is saved in SFV file.
 MD5 hash is saved in MD5 file (md5sum format).
+
+ You may create FLAC Fingerprint file for FLAC files.
+You must specify extension ".ffp" or end with "ffp.txt" to select file format.
+You must specify FLAC files as input files.
+You don't need flac.exe to create FLAC Fingerprint files.
 
  You can write multiple input files in command line.
 The order of files in a checksum file is different from this command order.
@@ -84,6 +89,12 @@ If filenames contain non-ASCII characters,
 it is preferable to convert encoding to UTF-8 or UTF-16.
 Because there are many kinds of format for MD5 hash,
 some format may not be supported.
+
+ You may verify FLAC files with FLAC Fingerprint files.
+You needs flac.exe (and libFLAC.dll) to verify FLAC Fingerprint files.
+You may download them from FLAC website. (https://xiph.org/flac/download.html)
+They must exist in a same directory as sfv_md5.exe, or somewhere PATH environment.
+When it cannot find flac.exe, FLAC file's status is shown as Unknown.
 
 
 [ Option description ]
@@ -199,4 +210,14 @@ There must be only one space between filename and hash.
 a_filename_1 123456789ABCDEF0123456789ABCDEF0
 some_filename_2 23456789ABCDEF1023456789ABCDEF01
 other filename_3 3456789ABCDEF1203456789ABCDEF012
+
+
+Writing & reading FFP file :
+ There are filename and FLAC Fingerprint in each line.
+There must be ":" between filename and fingerprint.
+Sub-directory in filename isn't supported.
+
+a_filename_1:123456789ABCDEF0123456789ABCDEF0
+some_filename_2:23456789ABCDEF1023456789ABCDEF01
+other filename_3:3456789ABCDEF1203456789ABCDEF012
 
