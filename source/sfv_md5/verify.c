@@ -1,5 +1,5 @@
 ﻿// verify.c
-// Copyright : 2024-11-30 Yutaka Sawada
+// Copyright : 2025-11-26 Yutaka Sawada
 // License : The MIT license
 
 #ifndef _UNICODE
@@ -21,6 +21,13 @@
 #include "verify.h"
 #include "ini.h"
 #include "phmd5.h"
+
+//#define TIMER
+
+#ifdef TIMER
+#include <time.h>
+static clock_t time_start, time_calc;
+#endif
 
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
@@ -115,6 +122,9 @@ static int file_crc32_check(
 		break;
 	}
 	fflush(stdout);
+
+	if (cancel_progress() != 0)	// キャンセル処理
+		return 2;
 	return bad_flag;
 }
 
@@ -299,8 +309,7 @@ int verify_sfv(
 		}
 	}
 
-
-	printf("\nVerifying Input File    :\n");
+	printf("\nVerifying Input File   :\n");
 	printf("         Size Status   :  Filename\n");
 	fflush(stdout);
 	if (recent_data != 0){	// 前回の検査結果を使うなら
@@ -470,6 +479,9 @@ static int file_md5_check(
 		break;
 	}
 	fflush(stdout);
+
+	if (cancel_progress() != 0)	// キャンセル処理
+		return 2;
 	return bad_flag;
 }
 
@@ -714,7 +726,7 @@ int verify_md5(
 	}
 
 	printf("\nInput File list : %d\n", file_num);
-	printf("\t    MD5 Hash\t\t :  Filename\n");
+	printf("            MD5 Hash             :  Filename\n");
 	fflush(stdout);
 	line_off = text_buf;
 	while (*line_off != 0){	// 一行ずつ処理する
@@ -823,7 +835,7 @@ int verify_md5(
 		}
 	}
 
-	printf("\nVerifying Input File    :\n");
+	printf("\nVerifying Input File   :\n");
 	printf("         Size Status   :  Filename\n");
 	fflush(stdout);
 	if (recent_data != 0){	// 前回の検査結果を使うなら
@@ -963,6 +975,393 @@ int verify_md5(
 				line_off++;
 		}
 	}
+
+	return err;
+}
+
+/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+
+// FLAC Fingerprint を比較する
+//  0 = ファイルが存在して完全である
+//  1 = ファイルが存在しない
+//  2 = ファイルが破損してる
+static int file_ffp_check(
+	int num,
+	char *ascii_name,
+	wchar_t *uni_name,
+	wchar_t *file_path,
+	unsigned char *hash)
+{
+	unsigned char buf[42];
+	wchar_t cmdline[MAX_LEN + 8];
+	int len, rv, bad_flag;
+	unsigned int meta_data[8];
+	__int64 file_size = 0;
+	HANDLE hFile;
+
+	wcscpy(file_path, base_dir);
+	wcscat(file_path, uni_name);
+	//printf("path = \"%S\"\n", file_path);
+
+	// 読み込むファイルを開く
+	hFile = CreateFile(file_path, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, 0, NULL);
+	if (hFile == INVALID_HANDLE_VALUE){
+		bad_flag = 1;	// 消失は記録しない
+	} else {
+		bad_flag = check_ini_state(num, meta_data, hFile);
+		memcpy(&file_size, meta_data, 8);
+		if (bad_flag == -2){	// 記録が無い場合 (属性取得エラーは不明にする)
+			if (file_size < 42){
+				bad_flag = 2;	// ファイルが小さい
+			} else {
+				if (!ReadFile(hFile, buf, 42, &len, NULL) || (42 != len)){
+					bad_flag = 2;	// 読み取りエラーは必ず破損になる
+				} else {
+					// フォーマットを確認する
+					if ((buf[0] != 0x66) || (buf[1] != 0x4C) || (buf[2] != 0x61) || (buf[3] != 0x43)){ // fLaC
+						bad_flag = 2;
+					} else if (((buf[4] & 0x7F) != 0) || (buf[5] != 0) || (buf[6] != 0) || (buf[7] != 34)){ // streaminfo metadata のサイズ
+						bad_flag = 2;
+					} else if (memcmp(hash, buf + 26, 16) != 0){	// MD5 を比較する
+						bad_flag = 2;	// ファイルに記録されてるハッシュ値が異なる
+					}
+				}
+			}
+			CloseHandle(hFile);
+
+			if (bad_flag < 0){	// flac.exe を呼び出す
+				STARTUPINFO si;
+				PROCESS_INFORMATION pi;
+
+				bad_flag = -3;
+				memset(&si, 0, sizeof(si));
+				si.cb = sizeof(si);
+				memset(&pi, 0, sizeof(pi));
+				// 実行ファイルを lpCommandLine に含めると PATH 環境を検索してくれる
+				// lpApplicationName に実行ファイルを指定した時は検索しないことに注意！
+				//wcscpy(cmdline, L"flac.exe -t ");
+				wcscpy(cmdline, L"flac.exe -t --totally-silent ");	// エラー内容を表示しない
+				// ファイル名がスペースを含む場合は「"」で囲む
+				len = wcslen(uni_name);
+				for (rv = 0; rv < len; rv++){
+					if (uni_name[rv] == ' ')
+						break;
+				}
+				if (rv < len){
+					rv = wcslen(cmdline);
+					cmdline[rv] = '"';
+					wcscpy(cmdline + rv + 1, uni_name);	// 「"」で囲む
+					cmdline[rv + len + 1] = '"';
+					cmdline[rv + len + 2] = 0;
+				} else {
+					wcscat(cmdline, uni_name);	// そのまま
+				}
+				//printf("cmdline = \"%S\"\n", cmdline);
+				if (CreateProcess(NULL, cmdline,
+						NULL,	//プロセスのセキュリティー記述子
+						NULL,	//スレッドのセキュリティー記述子
+						FALSE,	//ハンドルを継承しない
+						0,	//作成フラグ
+						NULL,	//環境変数は引き継ぐ
+						base_dir,	//カレントディレクトリー
+						&si, &pi) != 0){
+					// 終了を待つ（キャンセルできた方がいいかも？でも、実験できない・・・）
+					rv = WaitForSingleObject(pi.hProcess, INFINITE);
+					if (rv == WAIT_OBJECT_0){	// 完了したなら
+						if (GetExitCodeProcess(pi.hProcess, &rv) != 0){	// 終了コードを取得する
+							//printf("ExitCode = %d\n", rv);
+							if (rv == 0){
+								bad_flag = 0;	// 完全
+							} else {
+								bad_flag = 2;	// ファイルが破損またはエラー
+							}
+						}
+					}
+					if (pi.hThread != NULL)	// 不要なハンドルをクローズする
+						CloseHandle(pi.hThread);
+					CloseHandle(pi.hProcess);
+				}
+			}
+
+			if (bad_flag >= 0)
+				write_ini_state(num, meta_data, bad_flag);	// 検査結果を記録する、完全か破損
+		} else {
+			CloseHandle(hFile);
+		}
+	}
+
+	switch (bad_flag){
+	case 0:
+		printf("%13I64d Complete : \"%s\"\n", file_size, ascii_name);
+		break;
+	case 1:
+		printf("            0 Missing  : \"%s\"\n", ascii_name);
+		bad_flag = 4 | 8;
+		break;
+	case 2:
+		printf("%13I64d Damaged  : \"%s\"\n", file_size, ascii_name);
+		bad_flag = 4;
+		break;
+	case -3:	// flac.exe のエラー
+		printf("%13I64d Unknown  : \"%s\"\n", file_size, ascii_name);
+		bad_flag = 4;
+		break;
+	default:	// IOエラー等
+		printf("            ? Unknown  : \"%s\"\n", ascii_name);
+		bad_flag = 4;
+		break;
+	}
+	fflush(stdout);
+
+	if (cancel_progress() != 0)	// キャンセル処理
+		return 2;
+	return bad_flag;
+}
+
+// FLAC Fingerprint ファイル
+int verify_ffp(
+	char *ascii_buf,
+	wchar_t *file_path)
+{
+	unsigned char hash[16];
+	wchar_t *line_off, uni_buf[MAX_LEN], num_buf[3];
+	unsigned int err = 0, i, rv, line_len, name_len, line_num, num, comment;
+
+	// ファイル数を調べる
+	comment = 0;
+	num = 0;
+	line_num = 1;
+	line_off = text_buf;
+	while (*line_off != 0){	// 一行ずつ処理する
+		line_len = 0;
+		while (line_off[line_len] != 0){	// 改行までを一行とする
+			if (line_off[line_len] == '\n')
+				break;
+			if (line_off[line_len] == '\r')
+				break;
+			line_len++;
+		}
+		// 行の内容が適正か調べる
+		if (line_off[0] == ';'){	// コメント
+			if (((comment & 1) == 0) && (line_len > 8) && (line_len < MAX_LEN)){
+				// クリエイターの表示がまだなら
+				if (wcsncmp(line_off, L"; Generated by ", 15) == 0){	// WIN-SFV32, SFV32nix
+					wcsncpy(uni_buf, line_off + 15, line_len - 15);
+					uni_buf[line_len - 15] = 0;
+					comment |= 1;
+				} else if (wcsncmp(line_off, L"; flac fingerprint file generated by ", 37) == 0){	// Trader's Little Helper
+					wcsncpy(uni_buf, line_off + 37, line_len - 37);
+					uni_buf[line_len - 37] = 0;
+					comment |= 1;	// 同一行を二度表示しない
+				}
+				if (comment & 1){
+					uni_buf[COMMENT_LEN - 1] = 0;	// 表示する文字数を制限する
+					utf16_to_cp(uni_buf, ascii_buf, COMMENT_LEN * 3, cp_output);
+					printf("Creator : %s\n", ascii_buf);
+					comment |= 4;
+				}
+			}
+			if (((comment & 6) == 0) && (line_len < MAX_LEN)){
+				// 最初のコメントの表示がまだなら
+				i = 1;
+				while (i < line_len){
+					if (line_off[i] != ' ')
+						break;
+					i++;
+				}
+				if (i < line_len){
+					wcsncpy(uni_buf, line_off + i, line_len - i);
+					uni_buf[line_len - i] = 0;
+					uni_buf[COMMENT_LEN - 1] = 0;	// 表示する文字数を制限する
+					utf16_to_cp(uni_buf, ascii_buf, COMMENT_LEN * 3, cp_output);
+					printf("Comment : %s\n", ascii_buf);
+				}
+				comment |= 2;	// 「;」だけの行も認識する
+			}
+			comment &= ~4;	// bit 4 を消す
+		} else if ((line_len > 33) && (line_off[line_len - 33] == ':')	// MD5 の前が「:」
+					&& (base16_len(line_off + (line_len - 32)) == 32)){	// 16進数で32文字
+			// ファイル名
+			name_len = line_len - 33;
+			if (base_len + name_len < MAX_LEN){
+				while (line_off[name_len - 1] == ' ')
+					name_len--;
+				wcsncpy(uni_buf, line_off, name_len);
+				uni_buf[name_len] = 0;
+				rv = sanitize_filename(uni_buf);	// ファイル名を浄化する
+				if (rv > 1){
+					if ((comment & 8) == 0){
+						comment |= 8;
+						printf("\nWarning about filenames :\n");
+					}
+					if (rv == 16){
+						printf("line%d: filename is invalid\n", line_num);
+						num++;	// 浄化できないファイル名
+					} else if ((rv & 6) == 0){
+						utf16_to_cp(uni_buf, ascii_buf, MAX_LEN * 3, cp_output);
+						printf("line%d: \"%s\" is invalid\n", line_num, ascii_buf);
+					} else {
+						utf16_to_cp(uni_buf, ascii_buf, MAX_LEN * 3, cp_output);
+						printf("line%d: \"%s\" was sanitized\n", line_num, ascii_buf);
+					}
+				}
+				if (rv != 16)
+					file_num++;
+			} else {
+				if ((comment & 8) == 0){
+					comment |= 8;
+					printf("\nWarning about filenames :\n");
+				}
+				printf("line%d: filename is invalid\n", line_num);
+				num++;	// 長すぎるファイル名
+			}
+		} else if (line_len > 0){
+			//printf("line %d is invalid\n", line_num);
+			num++;	// 内容が認識できない行
+		}
+		// 次の行へ
+		line_off += line_len;
+		if (*line_off == '\n')
+			line_off++;
+		if (*line_off == '\r'){
+			line_off++;
+			if (*line_off == '\n')	// 「\r\n」を一つの改行として扱う
+				line_off++;
+		}
+		line_num++;
+	}
+	if (comment & 8)
+		printf("\n");
+	// チェックサム・ファイルの状態
+	if (num == 0){
+		printf("Status  : Good\n");
+	} else {
+		printf("Status  : Damaged\n");
+		err |= 16;	// 後で 256に変更する
+	}
+	if (file_num == 0){
+		printf("valid file is not found\n");
+		return 1;
+	}
+
+	printf("\nInput File list : %d\n", file_num);
+	printf("        FLAC Fingerprint         :  Filename\n");
+	fflush(stdout);
+	line_off = text_buf;
+	while (*line_off != 0){	// 一行ずつ処理する
+		line_len = 0;
+		while (line_off[line_len] != 0){	// 改行までを一行とする
+			if (line_off[line_len] == '\n')
+				break;
+			if (line_off[line_len] == '\r')
+				break;
+			line_len++;
+		}
+		// 行の内容が適正か調べる
+		if ((line_off[0] != ';') && (line_len > 33) && (line_off[line_len - 33] == ':')
+					&& (base16_len(line_off + (line_len - 32)) == 32)){
+			// ファイル名
+			name_len = line_len - 33;
+			if (base_len + name_len < MAX_LEN){
+				wcsncpy(uni_buf, line_off, name_len);
+				uni_buf[name_len] = 0;
+				rv = sanitize_filename(uni_buf);	// ファイル名を浄化する
+				if (rv != 16){
+					utf16_to_cp(uni_buf, ascii_buf, MAX_LEN * 3, cp_output);
+					// MD5
+					num_buf[2] = 0;
+					for (i = 0; i < 16; i++){
+						wcsncpy(num_buf, line_off + (line_len - 32 + (i * 2)), 2);
+						hash[i] = (unsigned char)get_val32h(num_buf);
+					}
+					printf("%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X : \"%s\"\n",
+						hash[0], hash[1], hash[2], hash[3], hash[4], hash[5], hash[6], hash[7],
+						hash[8], hash[9], hash[10], hash[11], hash[12], hash[13], hash[14], hash[15], ascii_buf);
+				}
+			}
+		}
+		// 次の行へ
+		line_off += line_len;
+		if (*line_off == '\n')
+			line_off++;
+		if (*line_off == '\r'){
+			line_off++;
+			if (*line_off == '\n')	// 「\r\n」を一つの改行として扱う
+				line_off++;
+		}
+	}
+
+	printf("\nVerifying Input File   :\n");
+	printf("         Size Status   :  Filename\n");
+	fflush(stdout);
+	if (recent_data != 0){	// 前回の検査結果を使うなら
+		PHMD5 ctx;
+		// チェックサム・ファイル識別用にハッシュ値を計算する
+		Phmd5Begin(&ctx);
+		Phmd5Process(&ctx, (unsigned char *)text_buf, text_len * 2);
+		Phmd5End(&ctx);
+		// 前回の検査結果が存在するか
+		check_ini_file(ctx.hash, text_len);
+	}
+#ifdef TIMER
+time_start = clock();
+#endif
+	num = 0;
+	line_off = text_buf;
+	while (*line_off != 0){	// 一行ずつ処理する
+		line_len = 0;
+		while (line_off[line_len] != 0){	// 改行までを一行とする
+			if (line_off[line_len] == '\n')
+				break;
+			if (line_off[line_len] == '\r')
+				break;
+			line_len++;
+		}
+		// 行の内容が適正か調べる
+		if ((line_off[0] != ';') && (line_len > 33) && (line_off[line_len - 33] == ':')
+					&& (base16_len(line_off + (line_len - 32)) == 32)){
+			// ファイル名
+			name_len = line_len - 33;
+			if (base_len + name_len < MAX_LEN){
+				wcsncpy(uni_buf, line_off, name_len);
+				uni_buf[name_len] = 0;
+				rv = sanitize_filename(uni_buf);	// ファイル名を浄化する
+				if (rv != 16){
+					utf16_to_cp(uni_buf, ascii_buf, MAX_LEN * 3, cp_output);
+					// MD5
+					num_buf[2] = 0;
+					for (i = 0; i < 16; i++){
+						wcsncpy(num_buf, line_off + (line_len - 32 + (i * 2)), 2);
+						hash[i] = (unsigned char)get_val32h(num_buf);
+					}
+					rv = file_ffp_check(num, ascii_buf, uni_buf, file_path, hash);
+					if (rv & 3){
+						err = rv;
+						break;
+					}
+					if (rv & 0xC){	// Missing or Damaged
+						err |= rv;
+						err += 0x100;
+					}
+					num++;
+				}
+			}
+		}
+		// 次の行へ
+		line_off += line_len;
+		if (*line_off == '\n')
+			line_off++;
+		if (*line_off == '\r'){
+			line_off++;
+			if (*line_off == '\n')	// 「\r\n」を一つの改行として扱う
+				line_off++;
+		}
+	}
+
+#ifdef TIMER
+time_calc = clock() - time_start;
+printf("calc %.3f sec\n", (double)time_calc / CLOCKS_PER_SEC);
+#endif
 
 	return err;
 }

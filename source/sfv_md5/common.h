@@ -134,6 +134,9 @@ void print_progress_text(int prog_now, char *text);
 int print_progress_file(int prog_now, wchar_t *file_name);
 void print_progress_done(void);
 
+// キャンセルと一時停止を行う
+int cancel_progress(void);
+
 // Win32 API のエラー・メッセージを表示する
 void print_win32_err(void);
 

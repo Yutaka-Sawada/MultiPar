@@ -1,5 +1,5 @@
 ﻿// main.c
-// Copyright : 2024-11-30 Yutaka Sawada
+// Copyright : 2025-11-23 Yutaka Sawada
 // License : The MIT license
 
 #ifndef _UNICODE
@@ -43,9 +43,9 @@ void print_help(void)
 }
 
 // CRC-32 チェックサムを使って自分自身の破損を検出する
-long test_checksum(wchar_t *file_path)	// 作業用
+int test_checksum(wchar_t *file_path)	// 作業用
 {
-	unsigned long rv, crc, chk, chk2;
+	unsigned int rv, crc, chk, chk2;
 	unsigned char *pAddr;
 	HANDLE hFile, hMap;
 
@@ -98,20 +98,20 @@ long test_checksum(wchar_t *file_path)	// 作業用
 static wchar_t * search_files(
 	wchar_t *list_buf,		// ファイル・リスト
 	wchar_t *search_path,	// 検索するファイルのフル・パス
-	long dir_len,			// ディレクトリ部分の長さ
-	//long file_only,			// ファイルのみにするかどうか
+	int dir_len,			// ディレクトリ部分の長さ
+	//int file_only,		// ファイルのみにするかどうか
 	
 	unsigned int filter,	//  2, FILE_ATTRIBUTE_HIDDEN    = 隠しファイルを無視する
 							//  4, FILE_ATTRIBUTE_SYSTEM    = システムファイルを無視する
 							// 16, FILE_ATTRIBUTE_DIRECTORY = ディレクトリを無視する
 
-	long single_file,		// -1 = *や?で検索指定、0～ = 単独指定
-	long *list_max,			// ファイル・リストの確保サイズ
-	long *list_len,			// ファイル・リストの文字数
+	int single_file,		// -1 = *や?で検索指定、0～ = 単独指定
+	int *list_max,			// ファイル・リストの確保サイズ
+	int *list_len,			// ファイル・リストの文字数
 	__int64 *total_size)	// 合計ファイル・サイズ
 {
 	wchar_t *tmp_p;
-	long len, l_max, l_off, dir_len2;
+	int len, l_max, l_off, dir_len2;
 	unsigned int attrib_filter;
 	HANDLE hFind;
 	WIN32_FIND_DATA FindData;
@@ -200,7 +200,7 @@ static wchar_t * search_files(
 }
 
 // ファイルの詳細情報を記録する
-long save_detail(
+int save_detail(
 	wchar_t *uni_buf,
 	wchar_t *file_name)		// 検査対象のファイル名
 {
@@ -249,12 +249,13 @@ long save_detail(
 }
 
 // チェックサム・ファイルを書き込む
-static long write_checksum(wchar_t *uni_buf,
-	wchar_t *list_buf, long list_len, __int64 total_size, long switch_t)
+static int write_checksum(wchar_t *uni_buf,
+	wchar_t *list_buf, int list_len, __int64 total_size, int switch_t)
 {
 	char *ascii_buf;
 	wchar_t *ads_p;
-	long err = 0, rv, len, format;
+	int err = 0, rv, len, format;
+	unsigned int time_last;
 	__int64 prog_now = 0;
 	HANDLE hFile;
 	FILETIME ftWrite;
@@ -264,9 +265,11 @@ static long write_checksum(wchar_t *uni_buf,
 		format = 1;
 	} else if (_wcsicmp(checksum_file + (len - 4), L".md5") == 0){	// MD5ファイル
 		format = 2;
-//	} else {
-//		printf("unknown format\n");
-//		return 1;
+	} else if ((_wcsicmp(checksum_file + (len - 4), L".ffp") == 0) || (_wcsicmp(checksum_file + (len - 7), L"ffp.txt") == 0)){
+		format = 3; // FLAC Fingerprint ファイル
+	} else {
+		printf("unknown format\n");
+		return 1;
 	}
 
 	// チェックサム・ファイルのテキストを UTF-16 の文字列で作成する
@@ -315,12 +318,15 @@ static long write_checksum(wchar_t *uni_buf,
 	// 各ファイルのチェックサムを計算する
 	printf("\n");
 	print_progress_text(0, "Computing file hash");
+	time_last = GetTickCount() / UPDATE_TIME;	// 時刻の変化時に経過を表示する
 	len = 0;
 	while (len < list_len){
 		if (format == 1){
-			rv = create_sfv(uni_buf, list_buf + len, &prog_now, total_size);
+			rv = create_sfv(uni_buf, list_buf + len, &time_last, &prog_now, total_size);
 		} else if (format == 2){
-			rv = create_md5(uni_buf, list_buf + len, &prog_now, total_size);
+			rv = create_md5(uni_buf, list_buf + len, &time_last, &prog_now, total_size);
+		} else if (format == 3){
+			rv = create_ffp(uni_buf, list_buf + len, &prog_now);
 		} else {
 			rv = 1;
 		}
@@ -328,6 +334,16 @@ static long write_checksum(wchar_t *uni_buf,
 			free(text_buf);
 			return rv;	// エラー、キャンセルなど
 		}
+
+		// 経過表示
+		if (GetTickCount() / UPDATE_TIME != time_last){
+			if (print_progress((int)((prog_now * 1000) / total_size))){
+				free(text_buf);
+				return 2;
+			}
+			time_last = GetTickCount() / UPDATE_TIME;
+		}
+
 		len += wcslen(list_buf + len) + 1;
 	}
 	print_progress_done();	// 改行して行の先頭に戻しておく
@@ -396,10 +412,10 @@ static long write_checksum(wchar_t *uni_buf,
 }
 
 // チェックサム・ファイルを読み込む
-static long read_checksum(char *ascii_buf, wchar_t *file_path)
+static int read_checksum(char *ascii_buf, wchar_t *file_path)
 {
 	unsigned char *data_buf;
-	unsigned long err = 0, rv, file_size;
+	unsigned int err = 0, rv, file_size;
 	HANDLE hFile;
 
 	// 読み込むファイルを開く
@@ -482,9 +498,11 @@ static long read_checksum(char *ascii_buf, wchar_t *file_path)
 		err = verify_sfv(ascii_buf, file_path);
 	} else if (_wcsicmp(checksum_file + (rv - 4), L".md5") == 0){	// MD5ファイル
 		err = verify_md5(ascii_buf, file_path);
-//	} else {
-//		err = 1;
-//		printf("unknown format\n");
+	} else if ((_wcsicmp(checksum_file + (rv - 4), L".ffp") == 0) || (_wcsicmp(checksum_file + (rv - 7), L"ffp.txt") == 0)){
+		err = verify_ffp(ascii_buf, file_path);	// FLAC Fingerprint ファイル
+	} else {
+		err = 1;
+		printf("unknown format\n");
 	}
 	free(text_buf);
 	close_ini_file();
@@ -507,12 +525,12 @@ static long read_checksum(char *ascii_buf, wchar_t *file_path)
 }
 
 // チェックサム・ファイルとソース・ファイルの名前に問題が無いか確かめる
-static long check_filename(
+static int check_filename(
 	wchar_t *list_buf,
-	long list_len)
+	int list_len)
 {
 	wchar_t *tmp_p;
-	long num, list_off = 0;
+	int num, list_off = 0;
 
 	// SFV ファイル作成時に、ソース・ファイルの先頭が「;」だとコメントと区別できない
 	if (_wcsicmp(checksum_file + (wcslen(checksum_file) - 4), L".sfv") == 0){	// SFVファイル
@@ -550,11 +568,11 @@ static long check_filename(
 	return 0;
 }
 
-wmain(long argc, wchar_t *argv[])
+wmain(int argc, wchar_t *argv[])
 {
 	char ascii_buf[MAX_LEN * 3];
 	wchar_t file_path[MAX_LEN], *tmp_p;
-	long i, j, switch_set = 0;
+	int i, j, switch_set = 0;
 /*
 t = switch_set & 0x00000003
 fo= switch_set & 0x00000020
@@ -674,7 +692,10 @@ fo= switch_set & 0x00000020
 		if (_wcsicmp(checksum_file + (j - 4), L".sfv") == 0){
 			init_crc_table();	// CRC 計算用のテーブルを作る
 		} else if (_wcsicmp(checksum_file + (j - 4), L".md5") == 0){
-			if (recent_data != 0)
+			if ((argv[1][0] == 'v') && (recent_data != 0))
+				init_crc_table();
+		} else if ((_wcsicmp(checksum_file + (j - 4), L".ffp") == 0) || (_wcsicmp(checksum_file + (j - 7), L"ffp.txt") == 0)){
+			if ((argv[1][0] == 'v') && (recent_data != 0))
 				init_crc_table();
 		} else {	// 拡張子が違うなら
 			wcscpy(checksum_file + j, L".sfv");	// 標準で SFV 形式にする
@@ -704,7 +725,7 @@ fo= switch_set & 0x00000020
 			j = GetFileAttributes(checksum_file);
 			if ((j == INVALID_FILE_ATTRIBUTES) || (j & FILE_ATTRIBUTE_DIRECTORY)){
 				wchar_t search_path[MAX_LEN];
-				long name_len, dir_len, path_len, find_flag = 0;
+				int name_len, dir_len, path_len, find_flag = 0;
 				HANDLE hFind;
 				WIN32_FIND_DATA FindData;
 				if (wcspbrk(offset_file_name(checksum_file), L"*?") == NULL){
@@ -770,7 +791,7 @@ fo= switch_set & 0x00000020
 
 	if (argv[1][0] == 'c'){
 		wchar_t *list_buf;
-		long dir_len, list_len, list_max;
+		int dir_len, list_len, list_max;
 		__int64 total_size = 0;	// 合計ファイル・サイズ
 		unsigned int filter;
 		// 隠しファイルやフォルダーを無視するかどうか

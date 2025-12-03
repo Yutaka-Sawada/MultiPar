@@ -1,5 +1,5 @@
 ﻿// create.c
-// Copyright : 2024-11-30 Yutaka Sawada
+// Copyright : 2025-11-24 Yutaka Sawada
 // License : The MIT license
 
 #ifndef _UNICODE
@@ -27,15 +27,14 @@
 int create_sfv(
 	wchar_t *uni_buf,
 	wchar_t *file_name,		// 検査対象のファイル名
+	unsigned int *time_last,
 	__int64 *prog_now,		// 経過表示での現在位置
 	__int64 total_size)		// 合計ファイル・サイズ
 {
 	unsigned char buf[IO_SIZE];
-	unsigned int rv, len, crc, time_last;
+	unsigned int rv, len, crc;
 	__int64 file_size = 0, file_left;
 	HANDLE hFile;
-
-	time_last = GetTickCount() / UPDATE_TIME;	// 時刻の変化時に経過を表示する
 
 	// 読み込むファイルを開く
 	wcscpy(uni_buf, base_dir);
@@ -72,12 +71,12 @@ int create_sfv(
 		crc = crc_update(crc, buf, len);
 
 		// 経過表示
-		if (GetTickCount() / UPDATE_TIME != time_last){
+		if (GetTickCount() / UPDATE_TIME != (*time_last)){
 			if (print_progress((int)(((*prog_now) * 1000) / total_size))){
 				CloseHandle(hFile);
 				return 2;
 			}
-			time_last = GetTickCount() / UPDATE_TIME;
+			(*time_last) = GetTickCount() / UPDATE_TIME;
 		}
 	}
 	crc ^= 0xFFFFFFFF;	// 最終処理
@@ -109,16 +108,15 @@ int create_sfv(
 int create_md5(
 	wchar_t *uni_buf,
 	wchar_t *file_name,		// 検査対象のファイル名
+	unsigned int *time_last,
 	__int64 *prog_now,		// 経過表示での現在位置
 	__int64 total_size)		// 合計ファイル・サイズ
 {
 	unsigned char buf[IO_SIZE];
-	unsigned int rv, len, time_last;
+	unsigned int rv, len;
 	__int64 file_size = 0, file_left;
 	HANDLE hFile;
 	PHMD5 ctx;
-
-	time_last = GetTickCount() / UPDATE_TIME;	// 時刻の変化時に経過を表示する
 
 	// 読み込むファイルを開く
 	wcscpy(uni_buf, base_dir);
@@ -155,12 +153,12 @@ int create_md5(
 		Phmd5Process(&ctx, buf, len);
 
 		// 経過表示
-		if (GetTickCount() / UPDATE_TIME != time_last){
+		if (GetTickCount() / UPDATE_TIME != (*time_last)){
 			if (print_progress((int)(((*prog_now) * 1000) / total_size))){
 				CloseHandle(hFile);
 				return 2;
 			}
-			time_last = GetTickCount() / UPDATE_TIME;
+			(*time_last) = GetTickCount() / UPDATE_TIME;
 		}
 	}
 	Phmd5End(&ctx);	// 最終処理
@@ -175,6 +173,66 @@ int create_md5(
 	unix_directory(uni_buf);
 	add_text(uni_buf);
 	add_text(L"\r\n");
+
+	return 0;
+}
+
+// FLAC Fingerprint ファイル
+int create_ffp(
+	wchar_t *uni_buf,
+	wchar_t *file_name,		// 検査対象のファイル名
+	__int64 *prog_now)		// 経過表示での現在位置
+{
+	unsigned char buf[42];
+	unsigned int rv;
+	__int64 file_size;
+		HANDLE hFile;
+
+	// 読み込むファイルを開く
+	wcscpy(uni_buf, base_dir);
+	wcscpy(uni_buf + base_len, file_name);
+	hFile = CreateFile(uni_buf, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, 0, NULL);
+	if (hFile == INVALID_HANDLE_VALUE){
+		printf("\n");
+		print_win32_err();
+		return 1;
+	}
+	if (!GetFileSizeEx(hFile, (PLARGE_INTEGER)&file_size)){
+		printf("\n");
+		print_win32_err();
+		CloseHandle(hFile);
+		return 1;
+	}
+	(*prog_now) += file_size;
+
+	// streaminfo metadata block (42バイト) を読み取る
+	if (!ReadFile(hFile, buf, 42, &rv, NULL) || (42 != rv)){
+		printf("\n");
+		print_win32_err();
+		CloseHandle(hFile);
+		return 1;
+	}
+	CloseHandle(hFile);
+
+	// フォーマットを確認する
+	if ((buf[0] != 0x66) || (buf[1] != 0x4C) || (buf[2] != 0x61) || (buf[3] != 0x43)){ // fLaC
+		printf("\ninvalid FLAC format, %S\n", file_name);
+		return 1;
+	}
+	if (((buf[4] & 0x7F) != 0) || (buf[5] != 0) || (buf[6] != 0) || (buf[7] != 34)){ // streaminfo metadata のサイズ
+		printf("\ninvalid FLAC format, %S\n", file_name);
+		return 1;
+	}
+
+	// ファイル・パス名がスペースを含んでいても「"」で囲まず、ファイル名だけにする
+	get_file_name(file_name, uni_buf);
+	add_text(uni_buf);
+
+	// FLAC Fingerprint を記録する
+	wsprintf(uni_buf, L":%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x\r\n",
+		buf[26], buf[27], buf[28], buf[29], buf[30], buf[31], buf[32], buf[33],
+		buf[34], buf[35], buf[36], buf[37], buf[38], buf[39], buf[40], buf[41]);
+	add_text(uni_buf);
 
 	return 0;
 }

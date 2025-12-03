@@ -1,5 +1,5 @@
 ﻿// common.c
-// Copyright : 2024-11-30 Yutaka Sawada
+// Copyright : 2025-11-22 Yutaka Sawada
 // License : The MIT license
 
 #ifndef _UNICODE
@@ -985,6 +985,32 @@ void print_progress_done(void)	// 終了と改行を表示する
 		fflush(stdout);
 		prog_last = -1;	// 進捗状況をリセットする
 	}
+}
+
+// キャンセルと一時停止を行う
+int cancel_progress(void)
+{
+	if (_kbhit()){	// キー入力があるか
+		int ch = _getch();
+		if ((ch == 'c') || (ch == 'C')){	// Cancel
+			printf("Cancel\n");
+			return 2;
+		}
+
+		// 一時停止と再開の処理
+		if ((ch == 'p') || (ch == 'P')){	// Pause
+			printf(" Pause\r");
+			do {
+				ch = _getch();	// 再度入力があるまで待つ、CPU 占有率 0%
+				if ((ch == 'c') || (ch == 'C')){	// 停止中でもキャンセルは受け付ける
+					printf("Cancel\n");
+					return 2;
+				}
+			} while ((ch != 'r') && (ch != 'R'));	// Resume
+		}
+	}
+
+	return 0;
 }
 
 // Win32 API のエラー・メッセージを表示する
