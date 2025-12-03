@@ -5,11 +5,15 @@ Release note of v1.3.3 tree
 
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-[ Changes from 1.3.3.5 to 1.3.3.6 ] (2025/10/25)
+[ Changes from 1.3.3.5 to 1.3.3.6 ] (2025/12/03)
 
 GUI update
  Change
   GPU option is enabled always, even when GPU device doesn't exist.
+
+SFV/MD5 client update
+ New
+  FLAC Fingerprint files are supported (by flac.exe and libFLAC.dll).
 
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
