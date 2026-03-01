@@ -4,12 +4,13 @@ Type "sfv_md5.exe" to see version and show usage below.
 
 
 Usage
-c(reate) [fo,t, d,u] <checksum file> [input files]
-v(erify) [vs,vd,d,u] <checksum file>
+c(reate) [fo, t,      d,u] <checksum file> [input files]
+v(erify) [fo,vl,vs,vd,d,u] <checksum file>
 
 Option
  /fo   : Search file only for wildcard
  /t<n> : Save time stamp
+ /vl<n>: Verification level
  /vs<n>: Skip verification by recent result
  /vd"*": Set directory of recent result
  /d"*" : Set directory of input files
@@ -119,6 +120,7 @@ Put <checksum file> before all [input files]
  Set this, if you want to ignore folders at wildcard matching search.
 This setting disable recursive search into folder also.
 Note, sub-directory of file is still possible.
+At verification, this disables searching misnamed files in sub-folders.
 
  /t :
  Set this, if you want to save time stamp of checksum file or input files.
@@ -126,6 +128,15 @@ Because the time zone is local of your PC, it looks different on other time zone
 /t1 = save update time of checksum file
 /t2 = do above and, save file size and update time of each input files
 This additional data is just a comment, and it's not checked while verification.
+
+ /vl :
+ Set this, if you want to find misnamed files in base directory.
+Default is checking listed files only.
+In additional verification, all files in base directory are checked as input files.
+Caution, recursive search may become very slow for many large files.
+If you want to disable recursive search, set "fo" option, too.
+/vl0 = quick verification
+/vl2 = additional verification
 
  /vs :
  Set this, if you want to save a current verification result
