@@ -5,7 +5,7 @@ Release note of v1.3.3 tree
 
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-[ Changes from 1.3.3.5 to 1.3.3.6 ] (2025/12/03)
+[ Changes from 1.3.3.5 to 1.3.3.6 ] (2026/03/01)
 
 GUI update
  Change
@@ -14,6 +14,7 @@ GUI update
 SFV/MD5 client update
  New
   FLAC Fingerprint files are supported (by flac.exe and libFLAC.dll).
+  It will search misnamed files in base directory by "vl2" option.
 
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
