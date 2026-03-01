@@ -1,5 +1,5 @@
 ﻿// common.c
-// Copyright : 2025-11-22 Yutaka Sawada
+// Copyright : 2026-02-26 Yutaka Sawada
 // License : The MIT license
 
 #ifndef _UNICODE
@@ -26,13 +26,21 @@ wchar_t checksum_file[MAX_LEN];	// チェックサム・ファイルのパス
 wchar_t base_dir[MAX_LEN];		// ソース・ファイルの基準ディレクトリ
 wchar_t ini_path[MAX_LEN];		// 検査結果ファイルのパス
 
-int base_len;		// ソース・ファイルの基準ディレクトリの長さ
-int file_num;		// ソース・ファイルの数
+int base_len;	// ソース・ファイルの基準ディレクトリの長さ
+int file_num;	// ソース・ファイルの数
+
+int switch_v;	// 検査レベル 0=記載ファイルのみ検査, 2=全てのファイルを検査
+				// 作成時と検査時 8=ファイルのみ探す
+				// 作成時 256=時刻を追加, 512=時刻とサイズを追加
 
 // 可変長サイズの領域にテキストを保存する
 wchar_t *text_buf;	// チェックサム・ファイルのテキスト内容
 int text_len;		// テキストの文字数
 int text_max;		// テキストの最大文字数
+
+wchar_t *hash_buf;	// 検査したファイルのファイル名とハッシュ値のリスト
+int hash_len;
+int hash_max;
 
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
@@ -401,6 +409,92 @@ int add_text(wchar_t *new_text)	// 追加するテキスト
 	return 0;
 }
 
+// リストに新しいハッシュ値を追加する
+int add_hash(
+	wchar_t *new_name,	// ファイル名
+	wchar_t *new_hash,	// ハッシュ値
+	wchar_t *state)		// 状態 ? c d m size
+{
+	wchar_t *tmp_p;
+	int len1, len2, len3;
+
+	len1 = wcslen(new_name) + 1;
+	len2 = len1 + wcslen(new_hash) + 1;
+	len3 = len2 + wcslen(state);
+
+	if (hash_len + len3 >= hash_max){	// 領域が足りなくなるなら拡張する
+		hash_max += ALLOC_LEN;
+		tmp_p = (wchar_t *)realloc(hash_buf, hash_max * 2);
+		if (tmp_p == NULL){
+			return 1;
+		} else {
+			hash_buf = tmp_p;
+		}
+	}
+
+	wcscpy(hash_buf + hash_len, new_name);
+	wcscpy(hash_buf + hash_len + len1, new_hash);
+	wcscpy(hash_buf + hash_len + len2, state);
+	hash_len += len3 + 1;
+
+	return 0;
+}
+
+// ファイル名で一致する検査結果を探す
+int search_hash_name(wchar_t *find_name)
+{
+	int off;
+
+	off = 0;
+	while (off < hash_len){
+		// ファイル名
+		if (_wcsicmp(hash_buf + off, find_name) == 0)
+			return off;
+		while (hash_buf[off] != 0)
+			off++;
+		off++;
+		// ハッシュ値
+		while (hash_buf[off] != 0)
+			off++;
+		off++;
+		// 状態
+		while (hash_buf[off] != 0)
+			off++;
+		off++;
+	}
+
+	return -1;
+}
+
+// ハッシュ値で一致する検査結果を探す
+int search_hash_value(
+	int search_from,
+	wchar_t *find_hash)
+{
+	int off, name_off;
+
+	off = search_from;
+	while (off < hash_len){
+		// ファイル名
+		name_off = off;
+		while (hash_buf[off] != 0)
+			off++;
+		off++;
+		// ハッシュ値
+		if (wcscmp(hash_buf + off, find_hash) == 0)
+			return name_off;
+		while (hash_buf[off] != 0)
+			off++;
+		off++;
+		// 状態
+		while (hash_buf[off] != 0)
+			off++;
+		off++;
+	}
+
+	return -1;
+}
+
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 // ファイル・パスからファイル名の位置を戻す
@@ -495,6 +589,38 @@ int is_full_path(wchar_t *path)
 		return 1;
 
 	return 0;
+}
+
+// ファイルのディレクトリ位置が同じかどうかを調べる
+// フォルダには対応してないことに注意!
+int compare_directory(wchar_t *path1, wchar_t *path2)
+{
+	int len1, len2;
+
+	// パスの長さ
+	len1 = 0;
+	while (path1[len1] != 0)
+		len1++;
+	// サブ・ディレクトリの長さにする
+	while ((len1 > 0) && (path1[len1] != '\\'))
+		len1--;
+
+	// パスの長さ
+	len2 = 0;
+	while (path2[len2] != 0)
+		len2++;
+	// サブ・ディレクトリの長さにする
+	while ((len2 > 0) && (path2[len2] != '\\'))
+		len2--;
+
+	// サブ・ディレクトリの長さを比較する
+	if (len1 > len2)
+		return 1;	// path1 が path2 より大きい
+	if (len1 < len2)
+		return -1;	// path1 が path2 より小さい
+
+	// ディレクトリの長さが同じなら
+	return _wcsnicmp(path1, path2, len1);
 }
 
 // デバイス名かどうかを判定する

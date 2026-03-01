@@ -15,10 +15,16 @@ extern wchar_t ini_path[MAX_LEN];		// 検査結果ファイルのパス
 extern int base_len;		// ソース・ファイルの基準ディレクトリの長さ
 extern int file_num;		// ソース・ファイルの数
 
+extern int switch_v;	// 検査レベル
+
 // 可変長サイズの領域にテキストを保存する
 extern wchar_t *text_buf;	// チェックサム・ファイルのテキスト内容
 extern int text_len;		// テキストの文字数
 extern int text_max;		// テキストの最大文字数
+
+extern wchar_t *hash_buf;	// 検査したファイルのファイル名とハッシュ値のリスト
+extern int hash_len;
+extern int hash_max;
 
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
@@ -78,6 +84,20 @@ void sort_list(
 // テキストに新しい文字列を追加する
 int add_text(wchar_t *new_text);	// 追加するテキスト
 
+// リストに新しいハッシュ値を追加する
+int add_hash(
+	wchar_t *new_name,	// ファイル名
+	wchar_t *new_hash,	// ハッシュ値
+	wchar_t *state);	// 状態
+
+// ファイル名で一致する検査結果を探す
+int search_hash_name(wchar_t *find_name);
+
+// ハッシュ値で一致する検査結果を探す
+int search_hash_value(
+	int search_from,
+	wchar_t *find_hash);
+
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 // ファイル・パスからファイル名の位置を戻す
@@ -98,6 +118,9 @@ void unix_directory(wchar_t *path);
 
 // 絶対パスかどうかを判定する
 int is_full_path(wchar_t *path);
+
+// ファイルのディレクトリ位置が同じかどうかを調べる
+int compare_directory(wchar_t *path1, wchar_t *path2);
 
 // ファイル名が有効か確かめて、問題があれば浄化する
 int sanitize_filename(wchar_t *name);

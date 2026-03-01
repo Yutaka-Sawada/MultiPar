@@ -19,12 +19,15 @@ void write_ini_file(void);
 int check_ini_state(
 	int num,				// ファイル番号
 	unsigned int meta[7],	// サイズ、作成日時、更新日時、ボリューム番号、オブジェクト番号
+	unsigned int chk_len,	// チェックサムのバイト数
+	void *chk_sum,			// チェックサムの値
 	HANDLE hFile);			// そのファイルのハンドル
 
 void write_ini_state(
 	int num,				// ファイル番号
 	unsigned int meta[7],	// サイズ、作成日時、更新日時、ボリューム番号、オブジェクト番号
-	int state);			// 状態
+	unsigned int chk_len,	// チェックサムのバイト数
+	void *chk_sum);			// チェックサムの値
 
 
 #ifdef __cplusplus

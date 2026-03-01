@@ -1,5 +1,5 @@
 ﻿// main.c
-// Copyright : 2025-11-23 Yutaka Sawada
+// Copyright : 2026-02-28 Yutaka Sawada
 // License : The MIT license
 
 #ifndef _UNICODE
@@ -30,11 +30,12 @@ void print_help(void)
 {
 	printf(
 "Usage\n"
-"c(reate) [fo,t, d,u] <checksum file> [input files]\n"
-"v(erify) [vs,vd,d,u] <checksum file>\n"
+"c(reate) [fo, t,      d,u] <checksum file> [input files]\n"
+"v(erify) [fo,vl,vs,vd,d,u] <checksum file>\n"
 "\nOption\n"
 " /fo   : Search file only for wildcard\n"
 " /t<n> : Save time stamp\n"
+" /vl<n>: Verification level\n"
 " /vs<n>: Skip verification by recent result\n"
 " /vd\"*\": Set directory of recent result\n"
 " /d\"*\" : Set directory of input files\n"
@@ -170,6 +171,8 @@ static wchar_t * search_files(
 				}
 			}
 		} else { // ファイルなら
+			if (_wcsicmp(search_path, checksum_file) == 0)
+				continue;	// 作成中の自分自身は除外する
 			if (!search_file_path(list_buf, l_off, search_path + base_len)){	// ファイル名が重複しないようにする
 				if ((l_off + dir_len- base_len + len) * 2 >= l_max){ // 領域が足りなくなるなら拡張する
 					l_max += ALLOC_LEN;
@@ -295,7 +298,7 @@ static int write_checksum(wchar_t *uni_buf,
 			add_text(L"\r\n;");
 			if (file_num > 1){
 				add_text(L"\r\n");
-				add_text(L"; Size (Bytes)   Time      Date      Filename\n");
+				add_text(L"; Size (Bytes)   Time      Date      Filename\r\n");
 				add_text(L"; ------------ -------- ---------- ------------");
 			}
 		}
@@ -492,6 +495,17 @@ static int read_checksum(char *ascii_buf, wchar_t *file_path)
 	}
 	text_len = wcslen(text_buf);	// 文字数には末尾の null 文字を含まないことに注意
 
+	// ファイルとハッシュ値の記録領域を確保する
+	hash_len = 0;
+	hash_max = ALLOC_LEN;
+	hash_buf = (wchar_t *)malloc(hash_max * 2);
+	if (hash_buf == NULL){
+		free(text_buf);
+		CloseHandle(hFile);
+		printf("malloc, %d\n", hash_max * 2);
+		return 1;
+	}
+
 	// チェックサムを検証する
 	rv = wcslen(checksum_file);
 	if (_wcsicmp(checksum_file + (rv - 4), L".sfv") == 0){	// SFVファイル
@@ -504,6 +518,7 @@ static int read_checksum(char *ascii_buf, wchar_t *file_path)
 		err = 1;
 		printf("unknown format\n");
 	}
+	free(hash_buf);
 	free(text_buf);
 	close_ini_file();
 
@@ -572,11 +587,8 @@ wmain(int argc, wchar_t *argv[])
 {
 	char ascii_buf[MAX_LEN * 3];
 	wchar_t file_path[MAX_LEN], *tmp_p;
-	int i, j, switch_set = 0;
-/*
-t = switch_set & 0x00000003
-fo= switch_set & 0x00000020
-*/
+	int i, j;
+
 	printf("SFV/MD5 checker version " FILE_VERSION " by Yutaka Sawada\n\n");
 	if (argc < 3){
 		printf("Self-Test: ");
@@ -600,6 +612,7 @@ fo= switch_set & 0x00000020
 	base_dir[0] = 0;
 	ini_path[0] = 0;
 	file_num = 0;
+	switch_v = 0;
 	cp_output = GetConsoleOutputCP();
 
 	// コマンド
@@ -622,9 +635,15 @@ fo= switch_set & 0x00000020
 			if (wcscmp(tmp_p, L"u") == 0){
 				cp_output = CP_UTF8;
 			} else if (wcscmp(tmp_p, L"fo") == 0){
-				switch_set |= 0x20;
+				switch_v |= 8;
 
 			// オプション (数値)
+			} else if (wcsncmp(tmp_p, L"vl", 2) == 0){
+				j = -1;
+				if ((tmp_p[2] >= '0') && (tmp_p[2] <= '2'))	// 0～2 の範囲
+					j = tmp_p[2] - '0';
+				if (j == 2)
+					switch_v |= 2; // vl2 = additional verification
 			} else if (wcsncmp(tmp_p, L"vs", 2) == 0){
 				recent_data = 0;
 				j = 2;
@@ -639,7 +658,7 @@ fo= switch_set & 0x00000020
 				if ((tmp_p[1] >= '0') && (tmp_p[1] <= '2'))	// 0～2 の範囲
 					j = tmp_p[1] - '0';
 				if (j != -1)
-					switch_set |= j;
+					switch_v |= j << 8;
 
 			// オプション (文字列)
 			} else if (wcsncmp(tmp_p, L"vd", 2) == 0){
@@ -796,7 +815,7 @@ fo= switch_set & 0x00000020
 		unsigned int filter;
 		// 隠しファイルやフォルダーを無視するかどうか
 		filter = get_show_hidden();
-		if (switch_set & 0x20)
+		if (switch_v & 8)
 			filter |= FILE_ATTRIBUTE_DIRECTORY;
 		// チェックサム・ファイル作成ならソース・ファイルのリストがいる
 		i++;
@@ -865,7 +884,7 @@ fclose(fp);
 
 		printf("\nInput File count\t: %d\n", file_num);
 		printf("Input File total size\t: %I64d\n", total_size);
-		i = write_checksum(file_path, list_buf, list_len, total_size, switch_set & 3);
+		i = write_checksum(file_path, list_buf, list_len, total_size, (switch_v >> 8) & 3);
 
 	} else {
 		// 検査結果ファイルの位置が指定されてないなら

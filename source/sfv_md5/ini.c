@@ -1,5 +1,5 @@
 ﻿// ini.c
-// Copyright : 2024-11-30 Yutaka Sawada
+// Copyright : 2026-02-27 Yutaka Sawada
 // License : The MIT license
 
 #ifndef _UNICODE
@@ -41,16 +41,16 @@ MD5ハッシュ値を 16進数表記にする。
 8: ソース・ファイルのサイズ
 4: ソース・ファイルの作成日時
 4: ソース・ファイルの更新日時
-2: 下位 1-bit はファイルの状態 0=完全, 1=破損あるいはエラー
-   上位 15-bit はソース・ファイル番号 0～32767
-
+2: ソース・ファイル番号 0 ~ 65534、検出ファイルの番号は 65535 = 0xFFFF
+1 or 4 or 16: ファイルのチェックサム、サイズが異なることに注意！
+SFV = 4 bytes, MD5 = 16 bytes, FFP = 1 bytes
 */
 
-#define INI_VERSION	0x1270	// 検査結果の書式が決まった時のバージョン
-#define REUSE_MIN	16384	// ファイル・サイズがこれより大きければ検査結果を利用する (16KB 以上 2GB 未満)
+#define INI_VERSION	0x1336	// 検査結果の書式が決まった時のバージョン
+#define REUSE_MIN	16384	// ファイル・サイズがこれより大きければ検査結果を利用する (16KB 以上)
 #define HEADER_SIZE	14
 #define STATE_SIZE	30
-#define STATE_READ	136
+#define STATE_READ	89	// 一度に読み込む量を 4 KB 以下にする？
 //#define VERBOSE		1		// 状態を冗長に出力する
 
 static HANDLE hIniBin = NULL;	// バイナリ・データ用の検査結果ファイル
@@ -319,14 +319,16 @@ void close_ini_file(void)
 }
 
 // 検査結果が記録されてるかどうか
-// -1=エラー, -2=記録なし, 0=完全, 2=破損
+// -1=エラー, -2=記録なし, 0=記録あり
 int check_ini_state(
 	int num,				// ファイル番号
 	unsigned int meta[7],	// サイズ、作成日時、更新日時、ボリューム番号、オブジェクト番号
+	unsigned int chk_len,	// チェックサムのバイト数
+	void *chk_sum,			// チェックサムの値
 	HANDLE hFile)			// そのファイルのハンドル
 {
-	unsigned char buf[STATE_SIZE * STATE_READ];
-	unsigned int rv, off, state;
+	unsigned char buf[(STATE_SIZE + 16) * STATE_READ];
+	unsigned int rv, off, num2;
 	BY_HANDLE_FILE_INFORMATION fi;
 
 	// 現在のファイル属性を取得する
@@ -354,22 +356,24 @@ int check_ini_state(
 	}
 	ini_off = HEADER_SIZE;	// ファイル項目の位置
 	// 一度に STATE_READ 個ずつ読み込む
-	while (ReadFile(hIniBin, buf, STATE_SIZE * STATE_READ, &rv, NULL) != 0){
-		if (rv < STATE_SIZE)
+	while (ReadFile(hIniBin, buf, (STATE_SIZE + chk_len) * STATE_READ, &rv, NULL) != 0){
+		if (rv < STATE_SIZE + chk_len)
 			break;
 		// ファイル識別番号から同じファイルの記録を探す
-		for (off = 0; off < rv; off += STATE_SIZE){
+		for (off = 0; off < rv; off += STATE_SIZE + chk_len){
 			if (memcmp(buf + off, meta + 4, 12) == 0){
 				ini_off += off;	// 同じファイルの記録があった
-				state = 0;
-				memcpy(&state, buf + (off + 28), 2);
+				num2 = 0;
+				memcpy(&num2, buf + (off + STATE_SIZE - 2), 2);
 #ifdef VERBOSE
-				printf("check state, num = %d, offset = %d, state = %d\n", num, HEADER_SIZE + off, (state & 1) << 1);
+				printf("check state, num = %d, offset = %d, num = %d, chk = %d\n", num, ini_off, num2, chk_len);
 #endif
-				// 番号が一致したら、ファイルのサイズと日時を比較する
-				if (((state >> 1) == (num & 0x7FFF)) && (memcmp(buf + (off + 12), meta, 16) == 0))
-					return (state & 1) << 1;
-				return -2;	// 状態が変化してる
+				if ((num >= 0) && (num2 != num % 65535))	// 番号が指定されてるなら比較する
+					return -2;
+				if (memcmp(buf + (off + 12), meta, 16) != 0)	// ファイルのサイズと日時を比較する
+					return -2;
+				memcpy(chk_sum, buf + (off + STATE_SIZE), chk_len);
+				return 0;	// 指定ファイルの記録があった
 			}
 		}
 		ini_off += rv;
@@ -379,13 +383,14 @@ int check_ini_state(
 	return -2;	// これ以上の検査記録は無い
 }
 
-// ソース・ファイル状態は完全か破損だけ (消失だと検査しない)
+// ソース・ファイル状態が完全か破損の時だけ (消失だと検査しない)
 void write_ini_state(
 	int num,				// ファイル番号
 	unsigned int meta[7],	// サイズ、作成日時、更新日時、ボリューム番号、オブジェクト番号
-	int state)				// 状態、0=完全, 2=破損
+	unsigned int chk_len,	// チェックサムのバイト数
+	void *chk_sum)			// チェックサムの値
 {
-	unsigned char buf[STATE_SIZE];
+	unsigned char buf[STATE_SIZE + 16];
 
 	if ((recent_data == 0) || ((meta[0] <= REUSE_MIN) && (meta[1] == 0)))
 		return;	// 小さなファイルは検査結果を記録しない
@@ -401,12 +406,15 @@ void write_ini_state(
 	// 今回の状態を書き込む
 	memcpy(buf, meta + 4, 12);
 	memcpy(buf + 12, meta, 16);
-	buf[28] = (unsigned char)((state >> 1) | (num << 1));
-	buf[29] = (unsigned char)(num >> 7);
+	if (num >= 0)
+		num = num % 65535;	// 番号を 0 ~ 65534 の範囲にする
+	buf[STATE_SIZE - 2] = (unsigned char)num;
+	buf[STATE_SIZE - 1] = (unsigned char)(num >> 8);
+	memcpy(buf + STATE_SIZE, chk_sum, chk_len);
 #ifdef VERBOSE
-	printf("write state, num = %d, offset = %d, state = %d\n", num, ini_off, state);
+	printf("write state, num = %d, offset = %d, chk = %d\n", num, ini_off, chk_len);
 #endif
-	if (file_write_data(hIniBin, ini_off, buf, STATE_SIZE) != 0){
+	if (file_write_data(hIniBin, ini_off, buf, STATE_SIZE + chk_len) != 0){
 		delete_ini_file();
 		return;
 	}
