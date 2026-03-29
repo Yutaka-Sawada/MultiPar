@@ -1,5 +1,5 @@
 ﻿// common2.c
-// Copyright : 2024-11-30 Yutaka Sawada
+// Copyright : 2026-03-28 Yutaka Sawada
 // License : GPL
 
 #ifndef _UNICODE
@@ -1853,6 +1853,7 @@ int cpu_num = 1;	// CPU/Core 個数が制限されてる場合は、上位に本
 unsigned int cpu_flag = 0;
 unsigned int cpu_cache = 0;	// 上位 16-bit = L3 cache の制限サイズ, 下位 16-bit = 同時処理数
 unsigned int memory_use = 0;	// メモリー使用量 0=auto, 1～7 -> 1/8 ～ 7/8
+								// 8=HDD, 16=SSD, 32=Fast SSD, 0xFF00 = limit GB
 
 static int count_bit(DWORD_PTR value)
 {
@@ -2078,7 +2079,7 @@ size_t get_mem_size(size_t trial_alloc)
 
 	statex.dwLength = sizeof(statex);
 	if (GlobalMemoryStatusEx(&statex)){
-		unsigned __int64 mem_size64, cache_size;
+		unsigned __int64 mem_size64, cache_size, limit_size;
 /*
 		printf("MemoryLoad    = %d\n", statex.dwMemoryLoad);
 		printf("TotalPhys     = %10I64d\n", statex.ullTotalPhys);
@@ -2088,9 +2089,18 @@ size_t get_mem_size(size_t trial_alloc)
 		printf("TotalVirtual  = %10I64d\n", statex.ullTotalVirtual);
 		printf("AvailVirtual  = %10I64d\n", statex.ullAvailVirtual);
 */
+		limit_size = (unsigned __int64)(memory_use & 0xFF00) << 22;	// limiter GB
+		//printf("\nlimit_size = %I64d MB\n", limit_size >> 20);
 		cache_size = statex.ullAvailPhys >> 3;	// available size / 8
 		if (memory_use & 7){	// manual setting (1/8 ~ 7/8)
 			mem_size64 = cache_size * (memory_use & 7);	// using size = available size / 8 * memory_use
+			if ((memory_use & 0xFF00) && (mem_size64 > limit_size))
+				mem_size64 = limit_size;
+		} else if (memory_use & 0xFF00){	// upto 1~255 GB
+			cache_size = statex.ullAvailPhys >> 7;	// available size / 128
+			mem_size64 = statex.ullAvailPhys - cache_size;
+			if (mem_size64 > limit_size)
+				mem_size64 = limit_size;
 		} else {	// auto setting
 #ifndef _WIN64	// 32-bit OS なら、OSがメモリーの半分を使うと想定する
 			// 1 GB = 1024 MB, 1024 / 16 =  64 MB,  512 / 8 =  32 MB
@@ -2125,6 +2135,7 @@ size_t get_mem_size(size_t trial_alloc)
 		print_win32_err();
 		mem_size = 0x20000000;	// メモリー量を認識できない場合は 512MB と仮定する
 	}
+	//printf("\nmem_size = %zd MB\n", mem_size >> 20);
 
 	// try to allocate for test
 	if (trial_alloc){

@@ -1,5 +1,5 @@
 ﻿// par2_cmd.c
-// Copyright : 2025-03-12 Yutaka Sawada
+// Copyright : 2026-03-25 Yutaka Sawada
 // License : GPL
 
 #ifndef _UNICODE
@@ -75,11 +75,26 @@ static void print_help(void)
 	);
 }
 
-// 動作環境の表示
-static void print_environment(void)
+static void show_memory(void)
 {
 	MEMORYSTATUSEX statex;
 
+	statex.dwLength = sizeof(statex);
+	if (GlobalMemoryStatusEx(&statex)){
+		//printf(" (%I64d MB available)", statex.ullAvailPhys >> 20);
+		double gb = statex.ullAvailPhys / 1073741824.0;
+		unsigned int limit = (memory_use & 0xFF00) >> 8;
+		if (limit > 0){
+			printf(" (%d/%.1f GB available)", limit, gb);
+		} else {
+			printf(" (%.1f GB available)", gb);
+		}
+	}
+}
+
+// 動作環境の表示
+static void print_environment(void)
+{
 	// 「\\?\」は常に付加されてるので表示する際には無視する
 	printf_cp("Base Directory\t: \"%s\"\n", base_dir);
 	printf_cp("Recovery File\t: \"%s\"\n", recovery_file);
@@ -124,10 +139,8 @@ static void print_environment(void)
 	} else {
 		printf("Auto");
 	}
-	statex.dwLength = sizeof(statex);
-	if (GlobalMemoryStatusEx(&statex))
-		printf(" (%I64d MB available)", statex.ullAvailPhys >> 20);
-	if ((memory_use & ~7) == 0){	// HDD と SSD を自動判別する
+	show_memory();
+	if ((memory_use & (8 | 16 | 32)) == 0){	// HDD と SSD を自動判別する
 		check_seek_penalty(base_dir);
 		//printf("\n check_seek_penalty = %d\n", check_seek_penalty(base_dir));
 	}
@@ -1549,8 +1562,8 @@ ri= switch_set & 0x00040000
 				}
 			} else if (wcsncmp(tmp_p, L"m", 1) == 0){
 				memory_use = 0;
-				j = 1;	// メモリー使用量だけでなく、モード切替用としても使う、２桁まで
-				while ((j < 1 + 2) && (tmp_p[j] >= '0') && (tmp_p[j] <= '9')){
+				j = 1;	// メモリー使用量だけでなく、モード切替用としても使う、５桁まで
+				while ((j < 1 + 5) && (tmp_p[j] >= '0') && (tmp_p[j] <= '9')){
 					memory_use = (memory_use * 10) + (tmp_p[j] - '0');
 					j++;
 				}

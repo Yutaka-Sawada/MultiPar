@@ -1413,9 +1413,6 @@ static void create_eight_table_avx2(unsigned char *mtab, int factor)
 		ymm0 = _mm256_packus_epi16(ymm2, ymm3);
 		_mm256_store_si256((__m256i *)mtab + count, ymm0);
 	}
-
-	// AVX-SSE 切り替えの回避
-	_mm256_zeroupper();
 }
 
 // 逆行列計算用に掛け算だけする（XORで追加しない）
@@ -1482,9 +1479,6 @@ static void gf16_avx2_block32s(unsigned char *data, unsigned int bsize, unsigned
 		data += 32;
 		bsize -= 32;
 	}
-
-	// AVX-SSE 切り替えの回避
-	_mm256_zeroupper();
 }
 
 // 逆行列計算用に ALTMAP されてないソースにも対応しておく
@@ -1555,9 +1549,6 @@ static void gf16_avx2_block32u(unsigned char *input, unsigned char *output, unsi
 		output += 32;
 		bsize -= 32;
 	}
-
-	// AVX-SSE 切り替えの回避
-	_mm256_zeroupper();
 }
 
 // テーブルを並び替えて使えば、ループ内の並び替え回数を一回に減らせる
@@ -1606,9 +1597,6 @@ static void gf16_avx2_block32(unsigned char *input, unsigned char *output, unsig
 		output += 32;
 		bsize -= 32;
 	}
-
-	// AVX-SSE 切り替えの回避
-	_mm256_zeroupper();
 }
 
 /*
@@ -1658,9 +1646,6 @@ static void gf16_avx2_block32(unsigned char *input, unsigned char *output, unsig
 		output += 32;
 		bsize -= 32;
 	}
-
-	// AVX-SSE 切り替えの回避
-	_mm256_zeroupper();
 }
 */
 
@@ -1707,9 +1692,6 @@ static void gf16_avx2_block32(unsigned char *input, unsigned char *output, unsig
 		output += 32;
 		bsize -= 32;
 	}
-
-	// AVX-SSE 切り替えの回避
-	_mm256_zeroupper();
 }
 */
 
@@ -1785,9 +1767,6 @@ static void gf16_avx2_block32_2(unsigned char *input1, unsigned char *input2, un
 		output += 32;
 		bsize -= 32;
 	}
-
-	// AVX-SSE 切り替えの回避
-	_mm256_zeroupper();
 }
 
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
@@ -2997,8 +2976,6 @@ void galois_align32avx_multiply(
 				r2 += 32;
 				len -= 32;
 			}
-
-			_mm256_zeroupper();	// AVX-SSE 切り替えの回避
 		}
 
 	// 掛け算用のテーブルを常に作成する (32バイトだと少し遅くなる)
@@ -3034,7 +3011,6 @@ void galois_align32avx_multiply2(
 			dst += 32;
 			len -= 32;
 		}
-		_mm256_zeroupper();	// AVX-SSE 切り替えの回避
 
 	// 掛け算用のテーブルを常に作成する (32バイトだと少し遅くなる)
 	} else {
