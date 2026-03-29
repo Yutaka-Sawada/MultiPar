@@ -1,4 +1,4 @@
-[ par2j.exe - version 1.3.3.5 or later ]
+[ par2j.exe - version 1.3.3.7 or later ]
 
 Type "par2j.exe" to see version, test integrity, and show usage below.
 
@@ -439,6 +439,11 @@ If this is not set or the value is 0, the rate depends on free memory.
 +16 = Random access mode for SSD (or RAM drive)
 +32 = Multi-read more files on SSD (must set with +16)
 Normally users should not set this, unless automatic selection has a problem.
+
+ For advanced users, it's possible to limit memory usage upto specified GB.
+The value is "256 * #" like +256, +512, +768, +1024 ... +65280.
+If you want to limit memory usage upto 4 GB, set "/m1024". (256 * 4 = 1024)
+If you want to limit upto 50% and 3 GB, set "/m772". (4 + 256 * 3 = 772)
 
  /vl :
  Set this, if you want faster or extra verification.
