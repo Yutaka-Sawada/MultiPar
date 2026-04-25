@@ -1,5 +1,5 @@
 ﻿// create.c
-// Copyright : 2025-11-24 Yutaka Sawada
+// Copyright : 2026-04-23 Yutaka Sawada
 // License : The MIT license
 
 #ifndef _UNICODE
@@ -15,6 +15,7 @@
 #include <stdio.h>
 
 #include <windows.h>
+#include <bcrypt.h>
 
 #include "common.h"
 #include "crc.h"
@@ -235,5 +236,167 @@ int create_ffp(
 	add_text(uni_buf);
 
 	return 0;
+}
+
+#define NT_SUCCESS(Status)  (((NTSTATUS)(Status)) >= 0)
+#define STATUS_UNSUCCESSFUL ((NTSTATUS)0xC0000001L)
+
+// Cryptography API: Next Generation が対応するハッシュ
+int create_cng(
+	int hash_type,			// 4 = SHA=1, 5 = SHA-256, 6 = SHA-384, 7 = SHA-512
+	wchar_t *uni_buf,
+	wchar_t *file_name,		// 検査対象のファイル名
+	unsigned int *time_last,
+	__int64 *prog_now,		// 経過表示での現在位置
+	__int64 total_size)		// 合計ファイル・サイズ
+{
+	unsigned char buf[IO_SIZE], bHash[MAX_HASH];
+	unsigned int rv, len;
+	__int64 file_size = 0, file_left;
+	HANDLE hFile;
+	BCRYPT_ALG_HANDLE  hAlg  = NULL;
+	BCRYPT_HASH_HANDLE hHash = NULL;
+	NTSTATUS status = STATUS_UNSUCCESSFUL;
+	DWORD cbHash = 0;
+	DWORD cbHashObject = 0;
+	PBYTE pbHashObject = NULL;
+	LPCWSTR pszAlgId;
+
+	// open an algorithm handle
+	if (hash_type == 4){
+		pszAlgId = BCRYPT_SHA1_ALGORITHM;
+	} else if (hash_type == 5){
+		pszAlgId = BCRYPT_SHA256_ALGORITHM;
+	} else if (hash_type == 6){
+		pszAlgId = BCRYPT_SHA384_ALGORITHM;
+	} else if (hash_type == 7){
+		pszAlgId = BCRYPT_SHA512_ALGORITHM;
+	} else {	// 未知の形式
+		printf("file format is unknown\n");
+		return 1;
+	}
+	status = BCryptOpenAlgorithmProvider(&hAlg, pszAlgId, NULL, 0);
+	if (!NT_SUCCESS(status)){
+		printf("\nError 0x%x returned by BCryptOpenAlgorithmProvider\n", status);
+		rv = 1;
+		goto Cleanup;
+	}
+
+	// calculate the size of the buffer to hold the hash object
+	status = BCryptGetProperty(hAlg, BCRYPT_OBJECT_LENGTH, (PBYTE)&cbHashObject, sizeof(DWORD), &rv, 0);
+	if (!NT_SUCCESS(status)){
+		printf("\nError 0x%x returned by BCryptGetProperty\n", status);
+		rv = 1;
+		goto Cleanup;
+	}
+
+	// allocate the hash object on the heap
+	pbHashObject = (PBYTE)HeapAlloc (GetProcessHeap(), 0, cbHashObject);
+	if (NULL == pbHashObject){
+		printf("\nError %u memory allocation failed\n", cbHashObject);
+		rv = 1;
+		goto Cleanup;
+	}
+
+	// calculate the length of the hash
+	status = BCryptGetProperty(hAlg, BCRYPT_HASH_LENGTH, (PBYTE)&cbHash, sizeof(DWORD), &rv, 0);
+	if (!NT_SUCCESS(status) || (cbHash > MAX_HASH)){
+		printf("\nError 0x%x returned by BCryptGetProperty\n", status);
+		rv = 1;
+		goto Cleanup;
+	}
+
+	// create a hash
+	status = BCryptCreateHash(hAlg, &hHash, pbHashObject, cbHashObject, NULL, 0, 0);
+	if (!NT_SUCCESS(status)){
+		printf("\nError 0x%x returned by BCryptCreateHash\n", status);
+		rv = 1;
+		goto Cleanup;
+	}
+
+	// 読み込むファイルを開く
+	wcscpy(uni_buf, base_dir);
+	wcscpy(uni_buf + base_len, file_name);
+	hFile = CreateFile(uni_buf, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, 0, NULL);
+	if (hFile == INVALID_HANDLE_VALUE){
+		printf("\n");
+		print_win32_err();
+		rv = 1;
+		goto Cleanup;
+	}
+	if (!GetFileSizeEx(hFile, (PLARGE_INTEGER)&file_size)){
+		printf("\n");
+		print_win32_err();
+		CloseHandle(hFile);
+		rv = 1;
+		goto Cleanup;
+	}
+	file_left = file_size;
+
+	// ハッシュ値を計算する
+	while (file_left > 0){
+		len = IO_SIZE;
+		if (file_left < IO_SIZE)
+			len = (unsigned int)file_left;
+		if (!ReadFile(hFile, buf, len, &rv, NULL) || (len != rv)){
+			printf("\n");
+			print_win32_err();
+			CloseHandle(hFile);
+			rv = 1;
+			goto Cleanup;
+		}
+		file_left-= len;
+		(*prog_now) += len;
+
+		// hash some data ハッシュ関数にデータを入力する
+		status = BCryptHashData(hHash, (PBYTE)buf, len, 0);
+		if (!NT_SUCCESS(status)){
+			printf("\nError 0x%x returned by BCryptHashData\n", status);
+			CloseHandle(hFile);
+			rv = 1;
+			goto Cleanup;
+		}
+
+		// 経過表示
+		if (GetTickCount() / UPDATE_TIME != (*time_last)){
+			if (print_progress((int)(((*prog_now) * 1000) / total_size))){
+				CloseHandle(hFile);
+				rv = 2;
+				goto Cleanup;
+			}
+			(*time_last) = GetTickCount() / UPDATE_TIME;
+		}
+	}
+	CloseHandle(hFile);
+
+	// close the hash ハッシュ値の算出
+	status = BCryptFinishHash(hHash, bHash, cbHash, 0);
+	if (!NT_SUCCESS(status)){
+		printf("\nError 0x%x returned by BCryptFinishHash\n", status);
+		rv = 1;
+		goto Cleanup;
+	}
+
+	// チェックサムを記録する
+	for (len = 0; len < cbHash; len++)
+		wsprintf(uni_buf + len * 2, L"%02X", bHash[len]);
+	uni_buf[len * 2] = ' ';
+	uni_buf[len * 2 + 1] = '*';
+	uni_buf[len * 2 + 2] = 0;	// ハッシュ値の後に「 *」を追加する
+	add_text(uni_buf);
+	wcscpy(uni_buf, file_name);	// 変換前にコピーする
+	unix_directory(uni_buf);
+	add_text(uni_buf);
+	add_text(L"\r\n");
+
+	rv = 0;	// success mark
+Cleanup:
+	if (hAlg)
+		BCryptCloseAlgorithmProvider(hAlg, 0);
+	if (hHash)
+		BCryptDestroyHash(hHash);
+	if (pbHashObject)
+		HeapFree(GetProcessHeap(), 0, pbHashObject);
+	return rv;
 }
 

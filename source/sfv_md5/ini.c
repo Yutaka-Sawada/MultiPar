@@ -1,5 +1,5 @@
 ﻿// ini.c
-// Copyright : 2026-02-27 Yutaka Sawada
+// Copyright : 2026-04-23 Yutaka Sawada
 // License : The MIT license
 
 #ifndef _UNICODE
@@ -327,7 +327,7 @@ int check_ini_state(
 	void *chk_sum,			// チェックサムの値
 	HANDLE hFile)			// そのファイルのハンドル
 {
-	unsigned char buf[(STATE_SIZE + 16) * STATE_READ];
+	unsigned char buf[(STATE_SIZE + MAX_HASH) * STATE_READ];
 	unsigned int rv, off, num2;
 	BY_HANDLE_FILE_INFORMATION fi;
 
@@ -390,7 +390,7 @@ void write_ini_state(
 	unsigned int chk_len,	// チェックサムのバイト数
 	void *chk_sum)			// チェックサムの値
 {
-	unsigned char buf[STATE_SIZE + 16];
+	unsigned char buf[STATE_SIZE + MAX_HASH];
 
 	if ((recent_data == 0) || ((meta[0] <= REUSE_MIN) && (meta[1] == 0)))
 		return;	// 小さなファイルは検査結果を記録しない

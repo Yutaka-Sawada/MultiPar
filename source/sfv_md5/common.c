@@ -1,5 +1,5 @@
 ﻿// common.c
-// Copyright : 2026-02-26 Yutaka Sawada
+// Copyright : 2026-04-23 Yutaka Sawada
 // License : The MIT license
 
 #ifndef _UNICODE
@@ -32,6 +32,7 @@ int file_num;	// ソース・ファイルの数
 int switch_v;	// 検査レベル 0=記載ファイルのみ検査, 2=全てのファイルを検査
 				// 作成時と検査時 8=ファイルのみ探す
 				// 作成時 256=時刻を追加, 512=時刻とサイズを追加
+				//        1024=ファイルリスト, 2048=UTF-8のファイルリスト
 
 // 可変長サイズの領域にテキストを保存する
 wchar_t *text_buf;	// チェックサム・ファイルのテキスト内容
@@ -922,7 +923,7 @@ unsigned int base16_len(wchar_t *s)
 	unsigned int v, len;
 
 	len = 0;
-	while (len <= 32){
+	while (len <= MAX_HASH * 2){
 		v = s[len];
 		if ((v >= 0x30) && (v <= 0x39)){		// 0 to 9
 			len++;

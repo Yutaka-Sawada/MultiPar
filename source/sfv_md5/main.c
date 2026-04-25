@@ -1,5 +1,5 @@
 ﻿// main.c
-// Copyright : 2026-02-28 Yutaka Sawada
+// Copyright : 2026-04-24 Yutaka Sawada
 // License : The MIT license
 
 #ifndef _UNICODE
@@ -30,9 +30,11 @@ void print_help(void)
 {
 	printf(
 "Usage\n"
-"c(reate) [fo, t,      d,u] <checksum file> [input files]\n"
-"v(erify) [fo,vl,vs,vd,d,u] <checksum file>\n"
+"c(reate) [f,fu,fo, t,      d,u] <checksum file> [input files]\n"
+"v(erify) [     fo,vl,vs,vd,d,u] <checksum file>\n"
 "\nOption\n"
+" /f    : Use file-list instead of files\n"
+" /fu   : Use file-list which is encoded with UTF-8\n"
 " /fo   : Search file only for wildcard\n"
 " /t<n> : Save time stamp\n"
 " /vl<n>: Verification level\n"
@@ -95,17 +97,126 @@ int test_checksum(wchar_t *file_path)	// 作業用
 	return 0;
 }
 
+// 格納ファイル・リストを読み込んでバッファーに書き込む
+static wchar_t * read_list(
+	wchar_t *list_path,		// リストのパス
+	unsigned int code_page,	// CP_OEMCP か CP_UTF8
+	int *list_max,			// ファイル・リストの確保サイズ
+	int *list_len,			// ファイル・リストの文字数
+	__int64 *total_size)	// 合計ファイル・サイズ
+{
+	char buf[MAX_LEN * 3];
+	wchar_t file_name[MAX_LEN], file_path[MAX_LEN];
+	wchar_t *list_buf, *tmp_p;
+	int len, l_max, l_off;
+	FILE *fp;
+	WIN32_FILE_ATTRIBUTE_DATA AttrData;
+
+	l_off = 0;
+	l_max = ALLOC_LEN * 8;
+	list_buf = (wchar_t *)malloc(l_max);
+	if (list_buf == NULL){
+		printf("malloc, %d\n", l_max);
+		return NULL;
+	}
+
+	// 読み込むファイルを開く
+	fp = _wfopen(list_path, L"rb");
+	if (fp == NULL){
+		printf_cp("cannot open file-list, %s\n", list_path);
+		free(list_buf);
+		return NULL;
+	}
+
+	// 一行ずつ読み込む
+	wcscpy(file_path, base_dir);
+	while (fgets(buf, MAX_LEN * 3, fp)){
+		if (ferror(fp))
+			break;
+		buf[MAX_LEN * 3 - 1] = 0;
+		// 末尾に改行があれば削除する
+		for (len = 0; len < MAX_LEN * 3; len++){
+			if (buf[len] == 0)
+				break;
+			if ((buf[len] == '\n') || (buf[len] == '\r')){
+				buf[len] = 0;
+				break;
+			}
+		}
+		if (buf[0] == 0)
+			continue;	// 改行だけなら次の行へ
+
+		// 読み込んだ内容をユニコードに変換する、末尾のディレクトリ記号の分を空けておく
+		if (!MultiByteToWideChar(code_page, 0, buf, -1, file_name, MAX_LEN - 1)){
+			free(list_buf);
+			fclose(fp);
+			printf("MultiByteToWideChar, %s\n", buf);
+			return NULL;
+		}
+
+		// ファイルが基準ディレクトリ以下に存在することを確認する
+		len = copy_path_prefix(file_path, MAX_LEN - ADD_LEN, file_name, base_dir);	// 絶対パスにしてから比較する
+		if (len == 0){
+			free(list_buf);
+			fclose(fp);
+			printf_cp("filename is invalid, %s\n", file_name);
+			return NULL;
+		}
+		if ((len <= base_len) || (_wcsnicmp(base_dir, file_path, base_len) != 0)){	// 基準ディレクトリ外なら
+			free(list_buf);
+			fclose(fp);
+			printf_cp("out of base-directory, %s\n", file_path);
+			return NULL;
+		}
+		if (!GetFileAttributesEx(file_path, GetFileExInfoStandard, &AttrData)){
+			print_win32_err();
+			free(list_buf);
+			fclose(fp);
+			printf_cp("input file is not found, %s\n", file_path);
+			return NULL;
+		}
+		if (AttrData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)	// フォルダは無視する
+			continue;
+
+		wcscpy(file_name, file_path + base_len);
+		if (search_file_path(list_buf, l_off, file_name))
+			continue;	// ファイル名が重複しないようにする
+
+		len = wcslen(file_name);
+		if ((l_off + len) * 2 >= l_max){ // 領域が足りなくなるなら拡張する
+			l_max += ALLOC_LEN * 8;
+			tmp_p = (wchar_t *)realloc(list_buf, l_max);
+			if (tmp_p == NULL){
+				free(list_buf);
+				fclose(fp);
+				printf("realloc, %d\n", l_max);
+				return NULL;
+			} else {
+				list_buf = tmp_p;
+			}
+		}
+
+		// リストにコピーする
+		wcscpy(list_buf + l_off, file_name);
+		l_off += len + 1;
+		file_num++;
+		(*total_size) += ((__int64)AttrData.nFileSizeHigh << 32) | (__int64)AttrData.nFileSizeLow;
+	}
+	fclose(fp);
+
+	*list_max = l_max;
+	*list_len = l_off;
+	return list_buf;
+}
+
 // ファイルを検索してファイル・リストに追加する
 static wchar_t * search_files(
 	wchar_t *list_buf,		// ファイル・リスト
 	wchar_t *search_path,	// 検索するファイルのフル・パス
 	int dir_len,			// ディレクトリ部分の長さ
-	//int file_only,		// ファイルのみにするかどうか
-	
 	unsigned int filter,	//  2, FILE_ATTRIBUTE_HIDDEN    = 隠しファイルを無視する
 							//  4, FILE_ATTRIBUTE_SYSTEM    = システムファイルを無視する
 							// 16, FILE_ATTRIBUTE_DIRECTORY = ディレクトリを無視する
-
 	int single_file,		// -1 = *や?で検索指定、0～ = 単独指定
 	int *list_max,			// ファイル・リストの確保サイズ
 	int *list_len,			// ファイル・リストの文字数
@@ -173,26 +284,27 @@ static wchar_t * search_files(
 		} else { // ファイルなら
 			if (_wcsicmp(search_path, checksum_file) == 0)
 				continue;	// 作成中の自分自身は除外する
-			if (!search_file_path(list_buf, l_off, search_path + base_len)){	// ファイル名が重複しないようにする
-				if ((l_off + dir_len- base_len + len) * 2 >= l_max){ // 領域が足りなくなるなら拡張する
-					l_max += ALLOC_LEN;
-					tmp_p = (wchar_t *)realloc(list_buf, l_max);
-					if (tmp_p == NULL){
-						FindClose(hFind);
-						free(list_buf);
-						printf("realloc, %d\n", l_max);
-						return NULL;
-					} else {
-						list_buf = tmp_p;
-					}
-				}
+			if (search_file_path(list_buf, l_off, search_path + base_len))
+				continue;	// ファイル名が重複しないようにする
 
-				// リストにコピーする
-				wcscpy(list_buf + l_off, search_path + base_len);
-				l_off += dir_len - base_len + len + 1;
-				file_num++;
-				(*total_size) += ((__int64)FindData.nFileSizeHigh << 32) | (__int64)FindData.nFileSizeLow;
+			if ((l_off + dir_len - base_len + len) * 2 >= l_max){ // 領域が足りなくなるなら拡張する
+				l_max += ALLOC_LEN;
+				tmp_p = (wchar_t *)realloc(list_buf, l_max);
+				if (tmp_p == NULL){
+					FindClose(hFind);
+					free(list_buf);
+					printf("realloc, %d\n", l_max);
+					return NULL;
+				} else {
+					list_buf = tmp_p;
+				}
 			}
+
+			// リストにコピーする
+			wcscpy(list_buf + l_off, search_path + base_len);
+			l_off += dir_len - base_len + len + 1;
+			file_num++;
+			(*total_size) += ((__int64)FindData.nFileSizeHigh << 32) | (__int64)FindData.nFileSizeLow;
 		}
 	} while (FindNextFile(hFind, &FindData)); // 次のファイルを検索する
 	FindClose(hFind);
@@ -257,7 +369,7 @@ static int write_checksum(wchar_t *uni_buf,
 {
 	char *ascii_buf;
 	wchar_t *ads_p;
-	int err = 0, rv, len, format;
+	int err = 0, rv, len, hash_type;
 	unsigned int time_last;
 	__int64 prog_now = 0;
 	HANDLE hFile;
@@ -265,13 +377,21 @@ static int write_checksum(wchar_t *uni_buf,
 
 	len = wcslen(checksum_file);
 	if (_wcsicmp(checksum_file + (len - 4), L".sfv") == 0){	// SFVファイル
-		format = 1;
+		hash_type = 0;
 	} else if (_wcsicmp(checksum_file + (len - 4), L".md5") == 0){	// MD5ファイル
-		format = 2;
+		hash_type = 1;
 	} else if ((_wcsicmp(checksum_file + (len - 4), L".ffp") == 0) || (_wcsicmp(checksum_file + (len - 7), L"ffp.txt") == 0)){
-		format = 3; // FLAC Fingerprint ファイル
+		hash_type = 2; // FLAC Fingerprint ファイル
+	} else if (_wcsicmp(checksum_file + (len - 5), L".sha1") == 0){	// SHA-1ファイル
+		hash_type = 4;
+	} else if (_wcsicmp(checksum_file + (len - 7), L".sha256") == 0){	// SHA-256ファイル
+		hash_type = 5;
+	} else if (_wcsicmp(checksum_file + (len - 7), L".sha384") == 0){	// SHA-384ファイル
+		hash_type = 6;
+	} else if (_wcsicmp(checksum_file + (len - 7), L".sha512") == 0){	// SHA-512ファイル
+		hash_type = 7;
 	} else {
-		printf("unknown format\n");
+		printf("file format is unknown\n");
 		return 1;
 	}
 
@@ -324,12 +444,14 @@ static int write_checksum(wchar_t *uni_buf,
 	time_last = GetTickCount() / UPDATE_TIME;	// 時刻の変化時に経過を表示する
 	len = 0;
 	while (len < list_len){
-		if (format == 1){
+		if (hash_type == 0){
 			rv = create_sfv(uni_buf, list_buf + len, &time_last, &prog_now, total_size);
-		} else if (format == 2){
+		} else if (hash_type == 1){
 			rv = create_md5(uni_buf, list_buf + len, &time_last, &prog_now, total_size);
-		} else if (format == 3){
+		} else if (hash_type == 2){
 			rv = create_ffp(uni_buf, list_buf + len, &prog_now);
+		} else if (hash_type >= 4){
+			rv = create_cng(hash_type, uni_buf, list_buf + len, &time_last, &prog_now, total_size);
 		} else {
 			rv = 1;
 		}
@@ -514,9 +636,17 @@ static int read_checksum(char *ascii_buf, wchar_t *file_path)
 		err = verify_md5(ascii_buf, file_path);
 	} else if ((_wcsicmp(checksum_file + (rv - 4), L".ffp") == 0) || (_wcsicmp(checksum_file + (rv - 7), L"ffp.txt") == 0)){
 		err = verify_ffp(ascii_buf, file_path);	// FLAC Fingerprint ファイル
+	} else if (_wcsicmp(checksum_file + (rv - 5), L".sha1") == 0){	// SHA-1ファイル
+		err = verify_cng(4, ascii_buf, file_path);
+	} else if (_wcsicmp(checksum_file + (rv - 7), L".sha256") == 0){	// SHA-256ファイル
+		err = verify_cng(5, ascii_buf, file_path);
+	} else if (_wcsicmp(checksum_file + (rv - 7), L".sha384") == 0){	// SHA-384ファイル
+		err = verify_cng(6, ascii_buf, file_path);
+	} else if (_wcsicmp(checksum_file + (rv - 7), L".sha512") == 0){	// SHA-512ファイル
+		err = verify_cng(7, ascii_buf, file_path);
 	} else {
 		err = 1;
-		printf("unknown format\n");
+		printf("file format is unknown\n");
 	}
 	free(hash_buf);
 	free(text_buf);
@@ -634,6 +764,10 @@ wmain(int argc, wchar_t *argv[])
 			// オプション
 			if (wcscmp(tmp_p, L"u") == 0){
 				cp_output = CP_UTF8;
+			} else if (wcscmp(tmp_p, L"f") == 0){
+				switch_v |= 1024;
+			} else if (wcscmp(tmp_p, L"fu") == 0){
+				switch_v |= 2048;
 			} else if (wcscmp(tmp_p, L"fo") == 0){
 				switch_v |= 8;
 
@@ -707,13 +841,13 @@ wmain(int argc, wchar_t *argv[])
 			printf("checksum filename is invalid\n");
 			return 1;
 		}
-		// 拡張子は SFV か MD5 のみ
+		// 拡張子で形式を識別する
 		if (_wcsicmp(checksum_file + (j - 4), L".sfv") == 0){
 			init_crc_table();	// CRC 計算用のテーブルを作る
-		} else if (_wcsicmp(checksum_file + (j - 4), L".md5") == 0){
-			if ((argv[1][0] == 'v') && (recent_data != 0))
-				init_crc_table();
-		} else if ((_wcsicmp(checksum_file + (j - 4), L".ffp") == 0) || (_wcsicmp(checksum_file + (j - 7), L"ffp.txt") == 0)){
+		} else if ((_wcsicmp(checksum_file + (j - 4), L".md5") == 0) ||
+					(_wcsicmp(checksum_file + (j - 5), L".sha1") == 0) || (_wcsicmp(checksum_file + (j - 7), L".sha256") == 0) ||
+					(_wcsicmp(checksum_file + (j - 7), L".sha384") == 0) || (_wcsicmp(checksum_file + (j - 7), L".sha512") == 0) ||
+					(_wcsicmp(checksum_file + (j - 4), L".ffp") == 0) || (_wcsicmp(checksum_file + (j - 7), L"ffp.txt") == 0)){
 			if ((argv[1][0] == 'v') && (recent_data != 0))
 				init_crc_table();
 		} else {	// 拡張子が違うなら
@@ -744,7 +878,7 @@ wmain(int argc, wchar_t *argv[])
 			j = GetFileAttributes(checksum_file);
 			if ((j == INVALID_FILE_ATTRIBUTES) || (j & FILE_ATTRIBUTE_DIRECTORY)){
 				wchar_t search_path[MAX_LEN];
-				int name_len, dir_len, path_len, find_flag = 0;
+				int name_len, ext_len, dir_len, path_len, find_flag = 0;
 				HANDLE hFind;
 				WIN32_FIND_DATA FindData;
 				if (wcspbrk(offset_file_name(checksum_file), L"*?") == NULL){
@@ -761,8 +895,12 @@ wmain(int argc, wchar_t *argv[])
 					do {
 						//printf("file name = %S\n", FindData.cFileName);
 						name_len = wcslen(FindData.cFileName);
+						for (ext_len = 0; ext_len < name_len; ext_len++){
+							if (FindData.cFileName[name_len - 1 - ext_len] == '.')
+								break;
+						}
 						if ((dir_len + name_len < MAX_LEN) &&	// ファイル名が長すぎない
-								(_wcsicmp(FindData.cFileName + (name_len - 4), checksum_file + (path_len - 4)) == 0)){	// 拡張子が同じ
+								(_wcsicmp(FindData.cFileName + (name_len - ext_len), checksum_file + (path_len - ext_len)) == 0)){	// 拡張子が同じ
 							find_flag = 1;
 							break;	// 見つけたファイル名で問題なし
 						}
@@ -786,7 +924,7 @@ wmain(int argc, wchar_t *argv[])
 	// input file の位置が指定されて無くて、
 	// 最初のソース・ファイル指定に絶対パスや相対パスが含まれてるなら、それを使う
 	if (argv[1][0] == 'c'){
-		if ((base_dir[0] == 0) && (i + 1 < argc)){
+		if ((base_dir[0] == 0) && ((switch_v & 0x0C00) == 0) && (i + 1 < argc)){
 			tmp_p = argv[i + 1];
 			if (is_full_path(tmp_p) != 0){	// 絶対パスなら
 				if (copy_path_prefix(file_path, MAX_LEN - 2, tmp_p, NULL) == 0){
@@ -812,54 +950,62 @@ wmain(int argc, wchar_t *argv[])
 		wchar_t *list_buf;
 		int dir_len, list_len, list_max;
 		__int64 total_size = 0;	// 合計ファイル・サイズ
-		unsigned int filter;
-		// 隠しファイルやフォルダーを無視するかどうか
-		filter = get_show_hidden();
-		if (switch_v & 8)
-			filter |= FILE_ATTRIBUTE_DIRECTORY;
 		// チェックサム・ファイル作成ならソース・ファイルのリストがいる
 		i++;
 		if (i >= argc){
 			printf("input file is not specified\n");
 			return 1;
 		}
-		// 入力ファイルの指定
 		file_num = 0;
 		list_len = 0;
 		list_max = 0;
 		list_buf = NULL;
-		for (; i < argc; i++){
-			// ファイルが基準ディレクトリ以下に存在することを確認する
-			tmp_p = argv[i];
-			j = copy_path_prefix(file_path, MAX_LEN - 2, tmp_p, base_dir);	// 絶対パスにしてから比較する
-			if (j == 0){
-				free(list_buf);
-				printf_cp("filename is invalid, %s\n", tmp_p);
-				return 1;
-			}
-			if ((j <= base_len) || (_wcsnicmp(base_dir, file_path, base_len) != 0)){	// 基準ディレクトリ外なら
-				free(list_buf);
-				printf_cp("out of base-directory, %s\n", tmp_p);
-				return 1;
-			}
-			//printf("%d = %S\n", i, argv[i]);
-			//printf_cp("search = %s\n", file_path);
-			// 「*」や「?」で検索しない場合、ファイルが見つからなければエラーにする
-			j = -1;
-			if (wcspbrk(file_path + base_len, L"*?") == NULL)
-				j = file_num;
-			// ファイルを検索する
-			dir_len = wcslen(file_path) - 2;	// ファイル名末尾の「\」を無視して、ディレクトリ部分の長さを求める
-			while (file_path[dir_len] != '\\')
-				dir_len--;
-			dir_len++;
-			list_buf = search_files(list_buf, file_path, dir_len, filter, j, &list_max, &list_len, &total_size);
+		if (switch_v & 0x0C00){	// ファイル・リストの読み込み
+			j = (switch_v & 0x0800) ? CP_UTF8 : CP_OEMCP;
+			list_buf = read_list(argv[i], j, &list_max, &list_len, &total_size);
 			if (list_buf == NULL)
 				return 1;
-			if ((j != -1) && (j == file_num)){	// ファイルが見つかったか確かめる
-				free(list_buf);
-				printf_cp("input file is not found, %s\n", file_path + base_len);
-				return 1;
+		} else {	// 入力ファイルの指定
+			unsigned int filter;
+			// 隠しファイルやフォルダーを無視するかどうか
+			filter = get_show_hidden();
+			if (switch_v & 8)
+				filter |= FILE_ATTRIBUTE_DIRECTORY;
+			for (; i < argc; i++){
+				// ファイルが基準ディレクトリ以下に存在することを確認する
+				tmp_p = argv[i];
+				j = copy_path_prefix(file_path, MAX_LEN - 2, tmp_p, base_dir);	// 絶対パスにしてから比較する
+				if (j == 0){
+					if (list_buf)
+						free(list_buf);
+					printf_cp("filename is invalid, %s\n", tmp_p);
+					return 1;
+				}
+				if ((j <= base_len) || (_wcsnicmp(base_dir, file_path, base_len) != 0)){	// 基準ディレクトリ外なら
+					if (list_buf)
+						free(list_buf);
+					printf_cp("out of base-directory, %s\n", tmp_p);
+					return 1;
+				}
+				//printf("%d = %S\n", i, argv[i]);
+				//printf_cp("search = %s\n", file_path);
+				// 「*」や「?」で検索しない場合、ファイルが見つからなければエラーにする
+				j = -1;
+				if (wcspbrk(file_path + base_len, L"*?") == NULL)
+					j = file_num;
+				// ファイルを検索する
+				dir_len = wcslen(file_path) - 2;	// ファイル名末尾の「\」を無視して、ディレクトリ部分の長さを求める
+				while (file_path[dir_len] != '\\')
+					dir_len--;
+				dir_len++;
+				list_buf = search_files(list_buf, file_path, dir_len, filter, j, &list_max, &list_len, &total_size);
+				if (list_buf == NULL)
+					return 1;
+				if ((j != -1) && (j == file_num)){	// ファイルが見つかったか確かめる
+					free(list_buf);
+					printf_cp("input file is not found, %s\n", file_path + base_len);
+					return 1;
+				}
 			}
 		}
 		if (list_len == 0){

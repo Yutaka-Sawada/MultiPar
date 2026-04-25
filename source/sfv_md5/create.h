@@ -21,3 +21,12 @@ int create_ffp(
 	wchar_t *file_name,		// 検査対象のファイル名
 	__int64 *prog_end);		// 経過表示での終了位置
 
+// Cryptography API: Next Generation が対応するハッシュ
+int create_cng(
+	int hash_type,
+	wchar_t *uni_buf,
+	wchar_t *file_name,		// 検査対象のファイル名
+	unsigned int *time_last,
+	__int64 *prog_now,		// 経過表示での現在位置
+	__int64 total_size);	// 合計ファイル・サイズ
+

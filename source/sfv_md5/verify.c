@@ -1,5 +1,5 @@
 ﻿// verify.c
-// Copyright : 2026-02-28 Yutaka Sawada
+// Copyright : 2026-04-23 Yutaka Sawada
 // License : The MIT license
 
 #ifndef _UNICODE
@@ -15,6 +15,7 @@
 #include <stdio.h>
 
 #include <windows.h>
+#include <bcrypt.h>
 
 #include "common.h"
 #include "crc.h"
@@ -28,6 +29,9 @@
 #include <time.h>
 static clock_t time_start, time_calc;
 #endif
+
+#define NT_SUCCESS(Status)  (((NTSTATUS)(Status)) >= 0)
+#define STATUS_UNSUCCESSFUL ((NTSTATUS)0xC0000001L)
 
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
@@ -97,20 +101,20 @@ static int file_recursive_search(
 			}
 			file_size = ((__int64)(FindData.nFileSizeHigh) << 32) | (__int64)(FindData.nFileSizeLow);
 			if (len == 0){	// 記録がある時
+				CloseHandle(hFile);
 				wsprintf((wchar_t *)buf, L"%I64d", file_size);
 				off = hash_len;
 				if (add_hash(search_path + base_len, tmp_buf, (wchar_t *)buf) != 0){
-					CloseHandle(hFile);
 					FindClose(hFind);
 					return -3;	// 記録できない時は終わる
 				}
 				if (wcscmp(tmp_buf, find_hash) == 0){
-					CloseHandle(hFile);
 					FindClose(hFind);
 					return off;
 				}
 				continue;	// 記録があってもハッシュ値が一致しなければ、次のファイルを調べる
 			} else if (len != -2){
+				CloseHandle(hFile);
 				continue;	// 属性取得エラーなら検査せずに、次のファイルに移る
 			}
 			file_left = file_size;
@@ -207,12 +211,266 @@ static int file_recursive_search(
 	return -1;
 }
 
+static int file_recursive_search_cng(
+	wchar_t *search_path,	// 検索するファイルの親ディレクトリ、見つけた別名ファイルの相対パスが戻る
+	int dir_len,			// ディレクトリ部分の長さ
+	int hash_type,			// 4 = SHA=1, 5 = SHA-256, 6 = SHA-384, 7 = SHA-512
+	wchar_t *find_hash)		// 探したいハッシュ値
+{
+	unsigned char buf[IO_SIZE], bHash[MAX_HASH];
+	wchar_t *self_name = NULL, tmp_buf[MAX_HASH * 2 + 1];
+	int off, len;
+	unsigned int i, time_last, meta_data[7];
+	__int64 file_size, file_left;
+	HANDLE hFile, hFind;
+	WIN32_FIND_DATA FindData;
+	BCRYPT_ALG_HANDLE  hAlg  = NULL;
+	BCRYPT_HASH_HANDLE hHash = NULL;
+	NTSTATUS status = STATUS_UNSUCCESSFUL;
+	DWORD cbHash = 0;
+	DWORD cbHashObject = 0;
+	PBYTE pbHashObject = NULL;
+	LPCWSTR pszAlgId;
+
+	// open an algorithm handle
+	if (hash_type == 4){
+		pszAlgId = BCRYPT_SHA1_ALGORITHM;
+	} else if (hash_type == 5){
+		pszAlgId = BCRYPT_SHA256_ALGORITHM;
+	} else if (hash_type == 6){
+		pszAlgId = BCRYPT_SHA384_ALGORITHM;
+	} else if (hash_type == 7){
+		pszAlgId = BCRYPT_SHA512_ALGORITHM;
+	} else {	// 未知の形式
+		printf("file format is unknown\n");
+		return -3;
+	}
+	status = BCryptOpenAlgorithmProvider(&hAlg, pszAlgId, NULL, 0);
+	if (!NT_SUCCESS(status)){
+		printf("\nError 0x%x returned by BCryptOpenAlgorithmProvider\n", status);
+		return -3;
+	}
+
+	// calculate the size of the buffer to hold the hash object
+	status = BCryptGetProperty(hAlg, BCRYPT_OBJECT_LENGTH, (PBYTE)&cbHashObject, sizeof(DWORD), &i, 0);
+	if (!NT_SUCCESS(status)){
+		printf("\nError 0x%x returned by BCryptGetProperty\n", status);
+		BCryptCloseAlgorithmProvider(hAlg, 0);
+		return -3;
+	}
+
+	// allocate the hash object on the heap
+	pbHashObject = (PBYTE)HeapAlloc (GetProcessHeap(), 0, cbHashObject);
+	if (NULL == pbHashObject){
+		printf("\nError %u memory allocation failed\n", cbHashObject);
+		BCryptCloseAlgorithmProvider(hAlg, 0);
+		return -3;
+	}
+
+	// calculate the length of the hash
+	status = BCryptGetProperty(hAlg, BCRYPT_HASH_LENGTH, (PBYTE)&cbHash, sizeof(DWORD), &i, 0);
+	if (!NT_SUCCESS(status) || (cbHash > MAX_HASH)){
+		printf("\nError 0x%x returned by BCryptGetProperty\n", status);
+		BCryptCloseAlgorithmProvider(hAlg, 0);
+		HeapFree(GetProcessHeap(), 0, pbHashObject);
+		return -3;
+	}
+
+	//printf_cp("search_path = %s\n", search_path);
+	prog_last = -1;
+	time_last = GetTickCount() / UPDATE_TIME;	// 時刻の変化時に経過を表示する
+
+	// チェックサムファイル自身を除外する
+	if (_wcsnicmp(search_path, checksum_file, dir_len) == 0)
+		self_name = checksum_file + dir_len;	// チェックサムファイル自身を除外する
+
+	// 指定されたディレクトリ直下のファイルと比較する
+	wcscpy(search_path + dir_len, L"*");
+	hFind = FindFirstFile(search_path, &FindData);
+	if (hFind != INVALID_HANDLE_VALUE){
+		do {
+			if (cancel_progress() != 0){	// キャンセル処理
+				FindClose(hFind);
+				BCryptCloseAlgorithmProvider(hAlg, 0);
+				HeapFree(GetProcessHeap(), 0, pbHashObject);
+				return -2;
+			}
+			// フォルダなら無視する
+			if ((FindData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) != 0)
+				continue;
+			// 発見したファイル名が長すぎる場合は無視する
+			if (dir_len + wcslen(FindData.cFileName) >= MAX_LEN)
+				continue;
+			// 自分自身を無視する
+			if ((self_name != NULL) && (_wcsicmp(self_name, FindData.cFileName) == 0))
+				continue;
+			// 現在のディレクトリ部分に見つかったファイル名を連結する
+			wcscpy(search_path + dir_len, FindData.cFileName);
+			// 既にチェック済みのファイルは無視する
+			if (search_hash_name(search_path + base_len) >= 0)
+				continue;
+			//printf_cp("found = %s\n", search_path + base_len);
+
+			// 読み込むファイルを開く
+			hFile = CreateFile(search_path, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, 0, NULL);
+			if (hFile == INVALID_HANDLE_VALUE)
+				continue;
+			file_size = ((__int64)(FindData.nFileSizeHigh) << 32) | (__int64)(FindData.nFileSizeLow);
+			// ハッシュ値を比較する
+			len = check_ini_state(-1, meta_data, cbHash, buf, hFile);
+			if (len == 0){	// 記録がある時
+				CloseHandle(hFile);
+				for (i = 0; i < cbHash; i++)
+					wsprintf(tmp_buf + i * 2, L"%02X", buf[i]);
+				tmp_buf[cbHash * 2] = 0;
+				wsprintf((wchar_t *)buf, L"%I64d", file_size);
+				off = hash_len;
+				if (add_hash(search_path + base_len, tmp_buf, (wchar_t *)buf) != 0){
+					FindClose(hFind);
+					BCryptCloseAlgorithmProvider(hAlg, 0);
+					HeapFree(GetProcessHeap(), 0, pbHashObject);
+					return -3;	// 記録できない時は終わる
+				}
+				if (wcscmp(tmp_buf, find_hash) == 0){
+					FindClose(hFind);
+					BCryptCloseAlgorithmProvider(hAlg, 0);
+					HeapFree(GetProcessHeap(), 0, pbHashObject);
+					return off;
+				}
+				continue;	// 記録があってもハッシュ値が一致しなければ、次のファイルを調べる
+			} else if (len != -2){
+				CloseHandle(hFile);
+				continue;	// 属性取得エラーなら検査せずに、次のファイルに移る
+			}
+			file_left = file_size;
+
+			// create a hash ハッシュ値を計算する
+			status = BCryptCreateHash(hAlg, &hHash, pbHashObject, cbHashObject, NULL, 0, 0);
+			if (!NT_SUCCESS(status)){
+				printf("\nError 0x%x returned by BCryptCreateHash\n", status);
+				CloseHandle(hFile);
+				FindClose(hFind);
+				BCryptCloseAlgorithmProvider(hAlg, 0);
+				HeapFree(GetProcessHeap(), 0, pbHashObject);
+				return -3;
+			}
+			while (file_left > 0){
+				len = IO_SIZE;
+				if (file_left < IO_SIZE)
+					len = (int)file_left;
+				if (!ReadFile(hFile, buf, len, &off, NULL) || (len != off))
+					break;	// 読み取りエラーは file_left > 0 になる
+				file_left -= len;
+
+				// hash some data ハッシュ関数にデータを入力する
+				status = BCryptHashData(hHash, (PBYTE)buf, len, 0);
+				if (!NT_SUCCESS(status)){
+					printf("\nError 0x%x returned by BCryptHashData\n", status);
+					CloseHandle(hFile);
+					FindClose(hFind);
+					BCryptCloseAlgorithmProvider(hAlg, 0);
+					BCryptDestroyHash(hHash);
+					HeapFree(GetProcessHeap(), 0, pbHashObject);
+					return -3;
+				}
+
+				// 経過表示
+				if (GetTickCount() / UPDATE_TIME != time_last){
+					if (print_progress_file((int)(((file_size - file_left) * 1000) / file_size), FindData.cFileName)){
+						CloseHandle(hFile);
+						FindClose(hFind);
+						BCryptCloseAlgorithmProvider(hAlg, 0);
+						BCryptDestroyHash(hHash);
+						HeapFree(GetProcessHeap(), 0, pbHashObject);
+						return -2;
+					}
+					time_last = GetTickCount() / UPDATE_TIME;
+				}
+			}
+			CloseHandle(hFile);
+
+			// close the hash ハッシュ値の算出
+			status = BCryptFinishHash(hHash, bHash, cbHash, 0);
+			if (!NT_SUCCESS(status)){
+				printf("\nError 0x%x returned by BCryptFinishHash\n", status);
+				FindClose(hFind);
+				BCryptCloseAlgorithmProvider(hAlg, 0);
+				BCryptDestroyHash(hHash);
+				HeapFree(GetProcessHeap(), 0, pbHashObject);
+				return -3;
+			}
+			write_ini_state(-1, meta_data, cbHash, bHash);	// ハッシュ値を記録する
+			for (i = 0; i < cbHash; i++)
+				wsprintf(tmp_buf + i * 2, L"%02X", bHash[i]);
+			tmp_buf[cbHash * 2] = 0;
+			BCryptDestroyHash(hHash);
+
+			if (file_left > 0)
+				continue;	// エラー等で中断した場合
+
+			// 検出ファイルのハッシュ値とサイズを記録しておく
+			wsprintf((wchar_t *)buf, L"%I64d", file_size);
+			off = hash_len;
+			if (add_hash(search_path + base_len, tmp_buf, (wchar_t *)buf) != 0){
+				FindClose(hFind);
+				BCryptCloseAlgorithmProvider(hAlg, 0);
+				HeapFree(GetProcessHeap(), 0, pbHashObject);
+				return -3;	// 記録できない時は終わる
+			}
+			if (wcscmp(tmp_buf, find_hash) == 0){
+				FindClose(hFind);
+				BCryptCloseAlgorithmProvider(hAlg, 0);
+				HeapFree(GetProcessHeap(), 0, pbHashObject);
+				return off;
+			}
+		} while (FindNextFile(hFind, &FindData));	// 次のファイルを検索する
+	}
+	FindClose(hFind);
+	if (hAlg)
+		BCryptCloseAlgorithmProvider(hAlg, 0);
+	if (pbHashObject)
+		HeapFree(GetProcessHeap(), 0, pbHashObject);
+
+	if (switch_v & 8)
+		return -1;	// ファイルのみ検査ならサブ・フォルダを調べない
+
+	// 指定されたディレクトリ以下のフォルダ内も再帰的に調べる
+	wcscpy(search_path + dir_len, L"*");
+	hFind = FindFirstFile(search_path, &FindData);
+	if (hFind != INVALID_HANDLE_VALUE){
+		do {
+			// フォルダ以外は無視する
+			if ((FindData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) == 0)
+				continue;
+			// 親ディレクトリは無視する
+			if ((wcscmp(FindData.cFileName, L".") == 0) || (wcscmp(FindData.cFileName, L"..") == 0))
+				continue;
+			// 発見したフォルダ名が長すぎる場合は無視する
+			if (dir_len + wcslen(FindData.cFileName) + 2 >= MAX_LEN)	// 末尾に「\*」が追加される
+				continue;
+
+			// そのフォルダの内部を新たな検索対象にする
+			wcscpy(search_path + dir_len, FindData.cFileName);
+			wcscat(search_path + dir_len, L"\\");	// ディレクトリ記号は「\」に統一してある
+			//printf_cp("inner search... %s\n", search_path + base_len);
+			off = file_recursive_search_cng(search_path, (int)wcslen(search_path), hash_type, find_hash);
+			if (off != -1){	// -3 = エラー, -2 = キャンセル, 0以上 = 見つけた
+				FindClose(hFind);
+				return off;
+			}	// 見つからなかった場合は続行する
+		} while (FindNextFile(hFind, &FindData));	// 次のフォルダを検索する
+	}
+	FindClose(hFind);
+
+	return -1;
+}
+
 // 基準ディレクトリ内のファイルを全て検査する
 // -1 = 見つからず, -2 =キャンセル, -3 = エラー
 static int file_all_check(
 	wchar_t *file_path,
 	int search_from,	// hash_buf 内のこれ以降から探す
-	int hash_type,		// 0 = SFV, 1 = MD5
+	int hash_type,		// 1 = SFV, 2 = MD5, 4 = SHA-1, 5 = SHA-256, 6 = SHA-384, 7 = SHA-512
 	wchar_t *find_hash)	// 探したいハッシュ値
 {
 	int off;
@@ -224,7 +482,11 @@ static int file_all_check(
 
 	// ディレクトリ内のファイルを再起探索する
 	wcscpy(file_path, base_dir);
-	off = file_recursive_search(file_path, base_len, hash_type, find_hash);
+	if ((hash_type == 1) || (hash_type == 2)){
+		off = file_recursive_search(file_path, base_len, hash_type, find_hash);
+	} else {
+		off = file_recursive_search_cng(file_path, base_len, hash_type, find_hash);
+	}
 
 	return off;
 }
@@ -233,8 +495,10 @@ static int file_all_check(
 
 // CRC-32 を比較する
 //  0 = ファイルが存在して完全である
-//  1 = ファイルが存在しない
-//  2 = ファイルが破損してる
+//  1 = エラー
+//  2 = キャンセル
+//  4 = ファイルが破損してる
+// 12 = ファイルが存在しない
 static int file_crc32_check(
 	int num,
 	char *ascii_name,
@@ -589,7 +853,7 @@ int verify_sfv(
 			off++;
 			// 状態
 			if ((hash_buf[off] == 'd') || (hash_buf[off] == 'm')){
-				line_len = file_all_check(file_path, name_len, 0, tmp_buf);
+				line_len = file_all_check(file_path, name_len, 1, tmp_buf);
 				//printf("\n file_all_check = %d\n", line_len);
 				if (line_len <= -2)
 					return 4 + line_len;
@@ -636,8 +900,10 @@ int verify_sfv(
 
 // MD5 を比較する
 //  0 = ファイルが存在して完全である
-//  1 = ファイルが存在しない
-//  2 = ファイルが破損してる
+//  1 = エラー
+//  2 = キャンセル
+//  4 = ファイルが破損してる
+// 12 = ファイルが存在しない
 static int file_md5_check(
 	int num,
 	char *ascii_name,
@@ -680,9 +946,9 @@ static int file_md5_check(
 			if (memcmp(hash, buf + 128, 16) != 0){
 				bad_flag = 2;	// ハッシュ値が異なる
 				if (switch_v & 2){	// 破損ファイルのハッシュ値を記録しておく
-					wsprintf((wchar_t *)buf, L"%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X",
-						buf[128], buf[129], buf[130], buf[131], buf[132], buf[133], buf[134], buf[135],
-						buf[136], buf[137], buf[138], buf[139], buf[140], buf[141], buf[142], buf[143]);
+					for (len = 0; len < 16; len++)
+						wsprintf((wchar_t *)buf + len, L"%02X", buf[128 + len]);
+					((wchar_t *)buf)[16] = 0;
 					wsprintf((wchar_t *)buf + 64, L"%I64d", file_size);
 					if (add_hash(uni_name, (wchar_t *)buf, (wchar_t *)buf + 64) != 0){
 						printf("file%d: cannot add hash\n", num);
@@ -719,15 +985,12 @@ static int file_md5_check(
 				bad_flag = 2;	// エラー等で中断した場合は破損として扱い、検査結果を記録しない
 			} else {
 				Phmd5End(&ctx);	// 最終処理
-//				printf("%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X\n",
-//					ctx.hash[0], ctx.hash[1], ctx.hash[2], ctx.hash[3], ctx.hash[4], ctx.hash[5], ctx.hash[6], ctx.hash[7],
-//					ctx.hash[8], ctx.hash[9], ctx.hash[10], ctx.hash[11], ctx.hash[12], ctx.hash[13], ctx.hash[14], ctx.hash[15]);
 				if (memcmp(hash, ctx.hash, 16) != 0){
 					bad_flag = 2;	// ハッシュ値が異なる、または途中まで
 					if (switch_v & 2){	// 破損ファイルのハッシュ値を記録しておく
-						wsprintf((wchar_t *)buf, L"%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X",
-							ctx.hash[0], ctx.hash[1], ctx.hash[2], ctx.hash[3], ctx.hash[4], ctx.hash[5], ctx.hash[6], ctx.hash[7],
-							ctx.hash[8], ctx.hash[9], ctx.hash[10], ctx.hash[11], ctx.hash[12], ctx.hash[13], ctx.hash[14], ctx.hash[15]);
+						for (len = 0; len < 16; len++)
+							wsprintf((wchar_t *)buf + len, L"%02X", ctx.hash[len]);
+						((wchar_t *)buf)[16] = 0;
 						wsprintf((wchar_t *)buf + 64, L"%I64d", file_size);
 						if (add_hash(uni_name, (wchar_t *)buf, (wchar_t *)buf + 64) != 0){
 							printf("file%d: cannot add hash\n", num);
@@ -914,10 +1177,9 @@ int verify_md5(
 						for (i = 0; i < 16; i++){
 							wcsncpy(num_buf, line_off + (i * 2), 2);
 							hash[i] = (unsigned char)get_val32h(num_buf);
+							wsprintf(tmp_buf + i * 2, L"%02X", hash[i]);
 						}
-						wsprintf(tmp_buf, L"%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X",
-							hash[0], hash[1], hash[2], hash[3], hash[4], hash[5], hash[6], hash[7],
-							hash[8], hash[9], hash[10], hash[11], hash[12], hash[13], hash[14], hash[15]);
+						tmp_buf[32] = 0;
 						if (add_hash(uni_buf, tmp_buf, L"?") != 0){
 							printf("line%d: cannot add hash\n", line_num);
 							return 1;
@@ -973,10 +1235,9 @@ int verify_md5(
 							for (i = 0; i < 16; i++){
 								wcsncpy(num_buf, line_off + (line_len - 32 + (i * 2)), 2);
 								hash[i] = (unsigned char)get_val32h(num_buf);
+								wsprintf(tmp_buf + i * 2, L"%02X", hash[i]);
 							}
-							wsprintf(tmp_buf, L"%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X",
-								hash[0], hash[1], hash[2], hash[3], hash[4], hash[5], hash[6], hash[7],
-								hash[8], hash[9], hash[10], hash[11], hash[12], hash[13], hash[14], hash[15]);
+							tmp_buf[32] = 0;
 							if (add_hash(uni_buf, tmp_buf, L"?") != 0){
 								printf("line%d: cannot add hash\n", line_num);
 								return 1;
@@ -1022,10 +1283,9 @@ int verify_md5(
 							for (i = 0; i < 16; i++){
 								wcsncpy(num_buf, line_off + (line_len - 32 + (i * 2)), 2);
 								hash[i] = (unsigned char)get_val32h(num_buf);
+								wsprintf(tmp_buf + i * 2, L"%02X", hash[i]);
 							}
-							wsprintf(tmp_buf, L"%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X",
-								hash[0], hash[1], hash[2], hash[3], hash[4], hash[5], hash[6], hash[7],
-								hash[8], hash[9], hash[10], hash[11], hash[12], hash[13], hash[14], hash[15]);
+							tmp_buf[32] = 0;
 							if (add_hash(uni_buf, tmp_buf, L"?") != 0){
 								printf("line%d: cannot add hash\n", line_num);
 								return 1;
@@ -1072,7 +1332,7 @@ int verify_md5(
 	}
 
 	printf("\nInput File list : %d\n", file_num);
-	printf("            MD5 Hash             :  Filename\n");
+	printf("       MD5       :  Filename\n");
 	fflush(stdout);
 	off = 0;
 	name_len = hash_len;	// ソースファイルの状態まで
@@ -1082,8 +1342,8 @@ int verify_md5(
 		while (hash_buf[off] != 0)
 			off++;
 		off++;
-		// ハッシュ値
-		printf("%S : \"%s\"\n", hash_buf + off, ascii_buf);
+		// ハッシュ値は長いので先頭 8バイト分だけ表示する
+		printf("%.*S : \"%s\"\n", 16, hash_buf + off, ascii_buf);
 		while (hash_buf[off] != 0)
 			off++;
 		off++;
@@ -1167,7 +1427,7 @@ int verify_md5(
 			off++;
 			// 状態
 			if ((hash_buf[off] == 'd') || (hash_buf[off] == 'm')){
-				line_len = file_all_check(file_path, name_len, 1, tmp_buf);
+				line_len = file_all_check(file_path, name_len, 2, tmp_buf);
 				if (line_len <= -2)
 					return 4 + line_len;
 				if (line_len >= 0){
@@ -1213,8 +1473,10 @@ int verify_md5(
 
 // FLAC Fingerprint を比較する
 //  0 = ファイルが存在して完全である
-//  1 = ファイルが存在しない
-//  2 = ファイルが破損してる
+//  1 = エラー
+//  2 = キャンセル
+//  4 = ファイルが破損してる
+// 12 = ファイルが存在しない
 static int file_ffp_check(
 	int num,
 	char *ascii_name,
@@ -1446,10 +1708,9 @@ int verify_ffp(
 					for (i = 0; i < 16; i++){
 						wcsncpy(num_buf, line_off + (line_len - 32 + (i * 2)), 2);
 						hash[i] = (unsigned char)get_val32h(num_buf);
+						wsprintf(tmp_buf + i * 2, L"%02X", hash[i]);
 					}
-					wsprintf(tmp_buf, L"%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X",
-						hash[0], hash[1], hash[2], hash[3], hash[4], hash[5], hash[6], hash[7],
-						hash[8], hash[9], hash[10], hash[11], hash[12], hash[13], hash[14], hash[15]);
+					tmp_buf[32] = 0;
 					if (add_hash(uni_buf, tmp_buf, L"?") != 0){
 						printf("line%d: cannot add hash\n", line_num);
 						return 1;
@@ -1575,6 +1836,532 @@ time_calc = clock() - time_start;
 printf("calc %.3f sec\n", (double)time_calc / CLOCKS_PER_SEC);
 #endif
 	printf("\nComplete file count\t: %d\n", c_num);
+	printf("Damaged file count\t: %d\n", d_num);
+	printf("Missing file count\t: %d\n", m_num);
+
+	return err;
+}
+
+/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+
+// Cryptography API: Next Generation が対応するハッシュを比較する
+//  0 = ファイルが存在して完全である
+//  1 = エラー
+//  2 = キャンセル
+//  4 = ファイルが破損してる
+// 12 = ファイルが存在しない
+static int file_cng_check(
+	int hash_type,
+	int num,
+	char *ascii_name,
+	wchar_t *uni_name,
+	wchar_t *file_path,
+	unsigned char *hash)
+{
+	unsigned char buf[IO_SIZE], bHash[MAX_HASH];
+	int rv, len, off, bad_flag;
+	unsigned int time_last, meta_data[8];
+	__int64 file_size = 0, file_left;
+	HANDLE hFile;
+	BCRYPT_ALG_HANDLE  hAlg  = NULL;
+	BCRYPT_HASH_HANDLE hHash = NULL;
+	NTSTATUS status = STATUS_UNSUCCESSFUL;
+	DWORD cbHash = 0;
+	DWORD cbHashObject = 0;
+	PBYTE pbHashObject = NULL;
+	LPCWSTR pszAlgId;
+
+	// open an algorithm handle
+	if (hash_type == 4){
+		pszAlgId = BCRYPT_SHA1_ALGORITHM;
+	} else if (hash_type == 5){
+		pszAlgId = BCRYPT_SHA256_ALGORITHM;
+	} else if (hash_type == 6){
+		pszAlgId = BCRYPT_SHA384_ALGORITHM;
+	} else if (hash_type == 7){
+		pszAlgId = BCRYPT_SHA512_ALGORITHM;
+	} else {	// 未知の形式
+		printf("file format is unknown\n");
+		return 1;
+	}
+	status = BCryptOpenAlgorithmProvider(&hAlg, pszAlgId, NULL, 0);
+	if (!NT_SUCCESS(status)){
+		printf("\nError 0x%x returned by BCryptOpenAlgorithmProvider\n", status);
+		rv = 1;
+		goto Cleanup;
+	}
+
+	// calculate the size of the buffer to hold the hash object
+	status = BCryptGetProperty(hAlg, BCRYPT_OBJECT_LENGTH, (PBYTE)&cbHashObject, sizeof(DWORD), &rv, 0);
+	if (!NT_SUCCESS(status)){
+		printf("\nError 0x%x returned by BCryptGetProperty\n", status);
+		rv = 1;
+		goto Cleanup;
+	}
+
+	// allocate the hash object on the heap
+	pbHashObject = (PBYTE)HeapAlloc (GetProcessHeap(), 0, cbHashObject);
+	if (NULL == pbHashObject){
+		printf("\nError %u memory allocation failed\n", cbHashObject);
+		rv = 1;
+		goto Cleanup;
+	}
+
+	// calculate the length of the hash
+	status = BCryptGetProperty(hAlg, BCRYPT_HASH_LENGTH, (PBYTE)&cbHash, sizeof(DWORD), &rv, 0);
+	if (!NT_SUCCESS(status) || (cbHash > MAX_HASH)){
+		printf("\nError 0x%x returned by BCryptGetProperty\n", status);
+		rv = 1;
+		goto Cleanup;
+	}
+
+	// create a hash
+	status = BCryptCreateHash(hAlg, &hHash, pbHashObject, cbHashObject, NULL, 0, 0);
+	if (!NT_SUCCESS(status)){
+		printf("\nError 0x%x returned by BCryptCreateHash\n", status);
+		rv = 1;
+		goto Cleanup;
+	}
+
+	prog_last = -1;
+	time_last = GetTickCount() / UPDATE_TIME;	// 時刻の変化時に経過を表示する
+	wcscpy(file_path, base_dir);
+	// 先頭の「..\」を許可してるので、基準ディレクトリから上に遡る。
+	len = base_len - 1;
+	off = 0;
+	while ((uni_name[off] == '.') && (uni_name[off + 1] == '.') && (uni_name[off + 2] == '\\')){
+		off += 3;
+		file_path[len] = 0;
+		while (file_path[len] != '\\'){
+			file_path[len] = 0;
+			len--;
+		}
+	}
+	wcscat(file_path, uni_name + off);
+	//printf("path = \"%S\"\n", file_path);
+
+	// 読み込むファイルを開く
+	hFile = CreateFile(file_path, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, 0, NULL);
+	if (hFile == INVALID_HANDLE_VALUE){
+		bad_flag = 1;	// 消失は記録しない
+	} else {
+		bad_flag = check_ini_state(num, meta_data, cbHash, bHash, hFile);
+		memcpy(&file_size, meta_data, 8);
+		if (bad_flag == 0){	// 記録がある時
+			if (memcmp(hash, bHash, cbHash) != 0){
+				bad_flag = 2;	// ハッシュ値が異なる
+				if (switch_v & 2){	// 破損ファイルのハッシュ値を記録しておく
+					for (len = 0; len < (int)cbHash; len++)
+						wsprintf((wchar_t *)buf + len * 2, L"%02X", bHash[len]);
+					((wchar_t *)buf)[cbHash * 2] = 0;
+					wsprintf((wchar_t *)buf + 512, L"%I64d", file_size);
+					if (add_hash(uni_name, (wchar_t *)buf, (wchar_t *)buf + 512) != 0){
+						printf("file%d: cannot add hash\n", num);
+						CloseHandle(hFile);
+						rv = 1;
+						goto Cleanup;
+					}
+				}
+			} else {
+				bad_flag = 0;	// 完全
+			}
+		} else if (bad_flag == -2){	// 記録が無い場合 (属性取得エラーは不明にする)
+			file_left = file_size;
+			while (file_left > 0){
+				len = IO_SIZE;
+				if (file_left < IO_SIZE)
+					len = (int)file_left;
+				if (!ReadFile(hFile, buf, len, &bad_flag, NULL) || (len != bad_flag))
+					break;	// 読み取りエラーは必ず破損になる
+				file_left -= len;
+
+				// hash some data ハッシュ関数にデータを入力する
+				status = BCryptHashData(hHash, (PBYTE)buf, len, 0);
+				if (!NT_SUCCESS(status)){
+					printf("\nError 0x%x returned by BCryptHashData\n", status);
+					CloseHandle(hFile);
+					rv = 1;
+					goto Cleanup;
+				}
+
+				// 経過表示
+				if (GetTickCount() / UPDATE_TIME != time_last){
+					if (print_progress_file((int)(((file_size - file_left) * 1000) / file_size), uni_name)){
+						CloseHandle(hFile);
+						rv = 2;
+						goto Cleanup;
+					}
+					time_last = GetTickCount() / UPDATE_TIME;
+				}
+			}
+			if (file_left > 0){
+				bad_flag = 2;	// エラー等で中断した場合は破損として扱い、検査結果を記録しない
+			} else {
+				// close the hash ハッシュ値の算出
+				status = BCryptFinishHash(hHash, bHash, cbHash, 0);
+				if (!NT_SUCCESS(status)){
+					printf("\nError 0x%x returned by BCryptFinishHash\n", status);
+					rv = 1;
+					goto Cleanup;
+				}
+
+				if (memcmp(hash, bHash, cbHash) != 0){
+					bad_flag = 2;	// ハッシュ値が異なる、または途中まで
+					if (switch_v & 2){	// 破損ファイルのハッシュ値を記録しておく
+						for (len = 0; len < (int)cbHash; len++)
+							wsprintf((wchar_t *)buf + len * 2, L"%02X", bHash[len]);
+						((wchar_t *)buf)[cbHash * 2] = 0;
+						wsprintf((wchar_t *)buf + 512, L"%I64d", file_size);
+						if (add_hash(uni_name, (wchar_t *)buf, (wchar_t *)buf + 512) != 0){
+							printf("file%d: cannot add hash\n", num);
+							CloseHandle(hFile);
+							rv = 1;
+							goto Cleanup;
+						}
+					}
+				} else {
+					bad_flag = 0;	// 完全
+				}
+				// 完全か破損なら、ハッシュ値を記録する
+				write_ini_state(num, meta_data, cbHash, bHash);
+			}
+		}
+		CloseHandle(hFile);
+	}
+
+	switch (bad_flag){
+	case 0:
+		printf("%13I64d Complete : \"%s\"\n", file_size, ascii_name);
+		break;
+	case 1:
+		printf("            0 Missing  : \"%s\"\n", ascii_name);
+		bad_flag = 4 + 8;
+		break;
+	case 2:
+		printf("%13I64d Damaged  : \"%s\"\n", file_size, ascii_name);
+		bad_flag = 4;
+		break;
+	default:	// IOエラー等
+		printf("            ? Unknown  : \"%s\"\n", ascii_name);
+		bad_flag = 4;
+		break;
+	}
+	fflush(stdout);
+
+	rv = 0;	// success mark
+Cleanup:
+	if (hAlg)
+		BCryptCloseAlgorithmProvider(hAlg, 0);
+	if (hHash)
+		BCryptDestroyHash(hHash);
+	if (pbHashObject)
+		HeapFree(GetProcessHeap(), 0, pbHashObject);
+	if (rv == 0){
+		if (cancel_progress() != 0)	// キャンセル処理
+			return 2;
+		return bad_flag;
+	}
+	return rv;
+}
+
+// Cryptography API: Next Generation が対応するハッシュ
+int verify_cng(
+	int hash_type,
+	char *ascii_buf,
+	wchar_t *file_path)
+{
+	unsigned char hash[MAX_HASH];
+	wchar_t *line_off, uni_buf[MAX_LEN], num_buf[3], tmp_buf[MAX_HASH * 2 + 1];
+	int i, off, num, line_num, line_len, name_len, hash_size;
+	int c_num, d_num, m_num, f_num;
+	unsigned int err = 0, rv, comment;
+
+	if (hash_type == 4){	// SHA-1
+		hash_size = 20;
+	} else if (hash_type == 5){	// SHA-256
+		hash_size = 32;
+	} else if (hash_type == 6){	// SHA-384
+		hash_size = 48;
+	} else if (hash_type == 7){	// SHA-512
+		hash_size = 64;
+	} else {
+		printf("file format is unknown\n");
+		return 1;
+	}
+
+	// ファイル数を調べる
+	comment = 0;
+	num = 0;
+	line_num = 1;
+	line_off = text_buf;
+	while (*line_off != 0){	// 一行ずつ処理する
+		line_len = 0;
+		while (line_off[line_len] != 0){	// 改行までを一行とする
+			if (line_off[line_len] == '\n')
+				break;
+			if (line_off[line_len] == '\r')
+				break;
+			line_len++;
+		}
+		// 行の内容が適正か調べる
+		if ((line_off[0] == ';') || (line_off[0] == '#')){	// コメント
+			if (((comment & 1) == 0) && (line_len > 8) && (line_len < MAX_LEN)){
+				// クリエイターの表示がまだなら
+				if (wcsncmp(line_off, L"; Generated by ", 15) == 0){
+					wcsncpy(uni_buf, line_off + 15, line_len - 15);
+					uni_buf[line_len - 15] = 0;
+					comment = 1;
+				}
+				if (comment & 1){
+					uni_buf[COMMENT_LEN - 1] = 0;	// 表示する文字数を制限する
+					utf16_to_cp(uni_buf, ascii_buf, COMMENT_LEN * 3, cp_output);
+					printf("Creator : %s\n", ascii_buf);
+					comment |= 4;	// 同一行を二度表示しない
+				}
+			}
+			if (((comment & 6) == 0) && (line_len < MAX_LEN)){
+				// 最初のコメントの表示がまだなら
+				i = 1;
+				while (i < line_len){
+					if (line_off[i] != ' ')
+						break;
+					i++;
+				}
+				if (i < line_len){
+					wcsncpy(uni_buf, line_off + i, line_len - i);
+					uni_buf[line_len - i] = 0;
+					uni_buf[COMMENT_LEN - 1] = 0;	// 表示する文字数を制限する
+					utf16_to_cp(uni_buf, ascii_buf, COMMENT_LEN * 3, cp_output);
+					printf("Comment : %s\n", ascii_buf);
+				}
+				comment |= 2;	// 「;」や「#」だけの行も認識する
+			}
+			comment &= ~4;	// bit 4 を消す
+		} else if (line_len > hash_size * 2 + 1){	// コメントではない
+			// ハッシュ値の後がスペース (md5sum 形式)
+			if ((line_off[hash_size * 2] == ' ') && (base16_len(line_off) == hash_size * 2)){
+				// ファイル名
+				name_len = line_len - hash_size * 2 - 1;
+				if (base_len + name_len < MAX_LEN){
+					// タイプ記号「*」までのスペースは複数個でもいい
+					while (line_off[line_len - name_len] == ' ')
+						name_len--;
+					if (line_off[line_len - name_len] == '*')
+						name_len--;
+					wcsncpy(uni_buf, line_off + (line_len - name_len), name_len);
+					uni_buf[name_len] = 0;
+					rv = sanitize_filename(uni_buf);	// ファイル名を浄化する
+					if (rv > 1){
+						if ((comment & 8) == 0){
+							comment |= 8;
+							printf("\nWarning about filenames :\n");
+						}
+						if (rv == 16){
+							printf("line%d: filename is invalid\n", line_num);
+							num++;	// 浄化できないファイル名
+						} else if ((rv & 6) == 0){
+							utf16_to_cp(uni_buf, ascii_buf, MAX_LEN * 3, cp_output);
+							printf("line%d: \"%s\" is invalid\n", line_num, ascii_buf);
+						} else {
+							utf16_to_cp(uni_buf, ascii_buf, MAX_LEN * 3, cp_output);
+							printf("line%d: \"%s\" was sanitized\n", line_num, ascii_buf);
+						}
+					}
+					if (rv != 16){
+						file_num++;
+						// ハッシュ値
+						num_buf[2] = 0;
+						for (i = 0; i < hash_size; i++){
+							wcsncpy(num_buf, line_off + i * 2, 2);
+							hash[i] = (unsigned char)get_val32h(num_buf);
+							wsprintf(tmp_buf + i * 2, L"%02X", hash[i]);
+						}
+						tmp_buf[hash_size * 2] = 0;
+						if (add_hash(uni_buf, tmp_buf, L"?") != 0){
+							printf("line%d: cannot add hash\n", line_num);
+							return 1;
+						}
+					}
+				} else {
+					if ((comment & 8) == 0){
+						comment |= 8;
+						printf("\nWarning about filenames :\n");
+					}
+					printf("line%d: filename is invalid\n", line_num);
+					num++;	// 長すぎるファイル名
+				}
+			} else {
+				num++;	// 内容が認識できない行
+			}
+		} else if (line_len > 0){
+			num++;	// 内容が認識できない行
+		}
+		// 次の行へ
+		line_off += line_len;
+		if (*line_off == '\n')
+			line_off++;
+		if (*line_off == '\r'){
+			line_off++;
+			if (*line_off == '\n')	// 「\r\n」を一つの改行として扱う
+				line_off++;
+		}
+		line_num++;
+	}
+	if (comment & 8)
+		printf("\n");
+	// チェックサム・ファイルの状態
+	if (num == 0){
+		printf("Status  : Good\n");
+	} else {
+		printf("Status  : Damaged\n");
+		err |= 16;	// 後で 256に変更する
+	}
+	if (file_num == 0){
+		printf("valid file is not found\n");
+		return 1;
+	}
+
+	printf("\nInput File list : %d\n", file_num);
+	if (hash_type == 4){
+		printf("      SHA-1     ");
+	} else if (hash_type == 5){
+		printf("     SHA-256    ");
+	} else if (hash_type == 6){
+		printf("     SHA-384    ");
+	} else if (hash_type == 7){
+		printf("     SHA-512    ");
+	}
+	printf(" :  Filename\n");
+	fflush(stdout);
+	off = 0;
+	name_len = hash_len;	// ソースファイルの状態まで
+	while (off < name_len){
+		// ファイル名
+		utf16_to_cp(hash_buf + off, ascii_buf, MAX_LEN * 3, cp_output);
+		while (hash_buf[off] != 0)
+			off++;
+		off++;
+		// ハッシュ値は長いので先頭 8バイト分だけ表示する
+		printf("%.*S : \"%s\"\n", 16, hash_buf + off, ascii_buf);
+		while (hash_buf[off] != 0)
+			off++;
+		off++;
+		// 状態
+		off += 2;
+	}
+
+	printf("\nVerifying Input File   :\n");
+	printf("         Size Status   :  Filename\n");
+	fflush(stdout);
+	if (recent_data != 0){	// 前回の検査結果を使うなら
+		PHMD5 ctx;
+		// チェックサム・ファイル識別用にハッシュ値を計算する
+		Phmd5Begin(&ctx);
+		Phmd5Process(&ctx, (unsigned char *)text_buf, text_len * 2);
+		Phmd5End(&ctx);
+		// 前回の検査結果が存在するか
+		check_ini_file(ctx.hash, text_len);
+	}
+	num = c_num = d_num = m_num = f_num = 0;
+	off = 0;
+	while (off < name_len){
+		// ファイル名
+		wcscpy(uni_buf, hash_buf + off);
+		utf16_to_cp(uni_buf, ascii_buf, MAX_LEN * 3, cp_output);
+		while (hash_buf[off] != 0)
+			off++;
+		off++;
+		// ハッシュ値
+		wcscpy(tmp_buf, hash_buf + off);
+		num_buf[2] = 0;
+		for (i = 0; i < hash_size; i++){
+			num_buf[0] = tmp_buf[i * 2    ];
+			num_buf[1] = tmp_buf[i * 2 + 1];
+			hash[i] = (unsigned char)get_val32h(num_buf);
+		}
+		while (hash_buf[off] != 0)
+			off++;
+		off++;
+		// 状態
+		rv = file_cng_check(hash_type, num, ascii_buf, uni_buf, file_path, hash);
+		if (rv & 3){
+			err = rv;
+			return err;
+		}
+		if (rv & 0xC){	// Missing or Damaged
+			err |= rv;
+			err += 0x100;
+		}
+		if (rv == 0){
+			hash_buf[off] = 'c';	// complete
+			c_num++;
+		} else if (rv == 4 + 8){
+			hash_buf[off] = 'm';	// missing
+			m_num++;
+		} else {
+			hash_buf[off] = 'd';	// damaged
+			d_num++;
+		}
+		off += 2;
+		num++;
+	}
+	printf("\nComplete file count\t: %d\n", c_num);
+
+	// 消失か破損なら他のファイルと比較する
+	if (((switch_v & 2) != 0) && ((err & 0xC) != 0)){
+		printf("\nSearching misnamed file:\n");
+		printf("         Size Status   :  Filename\n");
+		fflush(stdout);
+		off = 0;
+		while (off < name_len){
+			// ファイル名
+			wcscpy(uni_buf, hash_buf + off);
+			while (hash_buf[off] != 0)
+				off++;
+			off++;
+			// ハッシュ値
+			wcscpy(tmp_buf, hash_buf + off);
+			while (hash_buf[off] != 0)
+				off++;
+			off++;
+			// 状態
+			if ((hash_buf[off] == 'd') || (hash_buf[off] == 'm')){
+				line_len = file_all_check(file_path, name_len, hash_type, tmp_buf);
+				if (line_len <= -2)
+					return 4 + line_len;
+				if (line_len >= 0){
+					line_num = line_len;
+					// 検出ファイル名
+					i = compare_directory(uni_buf, hash_buf + line_num);
+					utf16_to_cp(hash_buf + line_num, ascii_buf, MAX_LEN * 3, cp_output);
+					while (hash_buf[line_num] != 0)
+						line_num++;
+					line_num++;
+					// ハッシュ値
+					while (hash_buf[line_num] != 0)
+						line_num++;
+					line_num++;
+					// サイズ
+					printf("%13S Found    : \"%s\"\n", hash_buf + line_num, ascii_buf);
+					// 本来のファイル名
+					utf16_to_cp(uni_buf, ascii_buf, MAX_LEN * 3, cp_output);
+					if (i == 0){	// 同じ場所なら別名
+						printf("            = Misnamed : \"%s\"\n", ascii_buf);
+					} else {	// 別の場所なら移動
+						printf("            = Moved    : \"%s\"\n", ascii_buf);
+					}
+					f_num++;
+					if (hash_buf[off] == 'd'){
+						d_num--;
+					} else if (hash_buf[off] == 'm'){
+						m_num--;
+					}
+				}
+			}
+			off += 2;
+		}
+		printf("\nMisnamed file count\t: %d\n", f_num);
+	}
 	printf("Damaged file count\t: %d\n", d_num);
 	printf("Missing file count\t: %d\n", m_num);
 

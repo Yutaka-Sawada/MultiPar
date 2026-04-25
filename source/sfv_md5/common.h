@@ -5,6 +5,7 @@
 #define COMMENT_LEN		128		// コメントの最大文字数
 #define ALLOC_LEN		4096	// 可変長領域を何バイトごとに確保するか
 #define IO_SIZE			65536	// 16384 以上にすること
+#define MAX_HASH		64		// 対応するハッシュ値の最大バイト数
 #define UPDATE_TIME		1024	// 更新間隔 ms
 
 // グローバル変数

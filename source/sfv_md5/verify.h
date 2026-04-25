@@ -14,3 +14,9 @@ int verify_ffp(
 	char *ascii_buf,
 	wchar_t *file_path);
 
+// Cryptography API: Next Generation が対応するハッシュ
+int verify_cng(
+	int hash_format,
+	char *ascii_buf,
+	wchar_t *file_path);
+
