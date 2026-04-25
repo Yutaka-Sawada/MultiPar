@@ -1,13 +1,15 @@
-[ sfv_md5.exe - version 1.3.3.6 or later ]
+[ sfv_md5.exe - version 1.3.3.7 or later ]
 
 Type "sfv_md5.exe" to see version and show usage below.
 
 
 Usage
-c(reate) [fo, t,      d,u] <checksum file> [input files]
-v(erify) [fo,vl,vs,vd,d,u] <checksum file>
+c(reate) [f,fu,fo, t,      d,u] <checksum file> [input files]
+v(erify) [     fo,vl,vs,vd,d,u] <checksum file>
 
 Option
+ /f    : Use file-list instead of files
+ /fu   : Use file-list which is encoded with UTF-8
  /fo   : Search file only for wildcard
  /t<n> : Save time stamp
  /vl<n>: Verification level
@@ -48,6 +50,11 @@ To specify a checksum file, <checksum file> cannot contain "*" or "?".
 You must specify extension ".sfv" or ".md5" to select file format.
 CRC-32 is saved in SFV file.
 MD5 hash is saved in MD5 file (md5sum format).
+
+ You may create SHA-1, SHA-256, SHA-384, or SHA-512 checksum file.
+They have a format of sha1sum, sha256sum, sha384sum, or sha512sum.
+You must specify extension ".sha1", ".sha256", ".sha384", or ".sha512"
+to select the file format.
 
  You may create FLAC Fingerprint file for FLAC files.
 You must specify extension ".ffp" or end with "ffp.txt" to select file format.
@@ -115,6 +122,11 @@ Setting "/dPath" is valid, but "/d Path" is wrong.
 Put all options before <checksum file>.
 Put <checksum file> before all [input files]
 
+
+ /f, /fu :
+ Set this, if you use file-list for file name or file path.
+The file-list is a text file, which contains filenames in each line.
+If you encode filename in the list by UTF-8, set /fu instead of /f.
 
  /fo :
  Set this, if you want to ignore folders at wildcard matching search.
@@ -231,4 +243,12 @@ Sub-directory in filename isn't supported.
 a_filename_1:123456789ABCDEF0123456789ABCDEF0
 some_filename_2:23456789ABCDEF1023456789ABCDEF01
 other filename_3:3456789ABCDEF1203456789ABCDEF012
+
+
+Writing & reading SHA file (shasum style) :
+ There are SHA-1/2 hash and filename after * in each line like below;
+
+123456789ABCDEF0123456789ABCDEF0 *something_filename_1
+23456789ABCDEF1023456789ABCDEF01 *something_filename_2
+3456789ABCDEF1203456789ABCDEF012 *something_filename_3
 
