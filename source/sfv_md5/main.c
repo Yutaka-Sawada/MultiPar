@@ -1,5 +1,5 @@
 ﻿// main.c
-// Copyright : 2026-04-24 Yutaka Sawada
+// Copyright : 2026-05-01 Yutaka Sawada
 // License : The MIT license
 
 #ifndef _UNICODE
@@ -358,7 +358,7 @@ int save_detail(
 	wcscpy(uni_buf, file_name);	// 変換前にコピーする
 	unix_directory(uni_buf);
 	add_text(uni_buf);
-	add_text(L"\r\n");
+	add_text(L"\n");
 
 	return 0;
 }
@@ -415,15 +415,15 @@ static int write_checksum(wchar_t *uni_buf,
 			stLocal.wHour, stLocal.wMinute, stLocal.wSecond);
 		add_text(uni_buf);
 		if (switch_t >= 2){	// ファイルの詳細を書き込むなら
-			add_text(L"\r\n;");
+			add_text(L"\n;");
 			if (file_num > 1){
-				add_text(L"\r\n");
-				add_text(L"; Size (Bytes)   Time      Date      Filename\r\n");
+				add_text(L"\n");
+				add_text(L"; Size (Bytes)   Time      Date      Filename\n");
 				add_text(L"; ------------ -------- ---------- ------------");
 			}
 		}
 	}
-	add_text(L"\r\n");
+	add_text(L"\n");
 
 	if (switch_t >= 2){	// ファイルのサイズと更新日時を書き込む
 		len = 0;
@@ -435,7 +435,7 @@ static int write_checksum(wchar_t *uni_buf,
 			}
 			len += wcslen(list_buf + len) + 1;
 		}
-		add_text(L";\r\n");
+		add_text(L";\n");
 	}
 
 	// 各ファイルのチェックサムを計算する

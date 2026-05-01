@@ -1,5 +1,5 @@
 ﻿// create.c
-// Copyright : 2026-04-23 Yutaka Sawada
+// Copyright : 2026-05-01 Yutaka Sawada
 // License : The MIT license
 
 #ifndef _UNICODE
@@ -99,7 +99,7 @@ int create_sfv(
 	}
 	unix_directory(uni_buf);
 	add_text(uni_buf);
-	wsprintf(uni_buf, L" %08X\r\n", crc);
+	wsprintf(uni_buf, L" %08X\n", crc);
 	add_text(uni_buf);
 
 	return 0;
@@ -173,7 +173,7 @@ int create_md5(
 	wcscpy(uni_buf, file_name);	// 変換前にコピーする
 	unix_directory(uni_buf);
 	add_text(uni_buf);
-	add_text(L"\r\n");
+	add_text(L"\n");
 
 	return 0;
 }
@@ -230,7 +230,7 @@ int create_ffp(
 	add_text(uni_buf);
 
 	// FLAC Fingerprint を記録する
-	wsprintf(uni_buf, L":%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x\r\n",
+	wsprintf(uni_buf, L":%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x\n",
 		buf[26], buf[27], buf[28], buf[29], buf[30], buf[31], buf[32], buf[33],
 		buf[34], buf[35], buf[36], buf[37], buf[38], buf[39], buf[40], buf[41]);
 	add_text(uni_buf);
@@ -387,7 +387,7 @@ int create_cng(
 	wcscpy(uni_buf, file_name);	// 変換前にコピーする
 	unix_directory(uni_buf);
 	add_text(uni_buf);
-	add_text(L"\r\n");
+	add_text(L"\n");
 
 	rv = 0;	// success mark
 Cleanup:
