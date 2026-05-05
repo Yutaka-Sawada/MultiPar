@@ -16,6 +16,7 @@ save_path = "../save"
 
 # Initialize global variables
 folder_path = ""
+folder2_path = ""
 sub_proc = None
 
 
@@ -78,6 +79,7 @@ def search_par_set(one_path):
         label_status.config(text= "There are no PAR sets in \"" + one_path + "\".")
     else:
         button_folder.config(state=tk.DISABLED)
+        button_folder2.config(state=tk.NORMAL)
         button_stop.config(state=tk.NORMAL)
         button_open2.config(state=tk.DISABLED)
         button_open3.config(state=tk.DISABLED)
@@ -95,18 +97,27 @@ def button_folder_clicked():
     folder_path = filedialog.askdirectory()
     if folder_path == "":
         return
+    label_folder.config(text= folder_path)
     search_par_set(folder_path)
+
+def button_folder2_clicked():
+    global folder2_path
+    folder2_path = filedialog.askdirectory()
+    if folder2_path == "":
+        return
+    label_folder2.config(text= folder2_path)
 
 
 # Verify the first PAR set
 def queue_run():
-    global folder_path, sub_proc
+    global folder_path, folder2_path, sub_proc
 
     if sub_proc != None:
         return
 
     if "disabled" in button_stop.state():
         button_folder.config(state=tk.NORMAL)
+        button_folder2.config(state=tk.NORMAL)
         button_start.config(state=tk.NORMAL)
         button_open2.config(state=tk.NORMAL)
         button_open3.config(state=tk.NORMAL)
@@ -134,7 +145,10 @@ def queue_run():
     else:
         # If you want to repair a damaged set automatically, use "r" command instead of "v".
         cmd += "r"
-    cmd += " /fo /vs2 /vd\"" + save_path + "\" \"" + one_path + "\""
+    if folder2_path == "":  # PAR and data files exist in a same folder.
+        cmd += " /fo /vs2 /vd\"" + save_path + "\" \"" + one_path + "\""
+    else:
+        cmd += " /fo /vs2 /vd\"" + save_path + "\" /d\"" + folder2_path + "\" \"" + one_path + "\""
     #print(cmd)
 
     # Run PAR2 client
@@ -146,7 +160,7 @@ def queue_run():
 
 # Wait and read verification result
 def queue_result():
-    global folder_path, sub_proc
+    global folder_path, folder2_path, sub_proc
 
     # When sub-process was not started yet
     if sub_proc == None:
@@ -162,8 +176,30 @@ def queue_result():
     sub_proc = None
     base_name = listbox_list1.get(0)
 
+    # Check the specified data folder is empty or not.
+    if folder2_path == "":
+        bool_empty = False
+    else:
+        bool_empty = True
+        for _ in os.scandir(folder2_path):
+            bool_empty = False
+            break
+
+    # When data folder is empty, ignore status of source files.
+    if bool_empty:
+        if (exit_code & 256) == 0:
+            # PAR files are complete.
+            listbox_list3.insert(tk.END, base_name)
+            item_count = listbox_list3.size()
+            label_head3.config(text= str(item_count) + " complete sets")
+        else:
+            # PAR files aren't complete.
+            listbox_list2.insert(tk.END, base_name)
+            item_count = listbox_list2.size()
+            label_head2.config(text= str(item_count) + " bad sets")
+
     # When all source files are complete
-    if (exit_code == 0) or (exit_code == 256):
+    elif (exit_code == 0) or (exit_code == 256):
         # Add to list of complete set
         listbox_list3.insert(tk.END, base_name)
         item_count = listbox_list3.size()
@@ -172,6 +208,7 @@ def queue_result():
     # When fatal error happened in par2j
     elif exit_code == 1:
         button_folder.config(state=tk.NORMAL)
+        button_folder2.config(state=tk.NORMAL)
         button_stop.config(state=tk.DISABLED)
         button_open2.config(state=tk.NORMAL)
         button_open3.config(state=tk.NORMAL)
@@ -183,6 +220,7 @@ def queue_result():
     # When you cancel par2j on Command Prompt
     elif exit_code == 2:
         button_folder.config(state=tk.NORMAL)
+        button_folder2.config(state=tk.NORMAL)
         button_start.config(state=tk.NORMAL)
         button_stop.config(state=tk.DISABLED)
         button_open2.config(state=tk.NORMAL)
@@ -207,6 +245,7 @@ def queue_result():
     item_count = listbox_list1.size()
     if item_count == 0:
         button_folder.config(state=tk.NORMAL)
+        button_folder2.config(state=tk.NORMAL)
         button_stop.config(state=tk.DISABLED)
         button_open2.config(state=tk.NORMAL)
         button_open3.config(state=tk.NORMAL)
@@ -216,6 +255,7 @@ def queue_result():
 
     elif "disabled" in button_stop.state():
         button_folder.config(state=tk.NORMAL)
+        button_folder2.config(state=tk.NORMAL)
         button_start.config(state=tk.NORMAL)
         button_open2.config(state=tk.NORMAL)
         button_open3.config(state=tk.NORMAL)
@@ -232,6 +272,7 @@ def button_start_clicked():
     global sub_proc
 
     button_folder.config(state=tk.DISABLED)
+    button_folder2.config(state=tk.DISABLED)
     button_start.config(state=tk.DISABLED)
     button_stop.config(state=tk.NORMAL)
     button_open2.config(state=tk.DISABLED)
@@ -253,6 +294,7 @@ def button_stop_clicked():
     if sub_proc is None:
         # When verification was not started yet, it's possible to select another folder.
         button_folder.config(state=tk.NORMAL)
+        button_folder2.config(state=tk.NORMAL)
         button_start.config(state=tk.DISABLED)
         combo_recursive.config(state=tk.NORMAL)
         listbox_list1.delete(0, tk.END)
@@ -278,7 +320,10 @@ def button_open2_clicked():
 
         # Set command-line
         # Cover path by " for possible space
-        cmd = "\"" + gui_path + "\" /verify \"" + one_path + "\""
+        if folder2_path == "":
+            cmd = "\"" + gui_path + "\" /verify \"" + one_path + "\""
+        else:
+            cmd = "\"" + gui_path + "\" /verify /base \"" + folder2_path + "\" \"" + one_path + "\""
 
         # Open MultiPar GUI to see details
         # Because this doesn't wait finish of MultiPar, you may open some at once.
@@ -299,7 +344,10 @@ def button_open3_clicked():
 
         # Set command-line
         # Cover path by " for possible space
-        cmd = "\"" + gui_path + "\" /verify \"" + one_path + "\""
+        if folder2_path == "":
+            cmd = "\"" + gui_path + "\" /verify \"" + one_path + "\""
+        else:
+            cmd = "\"" + gui_path + "\" /verify /base \"" + folder2_path + "\" \"" + one_path + "\""
 
         # Open MultiPar GUI to see details
         # Because this doesn't wait finish of MultiPar, you may open some at once.
@@ -332,45 +380,60 @@ frame_middle.columnconfigure(2, weight=1)
 frame_list1 = ttk.Frame(frame_middle, padding=(6,2,6,6), relief='groove')
 frame_list1.grid(row=0, column=0, padx=4, sticky=(tk.E,tk.W,tk.S,tk.N))
 frame_list1.columnconfigure(0, weight=1)
-frame_list1.rowconfigure(3, weight=1)
+frame_list1.rowconfigure(5, weight=1)
 
-frame_top1 = ttk.Frame(frame_list1, padding=(0,4,0,3))
-frame_top1.grid(row=0, column=0, columnspan=2, sticky=(tk.E,tk.W))
+frame_top11 = ttk.Frame(frame_list1, padding=(0,4,0,3))
+frame_top11.grid(row=0, column=0, columnspan=2, sticky=(tk.E,tk.W))
 
-button_folder = ttk.Button(frame_top1, text="Folder", width=7, command=button_folder_clicked)
+button_folder = ttk.Button(frame_top11, text="PAR folder", width=10, command=button_folder_clicked)
 button_folder.pack(side=tk.LEFT, padx=2)
 
-button_start = ttk.Button(frame_top1, text="Start", width=6, command=button_start_clicked, state=tk.DISABLED)
+label_folder = ttk.Label(frame_top11, text='path of PAR folder')
+label_folder.pack(side=tk.LEFT, padx=0)
+
+frame_top12 = ttk.Frame(frame_list1, padding=(0,3,0,3))
+frame_top12.grid(row=1, column=0, columnspan=2, sticky=(tk.E,tk.W))
+
+button_folder2 = ttk.Button(frame_top12, text="Data folder", width=10, command=button_folder2_clicked)
+button_folder2.pack(side=tk.LEFT, padx=2)
+
+label_folder2 = ttk.Label(frame_top12, text='path of data folder')
+label_folder2.pack(side=tk.LEFT, padx=0)
+
+frame_top13 = ttk.Frame(frame_list1, padding=(0,3,0,3))
+frame_top13.grid(row=2, column=0, columnspan=2, sticky=(tk.E,tk.W))
+
+button_start = ttk.Button(frame_top13, text="Start", width=6, command=button_start_clicked, state=tk.DISABLED)
 button_start.pack(side=tk.LEFT, padx=2)
 
-button_stop = ttk.Button(frame_top1, text="Stop", width=6, command=button_stop_clicked, state=tk.DISABLED)
+button_stop = ttk.Button(frame_top13, text="Stop", width=6, command=button_stop_clicked, state=tk.DISABLED)
 button_stop.pack(side=tk.LEFT, padx=2)
 
-frame_top11 = ttk.Frame(frame_list1, padding=(0,3,0,3))
-frame_top11.grid(row=1, column=0, columnspan=2, sticky=(tk.E,tk.W))
+frame_top14 = ttk.Frame(frame_list1, padding=(0,3,0,3))
+frame_top14.grid(row=3, column=0, columnspan=2, sticky=(tk.E,tk.W))
 
 s_combo = tk.StringVar()
-combo_recursive = ttk.Combobox(frame_top11, values=["No child", "Children", "Recursive"], textvariable=s_combo, state="readonly", width=9)
+combo_recursive = ttk.Combobox(frame_top14, values=["No child", "Children", "Recursive"], textvariable=s_combo, state="readonly", width=9)
 combo_recursive.current(0) # index of initial selection
 combo_recursive.pack(side=tk.LEFT, padx=4)
 
 i_check = tk.IntVar(value=0)
-check_repair = ttk.Checkbutton(frame_top11, text="Repair", variable=i_check)
+check_repair = ttk.Checkbutton(frame_top14, text="Repair", variable=i_check)
 check_repair.pack(side=tk.LEFT, padx=10)
 
 label_head1 = ttk.Label(frame_list1, text='? sets in a folder')
-label_head1.grid(row=2, column=0, columnspan=2)
+label_head1.grid(row=4, column=0, columnspan=2)
 
 s_list1 = tk.StringVar()
 listbox_list1 = tk.Listbox(frame_list1, listvariable=s_list1, activestyle='none')
-listbox_list1.grid(row=3, column=0, sticky=(tk.E,tk.W,tk.S,tk.N))
+listbox_list1.grid(row=5, column=0, sticky=(tk.E,tk.W,tk.S,tk.N))
 
 scrollbar_list1 = ttk.Scrollbar(frame_list1, orient=tk.VERTICAL, command=listbox_list1.yview)
-scrollbar_list1.grid(row=3, column=1, sticky=(tk.N, tk.S))
+scrollbar_list1.grid(row=5, column=1, sticky=(tk.N, tk.S))
 listbox_list1["yscrollcommand"] = scrollbar_list1.set
 
 xscrollbar_list1 = ttk.Scrollbar(frame_list1, orient=tk.HORIZONTAL, command=listbox_list1.xview)
-xscrollbar_list1.grid(row=4, column=0, sticky=(tk.E, tk.W))
+xscrollbar_list1.grid(row=6, column=0, sticky=(tk.E, tk.W))
 listbox_list1["xscrollcommand"] = xscrollbar_list1.set
 
 # List of bad files
@@ -437,6 +500,13 @@ label_status.pack(side=tk.LEFT, padx=2)
 
 # When a folder is specified in command-line
 if len(sys.argv) > 1:
+    if len(sys.argv) > 2:
+        folder2_path = sys.argv[2]
+        if os.path.isdir(folder2_path):
+            label_folder2.config(text= folder2_path)
+        else:
+            folder2_path = ""
+
     folder_path = sys.argv[1]
     if os.path.isdir(folder_path):
         folder_name = os.path.basename(folder_path)
@@ -444,6 +514,7 @@ if len(sys.argv) > 1:
     else:
         label_status.config(text= "\"" + folder_path + "\" isn't a folder.")
         folder_path = ""
+    label_folder.config(text= folder_path)
     search_par_set(folder_path)
 
 

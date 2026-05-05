@@ -28,7 +28,7 @@ min_slice_rate = 30
 min_efficiency_improvement = 0.3
 
 # Initialize global variables
-current_dir = "./"
+current_dir = ""
 sub_proc = None
 
 
@@ -278,7 +278,7 @@ def search_child_item(parent_path):
 def button_parent_clicked():
     global current_dir
     if os.path.exists(current_dir) == False:
-        current_dir = "./"
+        current_dir = ""
     search_dir = filedialog.askdirectory(initialdir=current_dir)
     if search_dir == "":
         return
@@ -289,7 +289,7 @@ def button_parent_clicked():
 # Reset lists and display status
 def button_reset_clicked():
     global current_dir
-    current_dir = "./"
+    current_dir = ""
 
     # Clear list-box at first
     listbox_list1.delete(0, tk.END)
@@ -513,7 +513,7 @@ def queue_result():
 def button_child_clicked():
     global current_dir
     if os.path.exists(current_dir) == False:
-        current_dir = "./"
+        current_dir = ""
     one_path = filedialog.askdirectory(initialdir=current_dir)
     if one_path == "":
         return
@@ -556,7 +556,7 @@ def button_child_clicked():
 def button_file_clicked():
     global current_dir
     if os.path.exists(current_dir) == False:
-        current_dir = "./"
+        current_dir = ""
     multi_path = filedialog.askopenfilenames(initialdir=current_dir)
     if len(multi_path) == 0:
         return
@@ -622,7 +622,7 @@ def button_file_clicked():
 def button_file1_clicked():
     global current_dir
     if os.path.exists(current_dir) == False:
-        current_dir = "./"
+        current_dir = ""
     one_path = filedialog.askopenfilename(initialdir=current_dir)
     if one_path == "":
         return
