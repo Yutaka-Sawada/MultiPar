@@ -40,6 +40,7 @@ You can refer the directory on MultiPar's Option window:
 
 <tr><td><a href="#Q1">Create multiple PAR2 sets for files or folders with Queuing GUI</a><td>
 <tr><td><a href="#Q2">Verify multiple PAR2 sets in a selected folder with Queuing GUI</a><td>
+<tr><td><a href="#Q3">Verify multiple PAR2 sets in a selected folder for separated data folder with Queuing GUI</a><td>
 <tr><td><hr width="95%"></td>
 
 <tr><td><a href="#D">Check difference of PAR and directory with GUI</a><td>
@@ -48,7 +49,7 @@ You can refer the directory on MultiPar's Option window:
 
 <tr><td><hr width="95%"></td>
 <tr><td><a href="#A1">Automate tasks after MultiPar GUI 's Creation</a><td>
-<tr><td><a href="#A2">Automate tasks after MultiPar GUI 's Verification / Repair</a><td>
+<tr><td><a href="#A2">Automate tasks after MultiPar GUI 's Verification or Repair</a><td>
 </table>
 
 <hr>
@@ -201,6 +202,42 @@ If you want to search all sub-directories, select "Recursive" item on the GUI pa
 While you don't start verification yet, you may select another folder by pushing "Stop" button. 
 You may change behavior of starting verification automatically or not by editing the script.
 </p>
+<p>&nbsp
+Difference of options in searching PAR2 files:<br>
+"No child" won't search any sub-directories.<br>
+"Children" will search only sub-directories direct under the selected folder.<br>
+"Recursive" will search all sub-directories.
+</p>
+
+<hr>
+
+<a name="Q3"></a>
+<h3>Verify multiple PAR2 sets in a selected folder for separated data folder with Queuing GUI</h3>
+<p>
+<table border=1 cellspacing=0 cellpadding=2 width="100%">
+<tr><td>Command<td>"path of script file" "path of PAR folder" "path of data folder"
+<tr><td>Input<td>specify one or two folders (You may select them manually on GUI.)
+<tr><td>Action<td>This sample verifies multiple PAR2 sets in a selected PAR folder for another data folder. 
+For example, when there are 7 PAR2 sets in a folder, they are shown on a list. 
+It will verify each PAR2 set for data folder continuously. 
+It's possible to stop queue on GUI.
+<tr><td>Script file<td><tt>queue_verify_separate.py</tt>
+<tr><td>Caution<td>You must select MultiPar Option: "Re-use verification result" to be "For 3 days" or longer, 
+and you should check "Don't search subfolders" in "Verification and Repair options" section on "Client behavior" tab. 
+Furthermore, you must set proper <tt>save_path</tt> in the script.
+</table>
+</p>
+<p>&nbsp
+This sample is almost same as above one (<tt>queue_verify.py</tt>). 
+Refer the explanation for usage.
+</p>
+<p>&nbsp
+Some users put PAR files and data files in different directories. 
+This script supports such case. 
+When you don't set "Data folder", it will be same as "PAR folder". 
+If you set an empty folder as "Data folder", it will verify PAR files only, 
+and it will put damaged PAR files in bad list.
+</p>
 
 <hr>
 
@@ -303,7 +340,7 @@ I put a sample in "<tt>tool\batch</tt>" folder.
 <hr>
 
 <a name="A2"></a>
-<h3>Automate tasks after MultiPar GUI 's Verification / Repair</h3>
+<h3>Automate tasks after MultiPar GUI 's Verification or Repair</h3>
 <p>&nbsp
 MultiPar GUI can start script after verification or repair. 
 The script file must be <tt>auto_v.py</tt> or <tt>auto_vl.py</tt> in the user's <tt>save</tt> folder. 
