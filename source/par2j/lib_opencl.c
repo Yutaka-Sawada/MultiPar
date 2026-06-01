@@ -1,5 +1,5 @@
 ﻿// lib_opencl.c
-// Copyright : 2024-11-30 Yutaka Sawada
+// Copyright : 2026-06-01 Yutaka Sawada
 // License : GPL
 
 #ifndef _WIN32_WINNT
@@ -422,7 +422,7 @@ int init_OpenCL(unsigned int unit_size, int *src_max)
 	// リソースから OpenCL C ソース・コードを読み込む
 	err = 4;
 	// Referred to "Embedding OpenCL Kernel Files in the Application on Windows"
-	res = FindResource(NULL, L"#1", L"RT_STRING");	// find the resource
+	res = FindResourceA(NULL, "#1", "RT_STRING");	// find the resource
 	if (res == NULL){
 #ifdef DEBUG_OUTPUT
 		printf("cannot find resource\n");
