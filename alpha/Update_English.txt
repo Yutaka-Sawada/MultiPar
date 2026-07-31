@@ -5,7 +5,7 @@ Release note of v1.3.3 tree
 
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-[ Changes from 1.3.3.6 to 1.3.3.7 ] (2026/04/25)
+[ Changes from 1.3.3.6 to 1.3.3.7 ] (2026/07/31)
 
 GUI update
  New
@@ -17,6 +17,7 @@ GUI update
 PAR2 client update
  Change
   It's possible to limit memory usage upto specified GB.
+  It's possible to test fast construction of PAR2 files.
 
 SFV/MD5 client update
  New
