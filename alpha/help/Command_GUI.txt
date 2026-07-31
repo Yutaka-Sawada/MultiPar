@@ -104,6 +104,13 @@ write a line of "RecoveryFileLimit=2" under "[Option]" section.
 "Limit Size to" value is enabled, even when "Split Files" isn't checked.
 This setting is useful, if you don't want to split source files.
 
+ If you want to construct PAR2 files quickly at creation,
+you may try two features. SetFileValidData or Sparse File.
+Using SetFileValidData requires administrator privileges,
+and write a line of "ConstructFast=1" under "[Option]" section.
+Using Sparse File requires NTFS drive,
+and write a line of "ConstructFast=2" under "[Option]" section.
+
  If you want to enable "Most Resent Used List",
 write this line "MRUMax=5" under "[Path]" section.
 You may change the number of items after "MRUMax=".
