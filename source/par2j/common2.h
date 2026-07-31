@@ -369,6 +369,10 @@ size_t get_mem_size(size_t trial_alloc);
 
 // 記録装置の特性を調べる
 int check_seek_penalty(wchar_t *dir_path);
+int check_sparse_support(wchar_t *dir_path);
+
+// SE_MANAGE_VOLUME_NAME 権限を有効にする
+int enable_volume_privilege(void);
 
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 

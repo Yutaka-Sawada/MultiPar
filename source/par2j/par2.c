@@ -1,5 +1,5 @@
 ﻿// par2.c
-// Copyright : 2024-11-30 Yutaka Sawada
+// Copyright : 2026-07-23 Yutaka Sawada
 // License : GPL
 
 #ifndef _UNICODE
@@ -301,6 +301,8 @@ int par2_create(
 		delete_recovery_file(uni_buf, block_distri, switch_p & 1, rcv_hFile);
 		goto error_end;
 	}
+	if (memory_use & 128)	// リカバリ・ファイルを疎でなくす
+		dense_recovery_file(rcv_hFile);
 
 creation_end:
 	// ソース・ファイルを分割する

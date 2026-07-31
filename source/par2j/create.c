@@ -1,5 +1,5 @@
 ﻿// create.c
-// Copyright : 2024-11-30 Yutaka Sawada
+// Copyright : 2026-07-24 Yutaka Sawada
 // License : GPL
 
 #ifndef _UNICODE
@@ -1065,35 +1065,12 @@ int create_recovery_file(
 	int repeat_max, packet_to, packet_from, packet_size, common_off;
 	unsigned int time_last, prog_num = 0;
 	__int64 file_off;
-#ifdef RANDOM_ACCESS
-	HANDLE hToken;
-#endif
 
 #ifdef TIMER
 clock_t time_start = clock();
 #endif
 	print_progress_text(0, "Constructing recovery file");
 	time_last = GetTickCount();
-
-#ifdef RANDOM_ACCESS
-	// SE_MANAGE_VOLUME_NAME 権限を有効にする
-	if (OpenProcessToken(GetCurrentProcess(), TOKEN_ADJUST_PRIVILEGES | TOKEN_QUERY, &hToken) != 0){
-		LUID luid;
-		if (LookupPrivilegeValue(NULL, SE_MANAGE_VOLUME_NAME, &luid ) != 0){
-			TOKEN_PRIVILEGES tp;
-			tp.PrivilegeCount = 1;
-			tp.Privileges[0].Luid = luid;
-			tp.Privileges[0].Attributes = SE_PRIVILEGE_ENABLED;
-			AdjustTokenPrivileges(hToken, FALSE, &tp, sizeof(TOKEN_PRIVILEGES), (PTOKEN_PRIVILEGES)NULL, (PDWORD)NULL);
-			if (GetLastError() != ERROR_SUCCESS){
-				print_win32_err();
-			} else {
-				printf("\nSE_MANAGE_VOLUME_NAME: ok\n");
-			}
-		}
-		CloseHandle(hToken);
-	}
-#endif
 
 	// リカバリ・ファイルの拡張子には指定されたものを使う
 	file_ext[0] = 0;
@@ -1186,6 +1163,14 @@ clock_t time_start = clock();
 			return 1;
 		}
 
+		if (memory_use & 128){	// Sparse File にする
+			if (!DeviceIoControl(rcv_hFile[num], FSCTL_SET_SPARSE, NULL, 0, NULL, 0, &i, NULL)){
+				printf("FSCTL_SET_SPARSE: ");
+				print_win32_err();
+				memory_use &= ~128;	// 失敗したら、それ以降は使わない
+			}
+		}
+
 		// パケットの繰り返し回数を計算する
 		repeat_max = 1;
 		for (j = 2; j <= block_count; j *= 2)	// 繰り返し回数は log2(block_count)
@@ -1204,12 +1189,13 @@ clock_t time_start = clock();
 			print_win32_err();
 			return 1;
 		}
-#ifdef RANDOM_ACCESS
-		if (!SetFileValidData(rcv_hFile[num], file_off)){
-			print_win32_err();
-			return 1;
+		if (memory_use & 64){	// ファイル全体を有効にする
+			if (!SetFileValidData(rcv_hFile[num], file_off)){
+				printf("SetFileValidData: ");
+				print_win32_err();
+				memory_use &= ~64;	// 失敗したら、それ以降は使わない
+			}
 		}
-#endif
 
 		file_off = 0;
 		repeat_max *= packet_num;	// リカバリ・ファイルの共通パケットの数
@@ -1224,6 +1210,17 @@ clock_t time_start = clock();
 				if (print_progress((prog_num * 1000) / parity_num))
 					return 2;
 				time_last = GetTickCount();
+			}
+
+			if (memory_use & 128){	// packet 部分を書き込まずに済ます
+				FILE_ZERO_DATA_INFORMATION zdi;
+				zdi.FileOffset.QuadPart = file_off;
+				zdi.BeyondFinalZero.QuadPart = file_off + 68 + block_size;
+				if (!DeviceIoControl(rcv_hFile[num], FSCTL_SET_ZERO_DATA, &zdi, sizeof(zdi), NULL, 0, &i, NULL)){
+					printf("FSCTL_SET_ZERO_DATA: ");
+					print_win32_err();
+					memory_use &= ~128;	// 失敗したら、それ以降は使わない
+				}
 			}
 
 			// Recovery Slice packet
@@ -1623,6 +1620,35 @@ void delete_recovery_file(
 			}
 		} else {
 			DeleteFile(recovery_path);	// 作成したリカバリ・ファイルを削除する
+		}
+	}
+}
+
+// 作成中のリカバリ・ファイルを密に戻す
+void dense_recovery_file(
+	HANDLE *rcv_hFile)			// 各リカバリ・ファイルのハンドル
+{
+	int rv, num;
+	BY_HANDLE_FILE_INFORMATION fi;
+	FILE_SET_SPARSE_BUFFER ssb;
+
+	if (rcv_hFile == NULL)
+		return;
+
+	// リカバリ・ファイルの Sparse File 属性を解除する
+	ssb.SetSparse = FALSE;
+	for (num = 0; num < recovery_num; num++){
+		if (rcv_hFile[num] != NULL){	// ファイルが作成済みなら (開いていれば)
+			// Sparse File 属性があるか確かめる
+			if (GetFileInformationByHandle(rcv_hFile[num], &fi) == 0)
+				continue;
+			// 属性がセットされてなければ、それ以降もないので中止する
+			if ((fi.dwFileAttributes & FILE_ATTRIBUTE_SPARSE_FILE) == 0)
+				break;
+
+			// Sparse File 属性を解除する
+			DeviceIoControl(rcv_hFile[num], FSCTL_SET_SPARSE, &ssb, sizeof(ssb), NULL, 0, &rv, NULL);
+			// 作成が中断された場合は解除できない事に注意、解除せずに削除すればいい
 		}
 	}
 }

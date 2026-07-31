@@ -1,5 +1,5 @@
 ﻿// common2.c
-// Copyright : 2026-03-28 Yutaka Sawada
+// Copyright : 2026-07-23 Yutaka Sawada
 // License : GPL
 
 #ifndef _UNICODE
@@ -1853,7 +1853,9 @@ int cpu_num = 1;	// CPU/Core 個数が制限されてる場合は、上位に本
 unsigned int cpu_flag = 0;
 unsigned int cpu_cache = 0;	// 上位 16-bit = L3 cache の制限サイズ, 下位 16-bit = 同時処理数
 unsigned int memory_use = 0;	// メモリー使用量 0=auto, 1～7 -> 1/8 ～ 7/8
-								// 8=HDD, 16=SSD, 32=Fast SSD, 0xFF00 = limit GB
+								// 8 = HDD, 16 = SSD, 32 = Fast SSD,
+								// 64 = Quick allocation, 128 = Sparse allocation
+								// 0xFF00 = limit GB
 
 static int count_bit(DWORD_PTR value)
 {
@@ -2291,6 +2293,92 @@ int check_seek_penalty(wchar_t *dir_path){	// ディレクトリを指定する
 
 	CloseHandle(hDevice);
 	return 1;
+}
+
+// Returns 0 if sparse file is supported.
+// Returns 1 if sparse file isn't supported.
+// Returns 2~ if fails to retrieve the status.
+int check_sparse_support(wchar_t *dir_path)
+{
+	wchar_t root_path[MAX_PATH];
+	unsigned int FileSystemFlags;
+	int i;
+
+	// ルート・パスを取得する
+	if (wcsncmp(dir_path, L"\\\\?\\", PREFIX_LEN) == 0)
+		dir_path += PREFIX_LEN;
+	if (dir_path[1] == ':'){	// 「C:\～」のような形式
+		if ((dir_path[0] >= 0x41) && (dir_path[0] <= 0x5A)){	// 大文字の A～Z なら
+			root_path[0] = dir_path[0];
+		} else if ((dir_path[0] >= 0x61) && (dir_path[0] <= 0x7A)){	// 小文字の a～z なら
+			root_path[0] = dir_path[0];
+		} else {
+			return 3;	// ドライブ文字でないならだめ
+		}
+		root_path[1] = ':';
+		root_path[2] = '\\';	// A trailing backslash is required.
+	} else if ((dir_path[0] == '\\') && (dir_path[1] == '\\')){	// 「\\MyServer\MyShare\」のような形式
+		for (i = 2; i < MAX_PATH; i++){
+			if ((dir_path[i] == '\\') || (dir_path[i] == 0))
+				break;
+		}
+		if ((i < MAX_PATH - 3) && (dir_path[i] == '\\')){
+			for (; i < MAX_PATH - 1; i++){
+				if ((dir_path[i] == '\\') || (dir_path[i] == 0))
+					break;
+			}
+			if (i >= MAX_PATH - 1)
+				return 5;	// 共有ドライブ名でないならだめ
+			wcsncpy(root_path, dir_path, i);
+			if (root_path[i] == '\\')
+				root_path[i + 1] = 0;
+		} else {
+			return 4;	// サーバー名でないならだめ
+		}
+	} else {
+		return 2;
+	}
+
+	// file system のフラグを取得する
+	if (GetVolumeInformation(root_path, NULL, 0, NULL, NULL, &FileSystemFlags, NULL, 0) == 0)
+		return 6;
+	if (FileSystemFlags & FILE_SUPPORTS_SPARSE_FILES)
+		return 0;
+
+	return 1;
+}
+
+// SE_MANAGE_VOLUME_NAME 権限を有効にする
+// Returns 0 when enabled.
+// Returns 1~ if failed.
+int enable_volume_privilege(void)
+{
+	int rv = 0;
+	HANDLE hToken;
+	if (OpenProcessToken(GetCurrentProcess(), TOKEN_ADJUST_PRIVILEGES | TOKEN_QUERY, &hToken) != 0){
+		LUID luid;
+		if (LookupPrivilegeValue(NULL, SE_MANAGE_VOLUME_NAME, &luid ) != 0){
+			TOKEN_PRIVILEGES tp;
+			tp.PrivilegeCount = 1;
+			tp.Privileges[0].Luid = luid;
+			tp.Privileges[0].Attributes = SE_PRIVILEGE_ENABLED;
+			if (AdjustTokenPrivileges(hToken, FALSE, &tp, sizeof(TOKEN_PRIVILEGES), (PTOKEN_PRIVILEGES)NULL, (PDWORD)NULL) != 0){
+				if (GetLastError() != ERROR_SUCCESS){
+					//printf("\nAdjustTokenPrivileges:\n");
+					//print_win32_err();
+					rv = 4;
+				}
+			} else {
+				rv = 3;
+			}
+		} else {
+			rv = 2;
+		}
+		CloseHandle(hToken);
+	} else {
+		rv = 1;
+	}
+	return rv;
 }
 
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */

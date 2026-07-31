@@ -92,6 +92,10 @@ void delete_recovery_file(
 	int switch_p,				// インデックス・ファイルを作らない
 	HANDLE *rcv_hFile);			// 各リカバリ・ファイルのハンドル
 
+// 作成中のリカバリ・ファイルを密に戻す
+void dense_recovery_file(
+	HANDLE *rcv_hFile);			// 各リカバリ・ファイルのハンドル
+
 // リカバリ・ファイルのサイズを計算する
 void measure_recovery_file(
 	wchar_t *recovery_path,		// 作業用 (最初はコメントが入ってる)

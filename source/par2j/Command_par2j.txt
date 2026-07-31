@@ -440,6 +440,16 @@ If this is not set or the value is 0, the rate depends on free memory.
 +32 = Multi-read more files on SSD (must set with +16)
 Normally users should not set this, unless automatic selection has a problem.
 
+ Advanced users may set either options for faster PAR2 file construction.
++64 = use SetFileValidData, which requires administrator privileges.
+You may use "Run as administrator" to start "Command Prompt" or "MultiPar.exe".
+If you don't have enough privilege, this setting is ignored simply.
+When it's enabled, "Quick" word is appended after "Memory usage :".
++128 = use Sparse File, which requires NTFS drive.
+As a drawback, disorderly allocation will cause fragmentation of PAR2 files.
+If PAR2 file size is less than several GB, this setting would be worthless.
+When it's enabled, "Sparse" word is appended after "Memory usage :".
+
  For advanced users, it's possible to limit memory usage upto specified GB.
 The value is "256 * #" like +256, +512, +768, +1024 ... +65280.
 If you want to limit memory usage upto 4 GB, set "/m1024". (256 * 4 = 1024)

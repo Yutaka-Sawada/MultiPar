@@ -1,5 +1,5 @@
 ﻿// par2_cmd.c
-// Copyright : 2026-03-25 Yutaka Sawada
+// Copyright : 2026-07-22 Yutaka Sawada
 // License : GPL
 
 #ifndef _UNICODE
@@ -152,6 +152,19 @@ static void print_environment(void)
 		}
 	} else if (memory_use & 8){	// HDD
 		printf(", HDD");
+	}
+	if (memory_use & 64){	// Quick allocation
+		if (enable_volume_privilege() == 0){
+			printf(", Quick");
+		} else {
+			memory_use &= ~64;
+		}
+	} else if (memory_use & 128){	// Sparse allocation
+		if (check_sparse_support(recovery_file) == 0){
+			printf(", Sparse");
+		} else {
+			memory_use &= ~128;
+		}
 	}
 	printf("\n\n");
 }
