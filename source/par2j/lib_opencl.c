@@ -7,6 +7,7 @@
 #endif
 
 #include <stdio.h>
+#include <string.h>
 
 #include <windows.h>
 #include <opencl.h>
@@ -150,7 +151,18 @@ int init_OpenCL(unsigned int unit_size, int *src_max)
 	cl_program program;
 
 	// ライブラリーを読み込む
-	hLibOpenCL = LoadLibraryA("OpenCL.DLL");
+	// カレント・ディレクトリや PATH にある偽の DLL を読み込まないように、
+	// システム・ディレクトリの絶対パスを指定する
+	{
+		char dll_path[MAX_PATH];
+		unsigned int path_len;
+
+		path_len = GetSystemDirectoryA(dll_path, MAX_PATH);
+		if ((path_len == 0) || (path_len + 12 >= MAX_PATH))	// "\OpenCL.DLL" + null
+			return 1;
+		strcpy(dll_path + path_len, "\\OpenCL.DLL");
+		hLibOpenCL = LoadLibraryA(dll_path);
+	}
 	if (hLibOpenCL == NULL)
 		return 1;
 
