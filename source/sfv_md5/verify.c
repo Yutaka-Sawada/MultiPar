@@ -13,6 +13,7 @@
 #endif
 
 #include <stdio.h>
+#include <stdlib.h>
 
 #include <windows.h>
 #include <bcrypt.h>
@@ -1471,6 +1472,50 @@ int verify_md5(
 
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
+// flac.exe の絶対パスを探す (カレント・ディレクトリは検索しない)
+// 実行ファイルと同じディレクトリ、PATH 環境変数の順に探す
+//  0 = 見つかった, 1 = 見つからない
+static int find_flac_path(wchar_t *flac_path, unsigned int path_size)
+{
+	wchar_t *env_path;
+	unsigned int len, i;
+
+	// 実行ファイルと同じディレクトリ
+	len = GetModuleFileName(NULL, flac_path, path_size);
+	if ((len > 0) && (len < path_size)){
+		i = len;
+		while (i > 0){
+			i--;
+			if (flac_path[i] == '\\')
+				break;
+		}
+		if ((flac_path[i] == '\\') && (i + 1 + 8 < path_size)){
+			wcscpy(flac_path + i + 1, L"flac.exe");
+			len = GetFileAttributes(flac_path);
+			if ((len != INVALID_FILE_ATTRIBUTES) && ((len & FILE_ATTRIBUTE_DIRECTORY) == 0))
+				return 0;
+		}
+	}
+
+	// PATH 環境変数のディレクトリだけを検索する
+	// (lpPath を指定すると、カレント・ディレクトリは検索されない)
+	len = GetEnvironmentVariable(L"PATH", NULL, 0);
+	if (len == 0)
+		return 1;
+	env_path = (wchar_t *)malloc(len * sizeof(wchar_t));
+	if (env_path == NULL)
+		return 1;
+	if (GetEnvironmentVariable(L"PATH", env_path, len) == 0){
+		free(env_path);
+		return 1;
+	}
+	len = SearchPath(env_path, L"flac.exe", NULL, path_size, flac_path, NULL);
+	free(env_path);
+	if ((len == 0) || (len >= path_size))
+		return 1;
+	return 0;
+}
+
 // FLAC Fingerprint を比較する
 //  0 = ファイルが存在して完全である
 //  1 = エラー
@@ -1485,8 +1530,8 @@ static int file_ffp_check(
 	unsigned char *hash)
 {
 	unsigned char buf[42];
-	wchar_t cmdline[MAX_LEN + 8];
-	int len, rv, bad_flag;
+	wchar_t cmdline[MAX_LEN + 8], flac_path[MAX_LEN];
+	int len, rv, bad_flag, cmd_ok;
 	unsigned int meta_data[8];
 	__int64 file_size = 0;
 	HANDLE hFile;
@@ -1531,27 +1576,33 @@ static int file_ffp_check(
 				memset(&si, 0, sizeof(si));
 				si.cb = sizeof(si);
 				memset(&pi, 0, sizeof(pi));
-				// 実行ファイルを lpCommandLine に含めると PATH 環境を検索してくれる
-				// lpApplicationName に実行ファイルを指定した時は検索しないことに注意！
+				// lpApplicationName に flac.exe の絶対パスを指定するので、
+				// lpCommandLine の先頭はプログラム名 (argv[0]) として扱われるだけ
 				//wcscpy(cmdline, L"flac.exe -t ");
 				wcscpy(cmdline, L"flac.exe -t --totally-silent ");	// エラー内容を表示しない
 				// ファイル名がスペースを含む場合は「"」で囲む
 				len = wcslen(uni_name);
-				for (rv = 0; rv < len; rv++){
-					if (uni_name[rv] == ' ')
-						break;
-				}
-				if (rv < len){
-					rv = wcslen(cmdline);
-					cmdline[rv] = '"';
-					wcscpy(cmdline + rv + 1, uni_name);	// 「"」で囲む
-					cmdline[rv + len + 1] = '"';
-					cmdline[rv + len + 2] = 0;
-				} else {
-					wcscat(cmdline, uni_name);	// そのまま
+				// コマンドラインが長すぎるなら flac.exe を呼び出さない (「"」2個と null 文字の分も確保する)
+				cmd_ok = (wcslen(cmdline) + len + 3 <= _countof(cmdline));
+				if (cmd_ok){
+					for (rv = 0; rv < len; rv++){
+						if (uni_name[rv] == ' ')
+							break;
+					}
+					if (rv < len){
+						rv = wcslen(cmdline);
+						cmdline[rv] = '"';
+						wcscpy(cmdline + rv + 1, uni_name);	// 「"」で囲む
+						cmdline[rv + len + 1] = '"';
+						cmdline[rv + len + 2] = 0;
+					} else {
+						wcscat(cmdline, uni_name);	// そのまま
+					}
 				}
 				//printf("cmdline = \"%S\"\n", cmdline);
-				if (CreateProcess(NULL, cmdline,
+				// flac.exe の絶対パスを lpApplicationName に指定して、
+				// カレント・ディレクトリにある偽の flac.exe が実行されるのを防ぐ
+				if (cmd_ok && (find_flac_path(flac_path, MAX_LEN) == 0) && CreateProcess(flac_path, cmdline,
 						NULL,	//プロセスのセキュリティー記述子
 						NULL,	//スレッドのセキュリティー記述子
 						FALSE,	//ハンドルを継承しない

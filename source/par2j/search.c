@@ -686,7 +686,7 @@ printf(" packet : %s, size = %u, file_off = %I64d, off = %d\n", ascii_buf, packe
 								i = COMMENT_LEN - 1;
 							memcpy(ascii_comment, buf + (off + 64), i);
 							ascii_comment[i] = 0;	// 末尾を null 文字にする
-						} else if ((par_comment[0] == 0) && (memcmp(buf + (off + 48), "PAR 2.0\0CommUni\0", 16) == 0)){
+						} else if ((par_comment[0] == 0) && (packet_size >= 80) && (memcmp(buf + (off + 48), "PAR 2.0\0CommUni\0", 16) == 0)){
 							// Unicode Comment packet
 							i = packet_size - 80;	// コメントのバイト数
 							if (i >= COMMENT_LEN * 2)

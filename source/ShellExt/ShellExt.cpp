@@ -1337,7 +1337,7 @@ int CShellExtension::DoCommand(UINT idCmd){
 
 	// 検査なら
 	if ((idCmd == 1) || ((idCmd == 0) && (uNumFiles == 1))){
-		wchar_t argvs[MAX_PATH + 16];
+		wchar_t argvs[_countof(buf) + 16];	// "/verify " + 「"」2個 + ファイル名 + null 文字
 
 		// コマンドラインを作る
 		if (idCmd == 1){
