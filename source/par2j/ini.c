@@ -1,5 +1,5 @@
 ﻿// ini.c
-// Copyright : 2024-11-30 Yutaka Sawada
+// Copyright : 2026-09-18 Yutaka Sawada
 // License : GPL
 
 #ifndef _UNICODE
@@ -1592,6 +1592,7 @@ int check_ini_verify(
 	memcpy(&file_size, meta, 8);
 	i = SetFilePointer(hIniBin, ini_off + STATE_SIZE, NULL, FILE_BEGIN);
 	if ((i == INVALID_SET_FILE_POINTER) && (GetLastError() != NO_ERROR)){
+		print_win32_err();
 		delete_ini_file();
 		return -3;
 	}
@@ -1603,6 +1604,7 @@ int check_ini_verify(
 			if (left > MAX_EACH)
 				left = MAX_EACH;
 			if (!ReadFile(hIniBin, buf, SOURCE_EACH * left, &j, NULL) || ((SOURCE_EACH * left) != j)){
+				print_win32_err();
 				delete_ini_file();
 				return -3;
 			}
@@ -1688,6 +1690,7 @@ void write_ini_verify(
 	memcpy(buf +  2, &off, 8);
 	memcpy(buf + 10, &flag, 1);
 	if (WriteFile(hIniBin, buf, SOURCE_EACH, &i, NULL) == 0){
+		print_win32_err();
 		delete_ini_file();
 		return;
 	}
@@ -1727,10 +1730,12 @@ void write_ini_verify2(
 	} else {	// エラー発生なら途中までの検査結果を削除する
 		int i = SetFilePointer(hIniBin, ini_off, NULL, FILE_BEGIN);
 		if ((i == INVALID_SET_FILE_POINTER) && (GetLastError() != NO_ERROR)){
+			print_win32_err();
 			delete_ini_file();
 			return;
 		}
 		if (!SetEndOfFile(hIniBin)){
+			print_win32_err();
 			delete_ini_file();
 			return;
 		}
