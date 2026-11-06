@@ -5,7 +5,7 @@ Release note of v1.3.3 tree
 
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-[ Changes from 1.3.3.6 to 1.3.3.7 ] (2026/07/31)
+[ Changes from 1.3.3.6 to 1.3.3.7 ] (2026/11/06)
 
 GUI update
  New
@@ -14,14 +14,23 @@ GUI update
  Change
   Folder selection dialog looks Windows Explorer style.
 
+ Bug fix
+  Buffer overflaw bug in Shell Extension DLL was fixed.
+
 PAR2 client update
  Change
   It's possible to limit memory usage upto specified GB.
   It's possible to test fast construction of PAR2 files.
 
+ Bug fix
+  Buffer overflaw bug and loading libary failure were fixed.
+
 SFV/MD5 client update
  New
   SHA-1, SHA-256, SHA-384, and SHA-512 are supported.
+
+ Bug fix
+  Loading flac.exe failure was fixed.
 
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
